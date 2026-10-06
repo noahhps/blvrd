@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { COLOURS, colourIdOf } from "../lib/agents.js";
+import { COLOURS, DOTS_MAX, DOTS_MIN, colourIdOf, dotsOf } from "../lib/agents.js";
+import { avatarFrom } from "../lib/attach.js";
 import { TOOLS } from "../lib/tools.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Icon } from "./Icon.jsx";
@@ -13,6 +14,8 @@ function draftFrom(agent) {
     all: agent?.tools == null,
     chosen: new Set(agent?.tools || TOOLS.filter((t) => !t.network).map((t) => t.name)),
     colour: colourIdOf(agent) || "red",
+    dots: dotsOf(agent?.look),
+    image: agent?.look?.image || null,
     model: agent?.model || null,
   };
 }
@@ -34,7 +37,26 @@ export function AgentEditor({ agent, initial, providers, defaultModel, onSave, o
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const look = useMemo(() => ({ colour: draft.colour }), [draft.colour]);
+  const look = useMemo(
+    () => ({
+      colour: draft.colour,
+      dots: draft.dots,
+      ...(draft.image ? { image: draft.image } : {}),
+    }),
+    [draft.colour, draft.dots, draft.image],
+  );
+  const picker = useRef(null);
+
+  const choosePicture = async (file) => {
+    if (!file) return;
+    try {
+      const image = await avatarFrom(file);
+      set({ image });
+      setError("");
+    } catch (problem) {
+      setError(problem.message || "That picture couldn't be read.");
+    }
+  };
 
   const toggle = (name) =>
     setDraft((d) => {
@@ -67,7 +89,42 @@ export function AgentEditor({ agent, initial, providers, defaultModel, onSave, o
         </button>
 
         <div className="sheet-head">
-          <AgentAvatar look={look} size={80} />
+          {/* The picture is chosen on the avatar itself: a camera at its
+              bottom-right, and -- once there is a picture -- a cross at its
+              top-right that goes back to the dots. */}
+          <div className="avatar-edit">
+            <AgentAvatar look={look} name={draft.name} size={80} />
+            <button
+              type="button"
+              className="avatar-badge avatar-choose"
+              aria-label={draft.image ? "Choose another picture" : "Use a picture"}
+              title={draft.image ? "Choose another picture" : "Use a picture"}
+              onClick={() => picker.current.click()}
+            >
+              <Icon name="camera" size={14} />
+            </button>
+            {draft.image ? (
+              <button
+                type="button"
+                className="avatar-badge avatar-remove"
+                aria-label="Remove the picture and go back to dots"
+                title="Remove picture"
+                onClick={() => set({ image: null })}
+              >
+                <Icon name="close" size={12} />
+              </button>
+            ) : null}
+            <input
+              ref={picker}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                choosePicture(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+          </div>
           <input
             className="sheet-name"
             type="text"
@@ -81,23 +138,41 @@ export function AgentEditor({ agent, initial, providers, defaultModel, onSave, o
 
         <div className="sheet-body">
           <section className="field">
-            <span className="label">Colour</span>
-            <div className="wear-row" role="radiogroup" aria-label="Colour">
-              {COLOURS.map((colour) => (
-                <button
-                  key={colour.id}
-                  type="button"
-                  role="radio"
-                  className="wear"
-                  aria-checked={draft.colour === colour.id}
-                  aria-pressed={draft.colour === colour.id}
-                  title={colour.label}
-                  onClick={() => set({ colour: colour.id })}
-                >
-                  <AgentAvatar look={{ colour: colour.id }} size={30} />
-                </button>
-              ))}
-            </div>
+            <span className="label">Avatar</span>
+            {draft.image ? (
+              <p className="hint">A picture of your own. Remove it (the × on the picture) to go back to dots.</p>
+            ) : (
+              <>
+                <label className="dots-range">
+                  <span>Dots</span>
+                  <input
+                    type="range"
+                    min={DOTS_MIN}
+                    max={DOTS_MAX}
+                    step={1}
+                    value={draft.dots}
+                    aria-valuetext={`${draft.dots} dots`}
+                    onChange={(e) => set({ dots: Number(e.target.value) })}
+                  />
+                  <output>{draft.dots}</output>
+                </label>
+                <div className="wear-row" role="radiogroup" aria-label="Colour">
+                  {COLOURS.map((colour) => (
+                    <button
+                      key={colour.id}
+                      type="button"
+                      role="radio"
+                      className="wear"
+                      aria-checked={draft.colour === colour.id}
+                      title={colour.label}
+                      onClick={() => set({ colour: colour.id })}
+                    >
+                      <AgentAvatar look={{ colour: colour.id, dots: draft.dots }} size={30} />
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </section>
 
           <label className="field">

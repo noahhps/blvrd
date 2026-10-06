@@ -1,4 +1,4 @@
-/* An agent's avatar: four dots on a circle (components/AgentAvatar.jsx).
+/* An agent's avatar: dots on a circle, or a picture (components/AgentAvatar.jsx).
  *
  * Everything is a transform, so it composites off the main thread and keeps
  * moving while an answer streams in. Sizes are fractions of --size, so the
@@ -15,7 +15,9 @@
 
 .orbit {
   --r: calc(var(--size) * 0.36);
-  --d: calc(var(--size) * 0.22);
+  /* Fewer dots are drawn larger, so two dots and twelve both read as a ring
+     of the same weight. */
+  --d: calc(var(--size) * clamp(0.11, 0.88 / (var(--n) + 0), 0.24));
   position: relative;
   display: inline-block;
   flex: none;
@@ -40,7 +42,10 @@
   width: var(--d);
   height: var(--d);
   margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2);
-  transform: rotate(calc(var(--i) * 90deg)) translateY(calc(var(--r) * -1));
+  transform: rotate(var(--a)) translateY(calc(var(--r) * -1));
+  /* A change of count is a move on screen: the dots that stay glide round to
+     their new spacing. */
+  transition: transform 280ms var(--ease-in-out);
 }
 .orbit i::before {
   content: "";
@@ -48,6 +53,47 @@
   inset: 0;
   border-radius: 50%;
   background: var(--dot);
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+}
+/* A dot arriving grows out of the top one; a dot leaving slides back into it
+   and fades. Never from nothing: half size, not zero. */
+@starting-style {
+  .orbit i[data-entering] { transform: rotate(0deg) translateY(calc(var(--r) * -1)); }
+  .orbit i[data-entering]::before { opacity: 0; transform: scale(0.5); }
+}
+.orbit i[data-leaving]::before { opacity: 0; transform: scale(0.5); }
+
+/* A picture: round, and arriving as a crossfade -- with a touch of blur, so
+   the old face and the new one read as one change rather than two images. */
+.orbit-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--line);
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out), filter 220ms var(--ease-out);
+}
+@starting-style {
+  .orbit-photo { opacity: 0; transform: scale(0.96); filter: blur(4px); }
+}
+/* Answering, a picture stays still and three small dots run round it. */
+.orbit-halo {
+  position: absolute;
+  inset: calc(var(--size) * -0.08);
+  animation: orbit-spin 1.6s linear infinite;
+}
+.orbit-halo i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--size) * 0.12);
+  height: calc(var(--size) * 0.12);
+  margin: calc(var(--size) * -0.06) 0 0 calc(var(--size) * -0.06);
+  border-radius: 50%;
+  background: var(--dot);
+  transform: rotate(var(--a)) translateY(calc(var(--size) * -0.58));
 }
 
 .orbit[data-spinning] .orbit-tumble {
@@ -60,7 +106,7 @@
   animation: orbit-swell 1.6s var(--ease-in-out) infinite;
   /* Negative delays start every dot mid-cycle, so the swell is already
      running round the ring on the first frame. */
-  animation-delay: calc(var(--i) * -0.4s); /* a quarter of the 1.6s cycle each */
+  animation-delay: calc(var(--i) * -1.6s / var(--n)); /* spread evenly over the 1.6s cycle */
 }
 
 @keyframes orbit-spin {
@@ -88,13 +134,17 @@
 /* Reduced motion: nothing turns. The dots dim one after another instead, so
    "answering" is still legible without anything moving. */
 @media (prefers-reduced-motion: reduce) {
+  /* A change of count fades rather than glides. */
+  .orbit i { transition: none; }
+  .orbit-halo { animation: none; }
+  .orbit-photo { transition: opacity 220ms ease; }
   .orbit[data-spinning] .orbit-tumble,
   .orbit[data-spinning] .orbit-spin {
     animation: none;
   }
   .orbit[data-spinning] i::before {
     animation: orbit-wait 1.2s ease infinite;
-    animation-delay: calc(var(--i) * 0.3s);
+    animation-delay: calc(var(--i) * 1.2s / var(--n));
   }
   .orbit[data-intro] .orbit-tumble {
     animation: orbit-fade 300ms ease both;

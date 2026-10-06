@@ -66,3 +66,19 @@ export function splitDataUrl(url) {
   const m = /^data:([^;,]+);base64,(.*)$/.exec(url || "");
   return m ? [m[1], m[2]] : [null, null];
 }
+
+/** A picture made into an avatar: centre-cropped to a square and drawn at
+ *  256px, as a JPEG data URL small enough to keep with the agent. */
+export async function avatarFrom(file) {
+  if (kindOf(file) !== "image") throw new Error("That isn't a picture.");
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 256, 256);
+  bitmap.close?.();
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
