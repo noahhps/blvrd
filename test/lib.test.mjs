@@ -100,6 +100,7 @@ test("markdown blocks", () => {
   assert.match(html, /<h2>T<\/h2>/);
   assert.match(html, /<ul><li>a<\/li><li>b<\/li><\/ul>/);
   assert.match(html, /<pre data-lang="js"><code>let x = 1 &lt; 2;<\/code><\/pre>/);
+  assert.match(html, /<div class="table-scroll"><table>/);
   assert.match(html, /<td>1<\/td><td>2<\/td>/);
 });
 

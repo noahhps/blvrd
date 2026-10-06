@@ -93,9 +93,11 @@ export function renderMarkdown(source) {
       const body = [];
       while (i < lines.length && lines[i].includes("|") && lines[i].trim()) body.push(row(lines[i++]));
       out.push(
-        `<table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${body
+        // In its own scroller, so a wide table scrolls sideways rather than
+        // squeezing every column to fit the conversation's width.
+        `<div class="table-scroll"><table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join("")}</tr></thead><tbody>${body
           .map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`)
-          .join("")}</tbody></table>`,
+          .join("")}</tbody></table></div>`,
       );
       continue;
     }

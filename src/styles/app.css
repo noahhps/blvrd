@@ -358,8 +358,24 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .md pre { padding: 12px 14px; border-radius: var(--r-control); background: var(--well); overflow-x: auto; }
 .md pre code { padding: 0; background: none; font-size: 12.5px; line-height: 1.55; }
 .md blockquote { padding-left: 12px; border-left: 3px solid var(--line-strong); color: var(--dim); }
-.md table { border-collapse: collapse; display: block; overflow-x: auto; }
-.md th, .md td { border: 1px solid var(--line); padding: 5px 10px; text-align: left; }
+/* A table keeps its columns readable and scrolls sideways when it is wider
+   than the conversation: every cell has a floor, and long text wraps inside a
+   cell up to a ceiling rather than stretching it across the screen. */
+.md .table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 10px;
+  overscroll-behavior-x: contain;
+}
+.md table { border-collapse: collapse; width: max-content; min-width: 100%; margin: 0; }
+.md th, .md td {
+  min-width: 120px;
+  max-width: 360px;
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  text-align: left;
+  vertical-align: top;
+}
 .md th { background: var(--well); font-weight: 600; }
 .md a { text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
 .md hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
