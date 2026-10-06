@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { colourOf, dotsOf } from "../lib/agents.js";
+import { FORMATIONS, formation } from "../lib/formations.js";
 
 /* An agent, drawn: dots on the circumference of a circle -- 2 to 12 of them,
  * four by default -- or a picture of the reader's choosing.
@@ -22,7 +23,46 @@ import { colourOf, dotsOf } from "../lib/agents.js";
  * jumping there -- a transition can't start from an animated value, so the
  * value is handed over by hand.
  *
+ * While it works, the dots also walk through formations (lib/formations.js):
+ * ring, triangle, wave, square, infinity, star, grid, gathered in -- each held
+ * for a beat, then moved into the next. The step comes from the clock, so
+ * every avatar of the same agent (sidebar, header, answer) shows the same
+ * shape at the same moment; the agent's name offsets where it starts, so two
+ * agents working at once are not in lockstep. Not with reduced motion.
+ *
  * `intro` gives the large greeting avatar one slow turn when it appears. */
+
+const HOLD_MS = 900; // a formation is held this long...
+const MORPH_MS = 400; // ...then the dots move to the next (orbit.css)
+const STEP_MS = HOLD_MS + MORPH_MS;
+
+function offsetOf(name) {
+  let h = 0;
+  for (const ch of String(name || "")) h = (h * 31 + ch.codePointAt(0)) | 0;
+  return Math.abs(h) % FORMATIONS.length;
+}
+
+/* Which formation is showing, stepping on the clock while `on`. Null when
+   off -- the dots are then the plain ring. */
+function useFormation(on, name) {
+  const [step, setStep] = useState(null);
+  useEffect(() => {
+    const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!on || calm.matches) {
+      setStep(null);
+      return undefined;
+    }
+    let timer = 0;
+    const tick = () => {
+      const now = Date.now();
+      setStep(Math.floor(now / STEP_MS) + offsetOf(name));
+      timer = setTimeout(tick, STEP_MS - (now % STEP_MS));
+    };
+    tick();
+    return () => clearTimeout(timer);
+  }, [on, name]);
+  return step;
+}
 
 const LEAVE_MS = 260;
 let keySeed = 0;
@@ -62,6 +102,8 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
   const tumble = useRef(null);
   const spin = useRef(null);
   const [running, setRunning] = useState(spinning);
+  const step = useFormation(spinning && !image, name);
+  const shape = step === null ? null : formation(step, count);
 
   useLayoutEffect(() => {
     if (spinning) {
@@ -94,6 +136,7 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
       data-spinning={running ? "" : undefined}
       data-intro={intro ? "" : undefined}
       data-picture={image ? "" : undefined}
+      data-shape={shape ? FORMATIONS[step % FORMATIONS.length].id : undefined}
       aria-hidden="true"
     >
       {image ? (
@@ -117,10 +160,13 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
               // one heads for the top, back into the first dot.
               const index = slot.state === "out" ? 0 : place++;
               const angle = slot.state === "out" ? 360 : (index * 360) / count;
+              // In a formation a dot is placed by x and y instead; a leaving
+              // one still heads for the top.
+              const [fx, fy] = shape && slot.state !== "out" ? shape[index] || [0, 0] : [0, -1];
               return (
                 <i
                   key={slot.key}
-                  style={{ "--a": `${angle}deg`, "--i": index }}
+                  style={{ "--a": `${angle}deg`, "--i": index, "--fx": fx.toFixed(3), "--fy": fy.toFixed(3) }}
                   data-entering={slot.state === "enter" ? "" : undefined}
                   data-leaving={slot.state === "out" ? "" : undefined}
                 />

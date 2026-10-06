@@ -109,6 +109,15 @@
   animation-delay: calc(var(--i) * -1.6s / var(--n)); /* spread evenly over the 1.6s cycle */
 }
 
+/* Working, the dots also walk through formations (lib/formations.js): each
+   dot is placed by x and y in units of the ring's radius, and moves to its
+   next place with the strong in-out -- a move on screen -- while the spin and
+   the tumble carry on around it. */
+.orbit[data-shape] i {
+  transform: translate(calc(var(--r) * var(--fx)), calc(var(--r) * var(--fy)));
+  transition: transform 400ms var(--ease-in-out);
+}
+
 @keyframes orbit-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
