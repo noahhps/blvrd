@@ -329,6 +329,9 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .step { margin-left: 40px; color: var(--dim); font-size: 13px; }
 .step summary { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none; padding: 2px 8px; border-radius: 999px; background: var(--well); }
 .step summary::-webkit-details-marker { display: none; }
+/* The chevron says which way it will go: right when shut, down when open. */
+.step summary .icon:last-child { transition: transform 150ms var(--ease-out); }
+.step[open] summary .icon:last-child { transform: rotate(90deg); }
 .step.failed summary { color: var(--warn); }
 .step pre {
   margin: 6px 0 0;

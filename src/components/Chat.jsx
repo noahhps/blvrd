@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { taglineOf } from "../lib/agents.js";
 import { hostOf, isLocalUrl } from "../lib/catalog.js";
+import { getToolsOpen, setToolsOpen } from "../lib/prefs.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { TOOLS, toolsFor } from "../lib/tools.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
@@ -203,17 +204,7 @@ function Turn({ message, agent }) {
       </div>
     );
   }
-  if (message.role === "tool") {
-    return (
-      <details className={`step${message.error ? " failed" : ""}`}>
-        <summary>
-          <Icon name="tool" size={14} />
-          <span>{message.error ? `${message.name} didn’t work` : `Used ${message.name}`}</span>
-        </summary>
-        <pre>{message.content}</pre>
-      </details>
-    );
-  }
+  if (message.role === "tool") return <ToolStep message={message} />;
   if (message.failure) {
     return (
       <div className="turn assistant">
@@ -234,5 +225,30 @@ function Turn({ message, agent }) {
         {message.note ? <p className="note">{message.note}</p> : null}
       </div>
     </div>
+  );
+}
+
+/* A tool call: collapsed or expanded as the reader last left one (lib/prefs.js),
+   and toggling it sets that for every tool call after it, in any agent's chat. */
+function ToolStep({ message }) {
+  const [open, setOpen] = useState(getToolsOpen);
+  return (
+    <details
+      className={`step${message.error ? " failed" : ""}`}
+      open={open}
+      onToggle={(e) => {
+        const next = e.currentTarget.open;
+        if (next === open) return; // React's own sync of `open` fires this too
+        setOpen(next);
+        setToolsOpen(next);
+      }}
+    >
+      <summary>
+        <Icon name="tool" size={14} />
+        <span>{message.error ? `${message.name} didn’t work` : `Used ${message.name}`}</span>
+        <Icon name="chevron" size={12} />
+      </summary>
+      <pre>{message.content}</pre>
+    </details>
   );
 }
