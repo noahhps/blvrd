@@ -181,7 +181,9 @@ export function Chat({
   );
 }
 
-function Turn({ message, agent }) {
+/* One message. `speaker` labels an agent's turn with its name -- in a group,
+   where more than one agent answers in the same thread. */
+export function Turn({ message, agent, speaker = false }) {
   if (message.role === "user") {
     const files = message.files || [];
     return (
@@ -204,12 +206,14 @@ function Turn({ message, agent }) {
       </div>
     );
   }
-  if (message.role === "tool") return <ToolStep message={message} />;
+  if (message.role === "tool") return <ToolStep message={message} who={speaker ? agent.name : null} />;
+  const label = speaker ? <span className="speaker">{agent.name}</span> : null;
   if (message.failure) {
     return (
       <div className="turn assistant">
         <AgentAvatar look={agent.look} name={agent.name} size={26} />
         <div className="answer">
+          {label}
           <p className="error-box">{message.failure}</p>
         </div>
       </div>
@@ -221,6 +225,7 @@ function Turn({ message, agent }) {
     <div className="turn assistant">
       <AgentAvatar look={agent.look} name={agent.name} size={26} />
       <div className="answer">
+        {label}
         {hasText ? <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} /> : null}
         {message.note ? <p className="note">{message.note}</p> : null}
       </div>
@@ -230,7 +235,7 @@ function Turn({ message, agent }) {
 
 /* A tool call: collapsed or expanded as the reader last left one (lib/prefs.js),
    and toggling it sets that for every tool call after it, in any agent's chat. */
-function ToolStep({ message }) {
+function ToolStep({ message, who = null }) {
   const [open, setOpen] = useState(getToolsOpen);
   return (
     <details
@@ -245,7 +250,11 @@ function ToolStep({ message }) {
     >
       <summary>
         <Icon name="tool" size={14} />
-        <span>{message.error ? `${message.name} didn’t work` : `Used ${message.name}`}</span>
+        <span>
+          {message.error
+            ? `${who ? `${who}’s ` : ""}${message.name} didn’t work`
+            : `${who ? `${who} used` : "Used"} ${message.name}`}
+        </span>
         <Icon name="chevron" size={12} />
       </summary>
       <pre>{message.content}</pre>

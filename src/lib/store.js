@@ -3,7 +3,9 @@
  *   agents     [{ id, name, instructions, tools, look, model, createdAt }]
  *              tools: null = every ability, or a list of tool names
  *              model: null = the default model, or { provider, model }
- *   chats      { [agentId]: message[] } -- one ongoing chat per agent
+ *   groups     [{ id, name, members: [agentId], createdAt }] -- group chats
+ *   chats      { [agentId | groupId]: message[] } -- one ongoing chat per agent
+ *              and per group; a group's agent messages carry `agentId`
  *   notes      { [agentId]: [{ text, at }] } -- each agent's notebook
  *   providers  { [id]: { base?, key?, enabled? } } -- changes to the catalog
  *   custom     [{ id, kind, name, base, key }] -- servers the reader added
@@ -21,6 +23,7 @@ const KEY = "blvrd.v1";
 export const EMPTY = {
   version: 1,
   agents: [],
+  groups: [],
   chats: {},
   notes: {},
   providers: {},

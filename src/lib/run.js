@@ -18,7 +18,7 @@ export const MAX_ROUNDS = 8;
 const newId = () => `call_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 
 /** The system prompt: who the agent is, then what it was told to be. */
-export function systemFor(agent, tools) {
+export function systemFor(agent, tools, context = "") {
   const parts = [
     `You are ${agent.name}, an assistant in blvrd, running for the user on their own computer.`,
     "Answer in Markdown when formatting helps. Be direct; say plainly when you are unsure.",
@@ -31,6 +31,9 @@ export function systemFor(agent, tools) {
     parts.push("You have no tools in this conversation; answer from what you know and say when you cannot check something.");
   }
   if (agent.instructions?.trim()) parts.push(agent.instructions.trim());
+  // Where the agent is answering, when that is more than a one-to-one chat --
+  // a group (lib/group.js).
+  if (context.trim()) parts.push(context.trim());
   return parts.join("\n\n");
 }
 
@@ -40,11 +43,11 @@ export function systemFor(agent, tools) {
  * message } for every assistant or tool message as it is completed -- the
  * caller appends those to the chat. Resolves when the agent has answered.
  */
-export async function runTurn({ agent, provider, model, history, signal, emit, notebook, thinking = null }) {
+export async function runTurn({ agent, provider, model, history, signal, emit, notebook, thinking = null, context = "" }) {
   const adapter = adapterFor(provider);
   const tools = toolsFor(agent);
   const names = tools.map((t) => t.name);
-  const system = systemFor(agent, tools);
+  const system = systemFor(agent, tools, context);
   const messages = [...history];
   const extra = thinkingFields(provider.kind, thinking?.control, thinking?.value);
 
