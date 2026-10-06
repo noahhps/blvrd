@@ -7,6 +7,7 @@ import { mcpStore } from "../lib/connectors/index.js";
 import { MCP_PRESETS, disconnect, listTools, NeedsSignIn, signInTo } from "../lib/connectors/mcp.js";
 import { inDesktop } from "../lib/http.js";
 import { newId } from "../lib/store.js";
+import { BrandLogo } from "./BrandLogo.jsx";
 import { Icon } from "./Icon.jsx";
 
 const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.platform || navigator.userAgent);
@@ -73,7 +74,7 @@ function Google({ config, patchConnectors }) {
   return (
     <section className="card connector">
       <div className="card-head">
-        <h2>Google Workspace</h2>
+        <h2 className="with-logo"><BrandLogo id="google" size={18} />Google Workspace</h2>
         {signedIn ? <span className="status on">Connected as {c.email || "your account"}</span> : null}
       </div>
       <p className="hint">Gmail, Google Calendar, Drive and Docs, and Tasks -- through your own Google account.</p>
@@ -111,6 +112,7 @@ function Google({ config, patchConnectors }) {
                   checked={services.includes(s.id)}
                   onChange={() => setServices((v) => (v.includes(s.id) ? v.filter((x) => x !== s.id) : [...v, s.id]))}
                 />
+                <BrandLogo id={s.id} size={14} tile={false} />
                 <span>{s.label}</span>
               </label>
             ))}
@@ -146,7 +148,7 @@ function Apple({ config, patchConnectors }) {
   return (
     <section className="card connector">
       <div className="card-head">
-        <h2>Apple Calendar & Reminders</h2>
+        <h2 className="with-logo"><BrandLogo id="apple" size={18} />Apple Calendar & Reminders</h2>
         <label className="switch" title={c.enabled ? "On" : "Off"}>
           <input type="checkbox" checked={Boolean(c.enabled)} disabled={!isMac} onChange={(e) => set({ enabled: e.target.checked })} />
           <span />
@@ -199,7 +201,7 @@ function HomeAssistant({ config, patchConnectors }) {
   return (
     <section className="card connector">
       <div className="card-head">
-        <h2>Home Assistant</h2>
+        <h2 className="with-logo"><BrandLogo id="homeassistant" size={18} />Home Assistant</h2>
         {c.enabled ? <span className="status on">Connected{c.name ? ` to ${c.name}` : ""}</span> : null}
       </div>
       <p className="hint">
@@ -288,7 +290,7 @@ function Mcp({ servers, patchConnectors, getConnectors }) {
   return (
     <section className="card connector">
       <div className="card-head">
-        <h2>Work tools (MCP)</h2>
+        <h2 className="with-logo"><BrandLogo id="mcp" size={18} />Work tools (MCP)</h2>
       </div>
       <p className="hint">
         Apps that offer their tools over the Model Context Protocol. Hosted ones sign in in your browser; local ones run as a
@@ -303,6 +305,7 @@ function Mcp({ servers, patchConnectors, getConnectors }) {
                 <input type="checkbox" checked={Boolean(s.enabled)} onChange={(e) => store.patch(s.id, () => ({ enabled: e.target.checked }))} />
                 <span />
               </label>
+              <BrandLogo id={s.preset} name={s.name} size={16} />
               <span className="server-main">
                 <span className="server-top">
                   <span className="server-name">{s.name}</span>
@@ -325,7 +328,10 @@ function Mcp({ servers, patchConnectors, getConnectors }) {
       <div className="presets-mini">
         {MCP_PRESETS.filter((p) => !have.has(p.id)).map((p) => (
           <button key={p.id} type="button" className="preset-mini" onClick={() => addPreset(p)} title={p.note}>
-            <span className="preset-mini-name">{p.name}</span>
+            <span className="preset-mini-name">
+              <BrandLogo id={p.id} name={p.name} size={14} tile={false} />
+              {p.name}
+            </span>
             <span className="preset-mini-note">{p.note}</span>
           </button>
         ))}

@@ -42,16 +42,17 @@ export function mcpStore(getConnectors, patchConnectors) {
 
 export function connectorTools(connectors, { getConnectors, patchConnectors }) {
   const c = { ...EMPTY_CONNECTORS, ...connectors };
-  const tag = (group, groupLabel) => (tool) => ({ ...tool, group, groupLabel });
+  // `logo` names the mark the editor shows for the group (components/BrandLogo).
+  const tag = (group, groupLabel, logo) => (tool) => ({ ...tool, group, groupLabel, logo });
   const tools = [];
 
   if (c.google?.tokens?.access_token) {
     const save = (tokens) => patchConnectors((cc) => ({ google: { ...cc.google, tokens } }));
-    tools.push(...googleTools(c.google, save).map(tag("google", "Google Workspace")));
+    tools.push(...googleTools(c.google, save).map(tag("google", "Google Workspace", "google")));
   }
-  if (c.apple?.enabled) tools.push(...appleTools(c.apple).map(tag("apple", "Apple Calendar & Reminders")));
+  if (c.apple?.enabled) tools.push(...appleTools(c.apple).map(tag("apple", "Apple Calendar & Reminders", "apple")));
   if (c.homeassistant?.enabled && c.homeassistant.url && c.homeassistant.token) {
-    tools.push(...homeAssistantTools(c.homeassistant).map(tag("home", "Home Assistant")));
+    tools.push(...homeAssistantTools(c.homeassistant).map(tag("home", "Home Assistant", "homeassistant")));
   }
 
   const store = mcpStore(getConnectors, patchConnectors);
@@ -70,6 +71,7 @@ export function connectorTools(connectors, { getConnectors, patchConnectors }) {
         run: (args) => callTool(store.get(server.id) || server, store, t.name, args),
         group,
         groupLabel: server.name,
+        logo: server.preset || null,
       });
     }
   }
@@ -81,7 +83,7 @@ export function groupsOf(tools) {
   const groups = new Map();
   for (const t of tools) {
     if (!t.group) continue;
-    const g = groups.get(t.group) || { id: t.group, label: t.groupLabel, count: 0, acts: false };
+    const g = groups.get(t.group) || { id: t.group, label: t.groupLabel, logo: t.logo, count: 0, acts: false };
     g.count += 1;
     g.acts ||= Boolean(t.confirm);
     groups.set(t.group, g);

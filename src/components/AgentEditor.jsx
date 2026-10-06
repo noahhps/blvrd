@@ -4,6 +4,7 @@ import { COLOURS, DOTS_MAX, DOTS_MIN, colourIdOf, dotsOf } from "../lib/agents.j
 import { avatarFrom } from "../lib/attach.js";
 import { TOOLS } from "../lib/tools.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { BrandLogo } from "./BrandLogo.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 
@@ -219,6 +220,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
                 {groups.map((g) => (
                   <label key={g.id} className="check">
                     <input type="checkbox" checked={draft.chosen.has(`group:${g.id}`)} onChange={() => toggle(`group:${g.id}`)} />
+                    <BrandLogo id={g.logo} name={g.label} size={14} tile={false} />
                     <span>
                       {g.label}
                       <span className="tag">
