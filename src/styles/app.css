@@ -47,7 +47,7 @@
   /* The composer's proximity motion (Bom's): a spring, and one duration for
      everything that moves with it, so box, border and halo arrive together. */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --composer-motion: 200ms var(--spring);
+  --composer-motion: 450ms var(--spring);
   --glow: 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent),
     0 10px 34px -10px color-mix(in srgb, var(--ink) 30%, transparent);
   color-scheme: light;
@@ -385,7 +385,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   transition: transform var(--composer-motion);
 }
 /* Focus gets a quicker, plainer settle than the spring. */
-.composer-stack:focus-within { transition: transform 200ms var(--ease-out); }
+.composer-stack:focus-within { transition: transform 300ms var(--ease-out); }
 /* The halo, as its own layer so proximity drives one opacity. Behind the
    box's own background, so only what spreads past the edge is seen. */
 .composer-box::before {
@@ -403,7 +403,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
    back in charge (it never holds the last frame -- a filling animation would
    outrank the proximity transform and pin the box up). */
 .composer[data-popping] .composer-stack {
-  animation: composer-pop 600ms var(--spring) 1;
+  animation: composer-pop 800ms var(--spring) 1;
   transition: none;
 }
 @keyframes composer-pop {

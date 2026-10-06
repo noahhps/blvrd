@@ -173,7 +173,7 @@ export function Composer({ agentName, disabled, provider, model, tray, focusKey,
     const near = parseFloat(form.current?.style.getPropertyValue("--near"));
     if (!(near < 0.9)) return;
     setPopping(true);
-    setTimeout(() => setPopping(false), 600);
+    setTimeout(() => setPopping(false), 800);
   };
 
   // A different agent starts with an empty box. The caret goes in only when
