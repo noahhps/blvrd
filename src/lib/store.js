@@ -10,6 +10,7 @@
  *   providers  { [id]: { base?, key?, enabled? } } -- changes to the catalog
  *   custom     [{ id, kind, name, base, key }] -- servers the reader added
  *   defaultModel  { provider, model } | null
+ *   connectors    accounts and servers agents can use (lib/connectors/index.js)
  *
  * Nothing here leaves the machine. API keys are stored in the same place, in
  * plain text, which is the trade a single-user desktop app makes; the Settings
@@ -17,6 +18,7 @@
  */
 
 import { CATALOG } from "./catalog.js";
+import { EMPTY_CONNECTORS } from "./connectors/index.js";
 
 const KEY = "blvrd.v1";
 
@@ -29,6 +31,7 @@ export const EMPTY = {
   providers: {},
   custom: [],
   defaultModel: null,
+  connectors: EMPTY_CONNECTORS,
 };
 
 export function load() {
@@ -36,7 +39,7 @@ export function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { ...EMPTY };
     const data = JSON.parse(raw);
-    return { ...EMPTY, ...data };
+    return { ...EMPTY, ...data, connectors: { ...EMPTY_CONNECTORS, ...(data.connectors || {}) } };
   } catch {
     return { ...EMPTY };
   }

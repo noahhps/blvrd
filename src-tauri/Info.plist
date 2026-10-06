@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Merged into the app's Info.plist by Tauri. Shown by macOS the first
+       time blvrd asks Calendar or Reminders for something an agent needs. -->
+  <key>NSAppleEventsUsageDescription</key>
+  <string>blvrd reads and adds events in Calendar and reminders in Reminders when one of your agents asks to -- and asks you first before adding anything.</string>
+</dict>
+</plist>

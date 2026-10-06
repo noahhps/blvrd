@@ -43,9 +43,21 @@ export function systemFor(agent, tools, context = "") {
  * message } for every assistant or tool message as it is completed -- the
  * caller appends those to the chat. Resolves when the agent has answered.
  */
-export async function runTurn({ agent, provider, model, history, signal, emit, notebook, thinking = null, context = "" }) {
+export async function runTurn({
+  agent,
+  provider,
+  model,
+  history,
+  signal,
+  emit,
+  notebook,
+  thinking = null,
+  context = "",
+  available,
+  approve = null,
+}) {
   const adapter = adapterFor(provider);
-  const tools = toolsFor(agent);
+  const tools = toolsFor(agent, available);
   const names = tools.map((t) => t.name);
   const system = systemFor(agent, tools, context);
   const messages = [...history];
@@ -99,6 +111,21 @@ export async function runTurn({ agent, provider, model, history, signal, emit, n
       } else {
         try {
           const tool = tools.find((t) => t.name === call.name);
+          // A tool that acts -- sends, adds, changes, switches -- waits for the
+          // reader. No answer, or no way to ask, is a no.
+          if (tool.confirm) {
+            const yes = approve
+              ? await approve({ tool, args: call.args, summary: tool.summary ? tool.summary(call.args) : `${tool.label || tool.name}` })
+              : false;
+            if (signal?.aborted) throw new DOMException("Stopped", "AbortError");
+            if (!yes) {
+              message.content = `The user declined: ${tool.label || tool.name} did not run. Don't try it again unless they ask; say what you would have done instead.`;
+              message.declined = true;
+              messages.push(message);
+              emit({ type: "message", message });
+              continue;
+            }
+          }
           const output = await tool.run(call.args, { signal, ...notebook });
           message.content = call.notes.length
             ? `${output}\n\n(Your call was repaired: ${call.notes.join("; ")}. Spell it that way next time.)`

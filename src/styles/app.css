@@ -46,6 +46,11 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --orbit-settle: 500ms;
+  /* The iOS-style drawer curve, for the sidebar sliding out. */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* The window controls' corner on a Mac with the title bar hidden. */
+  --titlebar-h: 0px;
+  --controls-w: 0px;
   /* The composer's proximity motion (Bom's): a spring, and one duration for
      everything that moves with it, so box, border and halo arrive together. */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -231,7 +236,8 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 /* -- layout ------------------------------------------------------------------- */
 
-.app { display: flex; height: 100%; }
+.app { position: relative; display: flex; height: 100%; }
+.app[data-titlebar="overlay"] { --titlebar-h: 48px; --controls-w: 78px; }
 .side {
   width: 272px;
   flex: none;
@@ -239,10 +245,62 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   flex-direction: column;
   background: var(--side);
   border-right: 1px solid var(--line);
-  padding: 14px 10px 10px;
+  padding: 0 10px 10px;
   min-height: 0;
 }
-.brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; }
+/* The title bar, inside the sidebar: the window controls sit at its left (on
+   a Mac), the sidebar's own button at its right, and the rest drags. */
+.side-top {
+  display: flex;
+  align-items: center;
+  height: max(var(--titlebar-h), 44px);
+  padding-left: var(--controls-w);
+  flex: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.side-toggle { border-color: transparent; background: none; color: var(--dim); }
+.side-toggle:hover { color: var(--ink); }
+
+/* Hidden: the sidebar waits off the left edge and slides out over the
+   conversation -- from the edge or the button by the window controls -- with
+   the drawer curve, and away again the same way. */
+.app[data-rail="hidden"] .side {
+  position: absolute;
+  z-index: 30;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  transition: transform 280ms var(--ease-drawer), box-shadow 280ms var(--ease-drawer);
+}
+.app[data-rail="hidden"][data-peek] .side {
+  transform: none;
+  box-shadow: 0 0 0 1px var(--line), 0 24px 60px -20px rgba(0, 0, 0, 0.35);
+}
+.rail-edge { position: absolute; z-index: 25; top: var(--titlebar-h); bottom: 0; left: 0; width: 10px; }
+.rail-show {
+  position: absolute;
+  z-index: 26;
+  top: calc((max(var(--titlebar-h), 44px) - 32px) / 2);
+  left: calc(var(--controls-w) + 8px);
+  border-color: transparent;
+  background: none;
+  color: var(--dim);
+  transition: transform 160ms var(--ease-out), opacity 200ms var(--ease-out);
+}
+.rail-show:hover { color: var(--ink); }
+.app[data-peek] .rail-show { opacity: 0; pointer-events: none; }
+/* With the sidebar away, the headers leave room for the window controls and
+   the button beside them. */
+.app[data-rail="hidden"] .chat-head { padding-left: calc(var(--controls-w) + 52px); }
+.app[data-rail="hidden"] .settings > header,
+.app[data-rail="hidden"] .gallery > header { padding-top: max(0px, calc(var(--titlebar-h) - 24px)); }
+.app[data-titlebar="overlay"] .chat-head { min-height: var(--titlebar-h); }
+@media (prefers-reduced-motion: reduce) {
+  .app[data-rail="hidden"] .side, .rail-show { transition: none; }
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 16px; }
 .logo { display: block; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
 .wordmark { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
 
@@ -288,7 +346,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: auto; /* pinned to the rail's foot */
+  margin-top: 2px;
   flex: none;
   padding: 9px 10px;
   border: 0;
@@ -298,9 +356,48 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   cursor: pointer;
 }
 .side-settings:hover, .side-settings[aria-current="true"] { background: var(--well); }
+/* Connectors, then Models, pinned together to the rail's foot. */
+.side > .side-settings:not(.side-settings-last) { margin-top: auto; }
 .side-settings .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-left: auto; }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+
+/* -- approval ------------------------------------------------------------------ */
+
+/* An agent asking before it acts. Set apart from the answers by a red edge --
+   the one place the brand colour means "this needs you". */
+.approval {
+  margin-left: 38px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--red);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+@starting-style {
+  .approval { opacity: 0; transform: translateY(4px) scale(0.98); }
+}
+.approval-head { display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
+.approval-head .icon { margin-top: 3px; color: var(--red); }
+.approval-details { margin-top: 8px; font-size: 13px; color: var(--dim); }
+.approval-details summary { cursor: pointer; }
+.approval-details pre {
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: var(--r-control);
+  background: var(--well);
+  font: 12px/1.5 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.approval-actions { display: flex; gap: 8px; margin-top: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  .approval { transition: opacity 200ms ease; }
+}
 
 /* -- groups ------------------------------------------------------------------ */
 
@@ -875,6 +972,41 @@ a.server-note { width: fit-content; }
 .add-server { display: grid; grid-template-columns: 1fr 1.6fr 1.2fr auto; gap: 8px; margin-top: 12px; }
 .add-server .error-line { grid-column: 1 / -1; margin: 0; }
 .fineprint { color: var(--faint); font-size: 12.5px; margin-top: 6px; }
+
+/* Connectors */
+.connector .hint { margin-top: 4px; }
+.connector-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; }
+.field-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.field-row input { flex: 1 1 200px; }
+.field-row .btn { flex: none; }
+.howto { margin-top: 12px; font-size: 13px; }
+.howto summary { cursor: pointer; color: var(--dim); font-weight: 500; }
+.howto ol { margin: 8px 0 0; padding-left: 20px; color: var(--dim); line-height: 1.6; }
+.howto a { color: var(--ink); }
+.presets-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 14px; }
+.preset-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 150ms ease, background-color 150ms ease;
+}
+.preset-mini:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .preset-mini:hover { border-color: var(--line-strong); background: var(--well); }
+}
+.preset-mini-name { font-weight: 600; }
+.preset-mini-note { color: var(--dim); font-size: 12px; line-height: 1.35; }
+.custom-server { margin-top: 8px; }
+.allowed { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.allowed li { display: inline-flex; align-items: center; gap: 2px; padding-left: 10px; border-radius: 999px; background: var(--well); }
+.allowed code { font: 12px var(--mono); }
+.allowed .btn { width: 26px; height: 26px; border: 0; background: none; }
 
 @media (max-width: 860px) {
   .side { width: 220px; }

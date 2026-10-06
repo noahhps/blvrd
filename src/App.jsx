@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { taglineOf } from "./lib/agents.js";
+import { connectorTools, groupsOf } from "./lib/connectors/index.js";
 import { MAX_HANDOFFS, groupBrief, mentionsIn, respondersFor, viewFor } from "./lib/group.js";
 import { PRESETS } from "./lib/presets.js";
 import { runTurn } from "./lib/run.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
+import { TOOLS } from "./lib/tools.js";
+import { inDesktop } from "./lib/http.js";
 import { AgentAvatar } from "./components/AgentAvatar.jsx";
 import { AgentEditor } from "./components/AgentEditor.jsx";
 import { Chat } from "./components/Chat.jsx";
+import { Connectors } from "./components/Connectors.jsx";
 import { Gallery } from "./components/Gallery.jsx";
 import { GroupAvatar } from "./components/GroupAvatar.jsx";
 import { GroupChat } from "./components/GroupChat.jsx";
@@ -28,6 +32,47 @@ const lastSeen = (at) => {
  * an error is for the reader, not part of the conversation. */
 const historyOf = (messages) => messages.filter((m) => !m.failure);
 
+const RAIL_KEY = "blvrd.rail";
+// On a Mac the window has no title bar of its own: its red, yellow and green
+// buttons sit over the top of the sidebar (tauri.conf.json, titleBarStyle
+// Overlay), so the layout leaves them room.
+const OVERLAY_TITLEBAR = inDesktop() && /Mac/i.test(navigator.platform || navigator.userAgent);
+
+/* The sidebar: pinned beside the conversation, or hidden -- and then brought
+   out over it by the left edge or the button by the window controls, until
+   the pointer leaves it (or it is pinned again). Remembered between launches. */
+function useRail() {
+  const [pinned, setPinned] = useState(() => {
+    try {
+      return localStorage.getItem(RAIL_KEY) !== "hidden";
+    } catch {
+      return true;
+    }
+  });
+  const [peek, setPeek] = useState(false);
+  const leave = useRef(0);
+  const pin = (next) => {
+    setPinned(next);
+    setPeek(false);
+    try {
+      localStorage.setItem(RAIL_KEY, next ? "pinned" : "hidden");
+    } catch {
+      // Not remembered; still applies now.
+    }
+  };
+  const show = () => {
+    clearTimeout(leave.current);
+    setPeek(true);
+  };
+  // A short grace, so crossing the sidebar's own edge on the way to it, or a
+  // moment's overshoot, doesn't snap it shut.
+  const hide = () => {
+    clearTimeout(leave.current);
+    leave.current = setTimeout(() => setPeek(false), 280);
+  };
+  return { pinned, peek, pin, show, hide, close: () => setPeek(false) };
+}
+
 export default function App() {
   const [state, setState] = useState(load);
   const [view, setView] = useState(() => (state.agents.length ? { kind: "agent", id: state.agents[0].id } : { kind: "gallery" }));
@@ -37,6 +82,8 @@ export default function App() {
   // which agent, its text so far, and -- in a group -- who answers after it.
   const [live, setLive] = useState(null); // { chatId, agentId, text, status, queue }
   const running = useRef(null); // { chatId, controller }
+  // An agent waiting for the reader's yes before acting (lib/run.js).
+  const [approval, setApproval] = useState(null); // { chatId, agentName, summary, args, toolName, toolLabel, resolve }
 
   // Saved a moment after each change rather than on every streamed word.
   useEffect(() => {
@@ -52,6 +99,42 @@ export default function App() {
   const membersOf = (group) => (group?.members || []).map((id) => agents.find((a) => a.id === id)).filter(Boolean);
 
   const update = useCallback((fn) => setState((s) => ({ ...s, ...fn(s) })), []);
+  const rail = useRail();
+  // Picking something from a brought-out sidebar puts it away again.
+  useEffect(() => {
+    rail.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
+
+  /* -- connectors ------------------------------------------------------------------ */
+
+  const patchConnectors = useCallback(
+    (fn) => update((s) => ({ connectors: { ...s.connectors, ...fn(s.connectors) } })),
+    [update],
+  );
+  const getConnectors = () => stateRef.current.connectors;
+  // Every tool an agent could be given: the built-in ones and every connected
+  // account's and server's.
+  const available = useMemo(
+    () => [...TOOLS, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.connectors],
+  );
+
+  const askFirst = (chatId, agent) => ({ tool, args, summary }) => {
+    if (stateRef.current.connectors.allow?.[tool.name]) return Promise.resolve(true);
+    return new Promise((resolve) =>
+      setApproval({ chatId, agentName: agent.name, summary, args, toolName: tool.name, toolLabel: tool.label || tool.name, resolve }),
+    );
+  };
+
+  const answerApproval = (choice) => {
+    const pending = approval;
+    if (!pending) return;
+    if (choice === "always") patchConnectors((c) => ({ allow: { ...c.allow, [pending.toolName]: true } }));
+    setApproval(null);
+    pending.resolve(choice !== "deny");
+  };
 
   /* -- agents ------------------------------------------------------------------ */
 
@@ -137,6 +220,8 @@ export default function App() {
         notebook: notebookOf(agent.id),
         thinking,
         context,
+        available,
+        approve: askFirst(chatId, agent),
         emit: (event) => {
           if (event.type === "text") setLive((l) => l && { ...l, text: l.text + event.delta, status: "" });
           else if (event.type === "retext") setLive((l) => l && { ...l, text: event.text });
@@ -232,7 +317,14 @@ export default function App() {
   const liveRef = useRef(live);
   liveRef.current = live;
 
-  const stop = () => running.current?.controller.abort();
+  const stop = () => {
+    // A question waiting for an answer is answered no, and the turn ends.
+    if (approval) {
+      approval.resolve(false);
+      setApproval(null);
+    }
+    running.current?.controller.abort();
+  };
 
   const clearChat = () => {
     if (!selected || !window.confirm(`Clear your chat with ${selected.name}? Its notes are kept.`)) return;
@@ -302,8 +394,50 @@ export default function App() {
   const target = selected ? modelFor(selected) : null;
 
   return (
-    <div className="app">
-      <aside className="side">
+    <div
+      className="app"
+      data-rail={rail.pinned ? "pinned" : "hidden"}
+      data-peek={!rail.pinned && rail.peek ? "" : undefined}
+      data-titlebar={OVERLAY_TITLEBAR ? "overlay" : undefined}
+    >
+      {!rail.pinned ? (
+        <>
+          {/* The left edge brings the sidebar out; so does this button, which
+              sits beside the window controls while the sidebar is away. */}
+          <div className="rail-edge" onPointerEnter={rail.show} aria-hidden="true" />
+          <button
+            type="button"
+            className="btn icon-only rail-show"
+            aria-label="Show the sidebar"
+            title="Show the sidebar"
+            onClick={() => (rail.peek ? rail.close() : rail.show())}
+          >
+            <Icon name="sidebar" />
+          </button>
+        </>
+      ) : null}
+      <aside
+        className="side"
+        onPointerEnter={rail.pinned ? undefined : rail.show}
+        onPointerLeave={rail.pinned ? undefined : rail.hide}
+        aria-hidden={!rail.pinned && !rail.peek ? "true" : undefined}
+      >
+        {/* The window's title bar, inside the sidebar: room for the window
+            controls, a strip to drag the window by, and the sidebar's own
+            button -- hide it when pinned, pin it when it has been brought out. */}
+        <div className="side-top" data-tauri-drag-region>
+          <span className="spacer" data-tauri-drag-region />
+          <button
+            type="button"
+            className="btn icon-only side-toggle"
+            aria-label={rail.pinned ? "Hide the sidebar" : "Keep the sidebar open"}
+            title={rail.pinned ? "Hide the sidebar" : "Keep the sidebar open"}
+            aria-pressed={rail.pinned}
+            onClick={() => rail.pin(!rail.pinned)}
+          >
+            <Icon name={rail.pinned ? "sidebar" : "pin"} />
+          </button>
+        </div>
         <div className="brand">
           <Logo size={26} />
           <span className="wordmark">blvrd</span>
@@ -411,6 +545,15 @@ export default function App() {
         <button
           type="button"
           className="side-settings"
+          aria-current={view.kind === "connectors" ? "true" : undefined}
+          onClick={() => setView({ kind: "connectors" })}
+        >
+          <Icon name="plug" />
+          Connectors
+        </button>
+        <button
+          type="button"
+          className="side-settings side-settings-last"
           aria-current={view.kind === "settings" ? "true" : undefined}
           onClick={() => setView({ kind: "settings" })}
         >
@@ -421,7 +564,9 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {view.kind === "settings" ? (
+        {view.kind === "connectors" ? (
+          <Connectors connectors={state.connectors} patchConnectors={patchConnectors} getConnectors={getConnectors} />
+        ) : view.kind === "settings" ? (
           <Settings
             providers={providers}
             defaultModel={state.defaultModel}
@@ -436,6 +581,8 @@ export default function App() {
             presets={PRESETS}
             messages={state.chats[selected.id] || []}
             live={live?.chatId === selected.id ? live : null}
+            approval={approval?.chatId === selected.id ? approval : null}
+            onApprove={answerApproval}
             busy={Boolean(live)}
             model={target?.model}
             provider={target?.provider}
@@ -456,6 +603,8 @@ export default function App() {
             members={membersOf(selectedGroup)}
             messages={state.chats[selectedGroup.id] || []}
             live={live?.chatId === selectedGroup.id ? live : null}
+            approval={approval?.chatId === selectedGroup.id ? approval : null}
+            onApprove={answerApproval}
             busy={Boolean(live)}
             onSend={sendGroup}
             onStop={stop}
@@ -490,6 +639,7 @@ export default function App() {
           initial={editor.initial}
           providers={providers}
           defaultModel={state.defaultModel}
+          groups={groupsOf(available)}
           onSave={saveAgent}
           onDelete={deleteAgent}
           onClose={() => setEditor(null)}

@@ -26,7 +26,7 @@ function draftFrom(agent) {
  * being changed -- `agent` is the stored agent, or null for a new one;
  * `initial` is what a new one starts from.
  */
-export function AgentEditor({ agent, initial, providers, defaultModel, onSave, onDelete, onClose }) {
+export function AgentEditor({ agent, initial, providers, defaultModel, groups = [], onSave, onDelete, onClose }) {
   const [draft, setDraft] = useState(() => draftFrom(agent || initial));
   const [error, setError] = useState("");
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
@@ -73,7 +73,11 @@ export function AgentEditor({ agent, initial, providers, defaultModel, onSave, o
     onSave({
       name,
       instructions: draft.instructions.trim(),
-      tools: draft.all ? null : TOOLS.map((t) => t.name).filter((n) => draft.chosen.has(n)),
+      // Built-in tools by name, connectors as `group:<id>` -- so a connector's
+      // tools added later (a refreshed MCP server) come with it.
+      tools: draft.all
+        ? null
+        : [...TOOLS.map((t) => t.name), ...groups.map((g) => `group:${g.id}`)].filter((n) => draft.chosen.has(n)),
       look,
       model: draft.model,
     });
@@ -212,9 +216,25 @@ export function AgentEditor({ agent, initial, providers, defaultModel, onSave, o
                     </span>
                   </label>
                 ))}
+                {groups.map((g) => (
+                  <label key={g.id} className="check">
+                    <input type="checkbox" checked={draft.chosen.has(`group:${g.id}`)} onChange={() => toggle(`group:${g.id}`)} />
+                    <span>
+                      {g.label}
+                      <span className="tag">
+                        {g.count} tool{g.count === 1 ? "" : "s"}
+                        {g.acts ? " · asks before acting" : ""}
+                      </span>
+                    </span>
+                  </label>
+                ))}
               </div>
             ) : (
-              <p className="hint">Includes reading web pages, which reaches the internet. Untick to choose.</p>
+              <p className="hint">
+                Includes reading web pages, which reaches the internet
+                {groups.length ? `, and ${groups.map((g) => g.label).join(", ")}` : ""}. Anything that sends, adds or changes
+                something asks you first. Untick to choose.
+              </p>
             )}
           </section>
         </div>

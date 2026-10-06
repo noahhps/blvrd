@@ -103,11 +103,13 @@ export const TOOLS = [
 
 export const TOOL_BY_NAME = new Map(TOOLS.map((tool) => [tool.name, tool]));
 
-/** The tools an agent may use: all of them, or its own list. */
-export function toolsFor(agent) {
-  if (!agent || agent.tools == null) return TOOLS;
+/** The tools an agent may use: all of `available`, or those on its own list.
+ *  A list entry `group:<id>` stands for every tool of that connector, so an
+ *  agent given "Google Workspace" also gets tools added to it later. */
+export function toolsFor(agent, available = TOOLS) {
+  if (!agent || agent.tools == null) return available;
   const allowed = new Set(agent.tools);
-  return TOOLS.filter((tool) => allowed.has(tool.name));
+  return available.filter((tool) => allowed.has(tool.name) || (tool.group && allowed.has(`group:${tool.group}`)));
 }
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };

@@ -7,6 +7,7 @@ import { renderMarkdown } from "../lib/markdown.js";
 import { TOOLS, toolsFor } from "../lib/tools.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { Approval } from "./Approval.jsx";
 import { Composer } from "./Composer.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
@@ -31,6 +32,8 @@ export function Chat({
   onStop,
   onCustomize,
   onClear,
+  approval = null,
+  onApprove,
 }) {
   const thread = useRef(null);
   const area = useRef(null);
@@ -75,7 +78,7 @@ export function Chat({
 
   return (
     <div className="chat">
-      <header className="chat-head">
+      <header className="chat-head" data-tauri-drag-region>
         <AgentAvatar look={agent.look} name={agent.name} size={30} spinning={busy} />
         <span className="chat-who">
           <span className="chat-name">{agent.name}</span>
@@ -148,6 +151,7 @@ export function Chat({
                 </div>
               </div>
             ) : null}
+            <Approval request={approval} onAnswer={onApprove} />
           </div>
         </div>
 
@@ -251,9 +255,11 @@ function ToolStep({ message, who = null }) {
       <summary>
         <Icon name="tool" size={14} />
         <span>
-          {message.error
-            ? `${who ? `${who}’s ` : ""}${message.name} didn’t work`
-            : `${who ? `${who} used` : "Used"} ${message.name}`}
+          {message.declined
+            ? `${message.name} wasn’t allowed`
+            : message.error
+              ? `${who ? `${who}’s ` : ""}${message.name} didn’t work`
+              : `${who ? `${who} used` : "Used"} ${message.name}`}
         </span>
         <Icon name="chevron" size={12} />
       </summary>

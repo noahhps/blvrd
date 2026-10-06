@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { renderMarkdown } from "../lib/markdown.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { Approval } from "./Approval.jsx";
 import { Turn } from "./Chat.jsx";
 import { Composer } from "./Composer.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
@@ -13,7 +14,7 @@ const GONE = { id: null, name: "A removed agent", look: { colour: "ink" } };
 /* A group's chat: the reader and several agents in one thread, each answer
  * labelled with who gave it. Under the composer, who answers the next
  * message -- everyone, or the members picked (or @-mentioned in the text). */
-export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onClear }) {
+export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onClear, approval = null, onApprove }) {
   const thread = useRef(null);
   const area = useRef(null);
   const stuck = useRef(true);
@@ -49,7 +50,7 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
 
   return (
     <div className="chat">
-      <header className="chat-head">
+      <header className="chat-head" data-tauri-drag-region>
         <GroupAvatar members={members} size={34} answeringId={live?.agentId} />
         <span className="chat-who">
           <span className="chat-name">{group.name}</span>
@@ -121,6 +122,7 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
                 </div>
               </div>
             ) : null}
+            <Approval request={approval} onAnswer={onApprove} />
           </div>
         </div>
 

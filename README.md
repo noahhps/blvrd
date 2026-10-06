@@ -71,6 +71,25 @@ arguments, a number sent as text, nearly-JSON, a call written into the reply
 as text), and the model is told what was fixed. A model that won't take tools
 at all still works as a chat. See `src/lib/heal.js` and `src/lib/run.js`.
 
+## Connectors
+
+Under **Connectors**, agents can be given your accounts and apps. Each is off
+until you connect it, and an agent only gets one you tick under Customize →
+Abilities. Reading never asks; **anything that sends, adds, changes or
+switches something waits for your Allow in the chat** -- "Always allow" is
+remembered per tool and can be taken back on the Connectors screen.
+
+| Connector | What agents can do | How it signs in |
+|---|---|---|
+| Google Workspace | Search and read Gmail, draft and send; list and add Calendar events; search and read Drive, Docs and Sheets; list and add Tasks | Your own Google Cloud "Desktop app" client ID (the screen walks through it), then your browser |
+| Apple Calendar & Reminders | List and add events; list, add and complete reminders -- every account those apps hold | macOS asks once (Automation) |
+| Home Assistant | Find devices and sensors, read state, control anything (lights, climate, locks, scenes...) | Address and a long-lived access token |
+| MCP servers | Whatever the server offers. Ready-made: Notion, Linear, Jira & Confluence, GitHub, Sentry, Stripe, Supabase, Vercel, Hugging Face, DeepWiki, files in a folder | OAuth in your browser (discovered from the server), a token, or nothing; local servers run as a command |
+
+Apple's scripts are fixed and compiled into the app (`src-tauri/scripts`);
+arguments reach them as data, never as code. Local MCP servers start through
+your login shell, so `npx` and `uvx` are found as in Terminal.
+
 ## How it fits together
 
 ```
@@ -78,10 +97,14 @@ src/lib/catalog.js     every server the app knows
 src/lib/providers.js   Ollama, OpenAI-compatible and Anthropic, behind one shape
 src/lib/run.js         an agent's turn: ask, repair calls, run tools, repeat
 src/lib/heal.js        tool-call repair
-src/lib/tools.js       the abilities
+src/lib/tools.js       the built-in abilities
+src/lib/connectors/    Google, Apple, Home Assistant, MCP -- tools from your accounts
+src/lib/oauth.js       browser sign-in: PKCE, loopback redirect, MCP discovery
+src/lib/group.js       group chats: who answers, what each agent sees
 src/lib/store.js       everything kept, in the app's own storage
 src/components/        the screens; AgentAvatar is the four-dot ring
-src-tauri/             the desktop shell: HTTP (no CORS, streams) and link opening
+src-tauri/             the desktop shell: HTTP (no CORS, streams), links, sign-in
+                       listener, Apple scripts, local MCP servers
 ```
 
 Requests go through Tauri's HTTP plugin, not the webview's `fetch`, so local
