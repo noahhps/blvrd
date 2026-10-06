@@ -10,6 +10,7 @@
 
 import { callsInText, fitArgs, parseArgs, resolveName, usageOf } from "./heal.js";
 import { adapterFor } from "./providers.js";
+import { thinkingFields } from "./thinking.js";
 import { toolsFor } from "./tools.js";
 
 export const MAX_ROUNDS = 8;
@@ -39,12 +40,13 @@ export function systemFor(agent, tools) {
  * message } for every assistant or tool message as it is completed -- the
  * caller appends those to the chat. Resolves when the agent has answered.
  */
-export async function runTurn({ agent, provider, model, history, signal, emit, notebook }) {
+export async function runTurn({ agent, provider, model, history, signal, emit, notebook, thinking = null }) {
   const adapter = adapterFor(provider);
   const tools = toolsFor(agent);
   const names = tools.map((t) => t.name);
   const system = systemFor(agent, tools);
   const messages = [...history];
+  const extra = thinkingFields(provider.kind, thinking?.control, thinking?.value);
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const result = await adapter.turn({
@@ -54,6 +56,7 @@ export async function runTurn({ agent, provider, model, history, signal, emit, n
       messages,
       tools,
       signal,
+      extra,
       onText: (delta) => emit({ type: "text", delta }),
     });
 

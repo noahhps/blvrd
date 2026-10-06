@@ -1,11 +1,12 @@
 /* The three protocols, behind one shape.
  *
  *   listModels(provider)            -> [{ id }]
- *   turn({ provider, model, system, messages, tools, signal, onText })
+ *   turn({ provider, model, system, messages, tools, signal, onText, extra })
+ *                                   (`extra`: request fields such as thinking)
  *                                   -> { text, calls, raw, stop, note }
  *
  * `messages` are the app's own (lib/run.js):
- *   { role: "user", content }
+ *   { role: "user", content, files: [{ name, kind: "image"|"text", dataUrl?, text? }] }
  *   { role: "assistant", content, calls: [{ id, name, args }], raw }
  *   { role: "tool", callId, name, content, error }
  * Each adapter translates them to its wire format and back, so a chat can move
@@ -18,6 +19,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 
+import { splitDataUrl, textWithFiles } from "./attach.js";
 import { failure, httpFetch } from "./http.js";
 import { chunks, ndjson, sse } from "./stream.js";
 
@@ -25,13 +27,19 @@ const trimBase = (base) => String(base || "").replace(/\/+$/, "");
 
 const asText = (content) => (typeof content === "string" ? content : JSON.stringify(content));
 
+/* A user message's pictures, and its text with any text files folded in. */
+const imagesOf = (m) => (m.files || []).filter((f) => f.kind === "image" && f.dataUrl);
+const userText = (m) => textWithFiles(m.content, m.files);
+
 /* -- Ollama ------------------------------------------------------------------ */
 
 function toOllama(system, messages) {
   const out = system ? [{ role: "system", content: system }] : [];
   for (const m of messages) {
-    if (m.role === "user") out.push({ role: "user", content: m.content });
-    else if (m.role === "assistant") {
+    if (m.role === "user") {
+      const images = imagesOf(m).map((f) => splitDataUrl(f.dataUrl)[1]);
+      out.push({ role: "user", content: userText(m), ...(images.length ? { images } : {}) });
+    } else if (m.role === "assistant") {
       out.push({
         role: "assistant",
         content: m.content || "",
@@ -54,10 +62,11 @@ const ollama = {
     return (data.models || []).map((m) => ({ id: m.name || m.model, size: m.size }));
   },
 
-  async turn({ provider, model, system, messages, tools, signal, onText }, withTools = true) {
+  async turn({ provider, model, system, messages, tools, signal, onText, extra = {} }, withTools = true) {
     const body = {
       model,
       stream: true,
+      ...extra,
       messages: toOllama(system, messages),
       ...(withTools && tools.length
         ? { tools: tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } })) }
@@ -72,7 +81,7 @@ const ollama = {
     if (!response.ok) {
       const error = await failure(response, provider.name);
       if (withTools && tools.length && refusesTools(error.message)) {
-        const result = await ollama.turn({ provider, model, system, messages, tools, signal, onText }, false);
+        const result = await ollama.turn({ provider, model, system, messages, tools, signal, onText, extra }, false);
         return { ...result, note: `${model} does not take tools, so this agent can only talk.` };
       }
       throw error;
@@ -99,8 +108,15 @@ const ollama = {
 function toOpenAI(system, messages) {
   const out = system ? [{ role: "system", content: system }] : [];
   for (const m of messages) {
-    if (m.role === "user") out.push({ role: "user", content: m.content });
-    else if (m.role === "assistant") {
+    if (m.role === "user") {
+      const images = imagesOf(m);
+      out.push({
+        role: "user",
+        content: images.length
+          ? [{ type: "text", text: userText(m) }, ...images.map((f) => ({ type: "image_url", image_url: { url: f.dataUrl } }))]
+          : userText(m),
+      });
+    } else if (m.role === "assistant") {
       out.push({
         role: "assistant",
         content: m.content || (m.calls?.length ? null : ""),
@@ -134,10 +150,11 @@ const openai = {
     return list.map((m) => ({ id: m.id || m.name })).filter((m) => m.id);
   },
 
-  async turn({ provider, model, system, messages, tools, signal, onText }, withTools = true) {
+  async turn({ provider, model, system, messages, tools, signal, onText, extra = {} }, withTools = true) {
     const body = {
       model,
       stream: true,
+      ...extra,
       messages: toOpenAI(system, messages),
       ...(withTools && tools.length
         ? { tools: tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } })) }
@@ -152,7 +169,7 @@ const openai = {
     if (!response.ok) {
       const error = await failure(response, provider.name);
       if (withTools && tools.length && response.status < 500 && /tool/i.test(error.message)) {
-        const result = await openai.turn({ provider, model, system, messages, tools, signal, onText }, false);
+        const result = await openai.turn({ provider, model, system, messages, tools, signal, onText, extra }, false);
         return { ...result, note: `${model} on ${provider.name} would not take tools, so this agent can only talk.` };
       }
       throw error;
@@ -234,8 +251,19 @@ function toAnthropic(messages, model) {
       continue;
     }
     flush();
-    if (m.role === "user") out.push({ role: "user", content: m.content });
-    else if (m.role === "assistant") {
+    if (m.role === "user") {
+      const images = imagesOf(m);
+      if (!images.length) out.push({ role: "user", content: userText(m) });
+      else {
+        // Pictures before the words, which is the order Claude reads best.
+        const blocks = images.map((f) => {
+          const [media_type, data] = splitDataUrl(f.dataUrl);
+          return { type: "image", source: { type: "base64", media_type, data } };
+        });
+        const text = userText(m);
+        out.push({ role: "user", content: text ? [...blocks, { type: "text", text }] : blocks });
+      }
+    } else if (m.role === "assistant") {
       // Claude's own turn is sent back exactly as it came -- thinking blocks
       // included -- when the next turn goes to the same model. Anything else
       // is rebuilt from the text and the calls.
@@ -261,11 +289,12 @@ const anthropic = {
     return ids;
   },
 
-  async turn({ provider, model, system, messages, tools, signal, onText }) {
+  async turn({ provider, model, system, messages, tools, signal, onText, extra = {} }) {
     const client = clientFor(provider);
     const params = {
       model,
       max_tokens: 64000,
+      ...extra,
       ...(system ? { system } : {}),
       messages: toAnthropic(messages, model),
       ...(tools.length

@@ -1,18 +1,40 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import { taglineOf } from "../lib/agents.js";
 import { hostOf, isLocalUrl } from "../lib/catalog.js";
 import { renderMarkdown } from "../lib/markdown.js";
+import { TOOLS, toolsFor } from "../lib/tools.js";
+import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { Composer } from "./Composer.jsx";
 import { Icon } from "./Icon.jsx";
+import { ModelPicker } from "./ModelPicker.jsx";
 
 /* One agent's ongoing chat. `live` is the answer still arriving: its text so
- * far, shown under the messages already kept. */
-export function Chat({ agent, presets, messages, live, busy, model, provider, onSend, onStop, onCustomize, onClear }) {
-  const [draft, setDraft] = useState("");
+ * far, shown under the messages already kept.
+ *
+ * The column -- the turns and the composer under them -- is one width, set by
+ * dragging either of its edges (lib/useReadWidth.js). */
+export function Chat({
+  agent,
+  presets,
+  messages,
+  live,
+  busy,
+  model,
+  provider,
+  providers,
+  defaultModel,
+  onModel,
+  onSend,
+  onStop,
+  onCustomize,
+  onClear,
+}) {
   const thread = useRef(null);
-  const input = useRef(null);
+  const area = useRef(null);
   const stuck = useRef(true);
+  const read = useReadWidth(area);
 
   // Keep the newest words in view while they arrive, unless the reader has
   // scrolled up to read something earlier.
@@ -26,17 +48,12 @@ export function Chat({ agent, presets, messages, live, busy, model, provider, on
   }, [messages.length, live?.text]);
 
   useEffect(() => {
-    setDraft("");
     stuck.current = true;
-    input.current?.focus();
   }, [agent.id]);
 
-  const send = () => {
-    const text = draft.trim();
-    if (!text || busy) return;
-    setDraft("");
+  const send = (text, files, thinking) => {
     stuck.current = true;
-    onSend(text);
+    onSend(text, files, thinking);
   };
 
   const where = provider
@@ -44,6 +61,16 @@ export function Chat({ agent, presets, messages, live, busy, model, provider, on
       ? { local: true, text: `${model} · ${provider.name}` }
       : { local: false, text: `${model} · ${hostOf(provider.base)}` }
     : null;
+
+  const abilities = toolsFor(agent);
+  const abilitiesLine =
+    abilities.length === TOOLS.length
+      ? "Every ability"
+      : abilities.length
+        ? abilities.map((t) => t.label).join(", ")
+        : "No abilities -- talk only";
+
+  const defaultLabel = defaultModel?.model ? `Default (${defaultModel.model})` : "Default model";
 
   return (
     <div className="chat">
@@ -72,56 +99,82 @@ export function Chat({ agent, presets, messages, live, busy, model, provider, on
         </button>
       </header>
 
-      <div className="thread" ref={thread} onScroll={onScroll}>
-        {messages.length === 0 && !live ? (
-          <div className="greeting">
-            <AgentAvatar look={agent.look} name={agent.name} size={64} intro />
-            <h2>Hi, I’m {agent.name}.</h2>
-            <p>{taglineOf(agent, presets)}</p>
+      <div
+        className="chat-body"
+        ref={area}
+        data-resizing={read.resizing ? "" : undefined}
+        data-empty={messages.length === 0 && !live ? "" : undefined}
+        style={read.width ? { "--read-w": `${read.width}px` } : undefined}
+      >
+        {["left", "right"].map((side) => (
+          <div
+            key={side}
+            className="read-resize"
+            data-side={side}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Conversation width"
+            tabIndex={0}
+            onPointerDown={read.start(side)}
+            onKeyDown={read.nudge(side)}
+            onDoubleClick={() => read.nudge(side)({ key: "Reset", preventDefault() {} })}
+          >
+            <i />
           </div>
-        ) : null}
-        <div className="turns">
-          {messages.map((m, i) => (
-            <Turn key={m.id || i} message={m} agent={agent} />
-          ))}
-          {live ? (
-            <div className="turn assistant">
-              <AgentAvatar look={agent.look} name={agent.name} size={26} spinning />
-              <div className="answer">
-                {live.text ? (
-                  <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(live.text) }} />
-                ) : (
-                  <p className="thinking">{live.status || "Thinking…"}</p>
-                )}
-              </div>
+        ))}
+
+        <div className="thread" ref={thread} onScroll={onScroll}>
+          {messages.length === 0 && !live ? (
+            <div className="greeting">
+              <AgentAvatar look={agent.look} name={agent.name} size={64} intro />
+              <h2>Hi, I’m {agent.name}.</h2>
+              <p>{taglineOf(agent, presets)}</p>
             </div>
           ) : null}
+          <div className="turns">
+            {messages.map((m, i) => (
+              <Turn key={m.id || i} message={m} agent={agent} />
+            ))}
+            {live ? (
+              <div className="turn assistant">
+                <AgentAvatar look={agent.look} name={agent.name} size={26} spinning />
+                <div className="answer">
+                  {live.text ? (
+                    <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(live.text) }} />
+                  ) : (
+                    <p className="thinking">{live.status || "Thinking…"}</p>
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
 
-      <div className="composer">
-        <textarea
-          ref={input}
-          value={draft}
-          rows={1}
-          placeholder={`Message ${agent.name}`}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              send();
-            }
-          }}
+        <Composer
+          agentName={agent.name}
+          disabled={busy}
+          provider={provider}
+          model={model}
+          focusKey={agent.id}
+          autoFocus={messages.length === 0}
+          onSend={send}
+          onStop={onStop}
+          tray={
+            <>
+              <span className="tray-label">Model</span>
+              <ModelPicker
+                providers={providers}
+                value={agent.model}
+                onChange={onModel}
+                allowDefault
+                defaultLabel={defaultLabel}
+                compact
+              />
+              <span className="spacer" />
+              <span className="tray-note" title={abilitiesLine}>{abilitiesLine}</span>
+            </>
+          }
         />
-        {busy ? (
-          <button type="button" className="round stop" aria-label="Stop" title="Stop" onClick={onStop}>
-            <Icon name="stop" size={16} />
-          </button>
-        ) : (
-          <button type="button" className="round" aria-label="Send" title="Send" disabled={!draft.trim()} onClick={send}>
-            <Icon name="send" size={16} />
-          </button>
-        )}
       </div>
     </div>
   );
@@ -129,9 +182,24 @@ export function Chat({ agent, presets, messages, live, busy, model, provider, on
 
 function Turn({ message, agent }) {
   if (message.role === "user") {
+    const files = message.files || [];
     return (
       <div className="turn user">
-        <div className="bubble">{message.content}</div>
+        {files.length ? (
+          <div className="sent-files">
+            {files.map((f, i) =>
+              f.kind === "image" ? (
+                <img key={i} className="sent-image" src={f.dataUrl} alt={f.name} />
+              ) : (
+                <span key={i} className="sent-file">
+                  <Icon name="file" size={14} />
+                  {f.name}
+                </span>
+              ),
+            )}
+          </div>
+        ) : null}
+        {message.content ? <div className="bubble">{message.content}</div> : null}
       </div>
     );
   }

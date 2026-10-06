@@ -160,3 +160,37 @@ test("history in Anthropic's format: results grouped, own turns replayed as they
   const other = _wire.toAnthropic(two, "claude-sonnet-5-5");
   assert.deepEqual(other[1].content.map((b) => b.type), ["tool_use", "tool_use"]);
 });
+
+const withFiles = [
+  {
+    role: "user",
+    content: "what's this?",
+    files: [
+      { name: "shot.jpg", kind: "image", dataUrl: "data:image/jpeg;base64,QUJD" },
+      { name: "notes.md", kind: "text", text: "# hi" },
+    ],
+  },
+];
+
+test("pictures and text files in each wire format", () => {
+  const ollama = _wire.toOllama("", withFiles)[0];
+  assert.deepEqual(ollama.images, ["QUJD"]);
+  assert.match(ollama.content, /what's this\?\n\nAttached file notes\.md:\n```\n# hi\n```/);
+
+  const openai = _wire.toOpenAI("", withFiles)[0];
+  assert.equal(openai.content[0].type, "text");
+  assert.deepEqual(openai.content[1], { type: "image_url", image_url: { url: "data:image/jpeg;base64,QUJD" } });
+
+  const claude = _wire.toAnthropic(withFiles, "claude-opus-5-5")[0];
+  assert.deepEqual(claude.content[0], { type: "image", source: { type: "base64", media_type: "image/jpeg", data: "QUJD" } });
+  assert.equal(claude.content[1].type, "text");
+});
+
+test("thinking fields per protocol", async () => {
+  const { thinkingFields } = await import("../src/lib/thinking.js");
+  const effort = { mode: "effort", options: ["low", "medium", "high"] };
+  assert.deepEqual(thinkingFields("ollama", { mode: "switch" }, false), { think: false });
+  assert.deepEqual(thinkingFields("openai", effort, "high"), { reasoning_effort: "high" });
+  assert.deepEqual(thinkingFields("anthropic", effort, "low"), { output_config: { effort: "low" } });
+  assert.deepEqual(thinkingFields("openai", { mode: "none" }, "high"), {});
+});

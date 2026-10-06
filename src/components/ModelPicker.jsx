@@ -10,7 +10,7 @@ import { modelsOf } from "../lib/models.js";
  * still takes a typed model name, so nothing blocks a reader who knows what
  * they want. `value` is { provider, model } or null; `allowDefault` adds a
  * "use the default" choice, for an agent that should follow Settings. */
-export function ModelPicker({ providers, value, onChange, allowDefault = false, defaultLabel = "" }) {
+export function ModelPicker({ providers, value, onChange, allowDefault = false, defaultLabel = "", compact = false }) {
   const enabled = providers.filter((p) => p.enabled);
   const current = value ? enabled.find((p) => p.id === value.provider) : null;
   const [list, setList] = useState({ models: [], error: null, loading: false });
@@ -38,7 +38,7 @@ export function ModelPicker({ providers, value, onChange, allowDefault = false, 
   const typed = current && (list.error || (!list.loading && list.models.length === 0));
 
   return (
-    <div className="picker">
+    <div className={compact ? "picker compact" : "picker"}>
       <select
         value={current ? current.id : ""}
         onChange={(e) => pickProvider(e.target.value)}
@@ -86,10 +86,10 @@ export function ModelPicker({ providers, value, onChange, allowDefault = false, 
         )
       ) : null}
 
-      {current && list.error ? (
+      {!compact && current && list.error ? (
         <p className="hint warn">{current.name} did not list its models ({list.error}). Type a model name, or check Settings.</p>
       ) : null}
-      {current && !isLocalUrl(current.base) ? (
+      {!compact && current && !isLocalUrl(current.base) ? (
         <p className="hint">Messages to this agent go to {hostOf(current.base)}.</p>
       ) : null}
     </div>

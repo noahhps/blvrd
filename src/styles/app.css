@@ -44,6 +44,12 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --orbit-settle: 500ms;
+  /* The composer's proximity motion (Bom's): a spring, and one duration for
+     everything that moves with it, so box, border and halo arrive together. */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --composer-motion: 200ms var(--spring);
+  --glow: 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent),
+    0 10px 34px -10px color-mix(in srgb, var(--ink) 30%, transparent);
   color-scheme: light;
 }
 
@@ -290,8 +296,8 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .where.hosted { color: var(--red); background: color-mix(in srgb, var(--red) 9%, var(--surface)); }
 .where.none { color: var(--warn); }
 
-.thread { flex: 1; overflow-y: auto; padding: 28px 24px 12px; min-height: 0; }
-.turns { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.thread { flex: 1; overflow-y: auto; padding: 28px 24px calc(var(--composer-reserve) + 12px); min-height: 0; }
+.turns { max-width: var(--read-w); margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 .greeting { text-align: center; padding: 10vh 16px 24px; }
 .greeting h2 { font-size: 24px; margin-top: 14px; }
 .greeting p { color: var(--dim); margin: 6px 0 0; }
@@ -353,30 +359,255 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .md a { text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
 .md hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
 
+/* The composer: Bom's, in blvrd's clothes. One box -- staged files, the text,
+   then a row with attaching at the left and thinking and send at the right --
+   and under it a quieter tray, tucked up beneath the box's rounded foot, for
+   what is set once and left: which model this agent runs on, what it may use.
+   The column it sits in is the conversation's width (--read-w). */
+/* Floats over the foot of the thread, which keeps --composer-reserve clear
+   under its last turn, so the box can slide away without the conversation
+   moving. `--near` (Composer.jsx) is 0 tucked, 1 present; 1 is also the
+   fallback, so a script that never runs leaves a composer you can see. */
 .composer {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  max-width: 808px;
-  width: calc(100% - 48px);
-  margin: 6px auto 18px;
-  padding: 8px 8px 8px 14px;
+  --near: 1;
+  --tuck: 80%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  width: min(var(--read-w), calc(100% - 48px));
+  margin: 0 auto;
+  padding: 6px 0 16px;
+}
+.composer-stack {
+  transform: translateY(calc(var(--tuck) * (1 - var(--near))));
+  transition: transform var(--composer-motion);
+}
+/* Focus gets a quicker, plainer settle than the spring. */
+.composer-stack:focus-within { transition: transform 200ms var(--ease-out); }
+/* The halo, as its own layer so proximity drives one opacity. Behind the
+   box's own background, so only what spreads past the edge is seen. */
+.composer-box::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: var(--near);
+  box-shadow: var(--glow);
+  pointer-events: none;
+  transition: opacity var(--composer-motion);
+}
+/* The flourish on a click that found the box tucked: once, then --near is
+   back in charge (it never holds the last frame -- a filling animation would
+   outrank the proximity transform and pin the box up). */
+.composer[data-popping] .composer-stack {
+  animation: composer-pop 600ms var(--spring) 1;
+  transition: none;
+}
+@keyframes composer-pop {
+  0% { transform: translateY(calc(var(--tuck) * 0.8)) scale(0.95); }
+  50% { transform: translateY(-12px) scale(1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+/* An empty chat: the composer is the subject, not an interruption, so it is
+   simply present -- no tuck, no spring. Named with [data-popping] too so it
+   outranks the pop. */
+.chat-body[data-empty] .composer-stack,
+.chat-body[data-empty] .composer[data-popping] .composer-stack {
+  transform: none;
+  animation: none;
+  transition: none;
+}
+/* No cursor to approach with, or motion turned down: the box stays. */
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .composer-stack { transform: none; }
+  .composer-box::before { opacity: 0; }
+}
+.composer-box {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  padding: 12px 12px 10px 16px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: var(--shadow);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
-.composer:focus-within { border-color: var(--ink); }
+.composer-box:focus-within { border-color: var(--ink); }
+.composer[data-dropping] .composer-box {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent), var(--shadow);
+}
 .composer textarea {
-  outline: none;
-  border: 0;
-  padding: 6px 0;
+  display: block;
+  width: 100%;
   min-height: 0;
-  max-height: 200px;
+  max-height: 40vh;
+  padding: 2px 0 8px;
+  border: 0;
+  outline: none;
   resize: none;
-  field-sizing: content;
   background: none;
+  line-height: 1.5;
 }
+.composer-row { display: flex; align-items: center; gap: 8px; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--dim);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.chip.icon { width: 30px; padding: 0; }
+.chip:hover:not(:disabled) { color: var(--ink); background: var(--well); }
+.chip[role="switch"][aria-checked="true"] { color: var(--on-ink); background: var(--ink); border-color: var(--ink); }
+
+.effort { display: inline-flex; padding: 2px; gap: 2px; border-radius: var(--r-control); background: var(--well); }
+.effort button {
+  height: 24px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--dim);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.effort button:hover:not(:disabled) { color: var(--ink); }
+.effort button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.effort button:disabled { cursor: default; }
+
+/* Files waiting to go: a picture's thumbnail or a file's name, each with its
+   own remove. One that can't be sent says why and is left out. */
+.staged { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.staged-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 220px;
+  height: 36px;
+  padding: 0 4px 0 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--well);
+  font-size: 12.5px;
+}
+.staged-item img { width: 28px; height: 28px; object-fit: cover; border-radius: 5px; }
+.staged-item > .icon { margin-left: 4px; color: var(--dim); }
+.staged-item[data-problem] { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.staged-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.staged-item button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+}
+.staged-item button:hover { background: var(--line); color: var(--ink); }
+
+/* The tray: inset from the box's sides and tucked up under its foot, so it
+   reads as a drawer the box sits on rather than a second box. */
+.composer-tray {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: -12px 16px 0;
+  padding: 19px 12px 7px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 var(--r-card) var(--r-card);
+  background: var(--side);
+}
+.tray-label { font-size: 12px; color: var(--faint); }
+.tray-note { min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--faint); }
+.picker.compact { display: inline-flex; gap: 6px; }
+.picker.compact select, .picker.compact input {
+  width: auto;
+  max-width: 180px;
+  height: 26px;
+  padding: 0 6px;
+  border-color: transparent;
+  background: var(--surface);
+  font-size: 12.5px;
+}
+.picker.compact select:focus, .picker.compact input:focus { border-color: var(--ink); }
+
+/* The conversation column's edges, as drag handles (lib/useReadWidth.js).
+   Placed from the column's own width so they follow it as it changes; only on
+   a window wide enough to have a column worth sizing. */
+.chat-body {
+  --read-w: 760px;
+  --composer-reserve: 150px;
+  overflow: hidden;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.chat-body[data-resizing] { cursor: col-resize; user-select: none; }
+.read-resize {
+  position: absolute;
+  top: 12px;
+  bottom: 120px;
+  z-index: 3;
+  width: 9px;
+  display: none;
+  justify-content: center;
+  cursor: col-resize;
+  touch-action: none;
+}
+.read-resize[data-side="left"] { left: calc(50% - var(--read-w) / 2 - 16px); }
+.read-resize[data-side="right"] { left: calc(50% + var(--read-w) / 2 + 7px); }
+.read-resize i {
+  width: 3px;
+  border-radius: 2px;
+  background: transparent;
+  pointer-events: none;
+  transition: background 150ms ease;
+}
+.read-resize:hover i,
+.read-resize:focus-visible i,
+.chat-body[data-resizing] .read-resize i { background: var(--line-strong); }
+.read-resize:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; border-radius: 2px; }
+@media (min-width: 900px) {
+  .read-resize { display: flex; }
+}
+
+.sent-files { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; gap: 6px; max-width: 78%; margin-left: auto; margin-bottom: 6px; }
+.turn.user { flex-direction: column; align-items: flex-end; }
+.sent-image { max-width: 240px; max-height: 180px; border-radius: var(--r-control); border: 1px solid var(--line); object-fit: cover; }
+.sent-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  color: var(--dim);
+  font-size: 12.5px;
+}
+
 .round {
   flex: none;
   width: 32px;

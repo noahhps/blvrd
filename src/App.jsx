@@ -92,11 +92,11 @@ export default function App() {
     return provider ? { provider, model: choice.model } : null;
   };
 
-  const send = async (text) => {
+  const send = async (text, files = [], thinking = null) => {
     const agent = selected;
     if (!agent || running.current) return;
     const target = modelFor(agent);
-    const user = { role: "user", content: text };
+    const user = { role: "user", content: text, ...(files.length ? { files } : {}) };
     const history = [...historyOf(state.chats[agent.id] || []), user];
     append(agent.id, user);
 
@@ -129,6 +129,7 @@ export default function App() {
         history,
         signal: controller.signal,
         notebook,
+        thinking,
         emit: (event) => {
           if (event.type === "text") setLive((l) => l && { ...l, text: l.text + event.delta, status: "" });
           else if (event.type === "retext") setLive((l) => l && { ...l, text: event.text });
@@ -281,6 +282,12 @@ export default function App() {
             busy={Boolean(live)}
             model={target?.model}
             provider={target?.provider}
+            providers={providers}
+            defaultModel={state.defaultModel}
+            onModel={(model) => {
+              const id = selected.id;
+              update((s) => ({ agents: s.agents.map((a) => (a.id === id ? { ...a, model } : a)) }));
+            }}
             onSend={send}
             onStop={stop}
             onClear={clearChat}
@@ -315,6 +322,9 @@ export default function App() {
 function preview(message) {
   if (message.failure) return "Something went wrong";
   if (message.role === "tool") return `Used ${message.name}`;
+  if (message.role === "user" && !message.content && message.files?.length) {
+    return `You: ${message.files.map((f) => f.name).join(", ")}`;
+  }
   const text = (message.content || message.note || "")
     .replace(/```[\s\S]*?```/g, " [code] ")
     .replace(/[*_`#>]+/g, "")
