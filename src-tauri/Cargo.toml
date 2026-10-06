@@ -1,0 +1,32 @@
+[package]
+name = "blvrd"
+version = "0.1.0"
+description = "blvrd -- agents on your own models"
+authors = ["Noah Stivers"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "blvrd_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# Requests to model servers go through Rust rather than the webview's fetch.
+# A webview fetch is subject to CORS, which most local servers (llama.cpp, LM
+# Studio, vLLM) and several cloud APIs do not answer; the plugin is not, and it
+# still streams the body as it arrives.
+tauri-plugin-http = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

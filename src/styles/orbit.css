@@ -1,0 +1,110 @@
+/* An agent's avatar: four dots on a circle (components/AgentAvatar.jsx).
+ *
+ * Everything is a transform, so it composites off the main thread and keeps
+ * moving while an answer streams in. Sizes are fractions of --size, so the
+ * same drawing works at 28px beside an answer and 88px in the editor.
+ *
+ *   still      the ring, flat, facing you
+ *   spinning   the dots run round the ring (1.6s a turn) while the ring rolls
+ *              through 3D about a diagonal axis (3.2s a turn); each dot
+ *              swells and shrinks in turn as it goes
+ *   intro      one turn into place, for the greeting
+ *
+ * The spin and the roll are constant motion, so they are linear; the swell is
+ * a shape changing on screen, so it eases in and out. */
+
+.orbit {
+  --r: calc(var(--size) * 0.36);
+  --d: calc(var(--size) * 0.22);
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+  perspective: calc(var(--size) * 4);
+}
+
+.orbit-tumble,
+.orbit-spin {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+/* Each dot is placed by its own transform -- turned to its slot, pushed out to
+   the circumference -- and drawn by its ::before, which is free to swell. */
+.orbit i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--d);
+  height: var(--d);
+  margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2);
+  transform: rotate(calc(var(--i) * 90deg)) translateY(calc(var(--r) * -1));
+}
+.orbit i::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--dot);
+}
+
+.orbit[data-spinning] .orbit-tumble {
+  animation: orbit-roll 3.2s linear infinite;
+}
+.orbit[data-spinning] .orbit-spin {
+  animation: orbit-spin 1.6s linear infinite;
+}
+.orbit[data-spinning] i::before {
+  animation: orbit-swell 1.6s var(--ease-in-out) infinite;
+  /* Negative delays start every dot mid-cycle, so the swell is already
+     running round the ring on the first frame. */
+  animation-delay: calc(var(--i) * -0.4s); /* a quarter of the 1.6s cycle each */
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes orbit-roll {
+  from { transform: rotate3d(1, 1, 0, 0deg); }
+  to { transform: rotate3d(1, 1, 0, 360deg); }
+}
+@keyframes orbit-swell {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.55); }
+}
+
+/* The greeting: one turn into place, opacity and roll together. */
+.orbit[data-intro] .orbit-tumble {
+  animation: orbit-intro 700ms var(--ease-out) both;
+}
+@keyframes orbit-intro {
+  from { opacity: 0; transform: rotate3d(1, 1, 0, -150deg) scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Reduced motion: nothing turns. The dots dim one after another instead, so
+   "answering" is still legible without anything moving. */
+@media (prefers-reduced-motion: reduce) {
+  .orbit[data-spinning] .orbit-tumble,
+  .orbit[data-spinning] .orbit-spin {
+    animation: none;
+  }
+  .orbit[data-spinning] i::before {
+    animation: orbit-wait 1.2s ease infinite;
+    animation-delay: calc(var(--i) * 0.3s);
+  }
+  .orbit[data-intro] .orbit-tumble {
+    animation: orbit-fade 300ms ease both;
+  }
+}
+@keyframes orbit-wait {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes orbit-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
