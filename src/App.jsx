@@ -78,10 +78,8 @@ function useRail() {
   return { pinned, peek, pin, show, hide, close: () => setPeek(false) };
 }
 
-/* `fixture`: dev only (src/dev) -- a stand-in for the saved state, to see the
- * app with other data. It is shown, never saved. */
-export default function App({ fixture = null }) {
-  const [state, setState] = useState(() => fixture || load());
+export default function App() {
+  const [state, setState] = useState(load);
   const [view, setView] = useState(() => {
     const recent = byRecent([...state.agents, ...(state.groups || [])], state.chats)[0];
     if (!recent) return { kind: "gallery" };
@@ -98,7 +96,6 @@ export default function App({ fixture = null }) {
 
   // Saved a moment after each change rather than on every streamed word.
   useEffect(() => {
-    if (fixture) return undefined;
     const timer = setTimeout(() => save(state), 300);
     return () => clearTimeout(timer);
   }, [state]);

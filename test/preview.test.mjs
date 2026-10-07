@@ -1,5 +1,5 @@
 /* What the sidebar says about a conversation (lib/preview.js). Each case
- * here is a break found with the worst-case data (src/dev/fixtures.js). */
+ * here is a break once found with realistic worst-case data. */
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
