@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { kindOf, prepare } from "../lib/attach.js";
 import { controlFor } from "../lib/thinking.js";
+import { useAttachments } from "./Attachments.jsx";
 import { Icon } from "./Icon.jsx";
+import { useMentions } from "./Mentions.jsx";
 
 /**
  * Bom's composer, in blvrd's clothes: one box with the text on its own line,
@@ -33,20 +34,18 @@ import { Icon } from "./Icon.jsx";
 const REACH = 130;
 const ONSET = 2;
 const STICK_PX = 80; // a thread scrolled this close to its end counts as "at the end"
-export function Composer({ agentName, disabled, provider, model, tray, focusKey, autoFocus = false, onSend, onStop }) {
+// `disabled`: an answer is under way (Send becomes Stop). `blocked`: why this
+// chat can't take a message at all, said in the box; what's typed is kept.
+export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop }) {
   const form = useRef(null);
   const stack = useRef(null);
   const [popping, setPopping] = useState(false);
   const [value, setValue] = useState("");
-  const [staged, setStaged] = useState([]); // { key, file, preview, problem }
-  const [dropping, setDropping] = useState(false);
   const [control, setControl] = useState({ mode: "none" });
   const [thinking, setThinking] = useState(null);
   const input = useRef(null);
-  const picker = useRef(null);
-  const depth = useRef(0);
-  const stagedRef = useRef(staged);
-  stagedRef.current = staged;
+  const files = useAttachments();
+  const { usable, dropping } = files;
 
   // The reasoning control follows the model: asked for whenever it changes,
   // and reset to that model's own default.
@@ -184,76 +183,25 @@ export function Composer({ agentName, disabled, provider, model, tray, focusKey,
     if (autoFocus) input.current?.focus();
   }, [focusKey]);
 
-  const stage = useCallback((files) => {
-    const items = [...files].map((file) => {
-      const kind = kindOf(file);
-      return {
-        key: `${file.name}:${file.size}:${file.lastModified}:${Math.random()}`,
-        file,
-        preview: kind === "image" ? URL.createObjectURL(file) : null,
-        problem: kind ? null : "isn't a picture or a text file",
-      };
-    });
-    setStaged((prev) => [...prev, ...items]);
-  }, []);
-
-  const unstage = (key) =>
-    setStaged((prev) => {
-      const going = prev.find((i) => i.key === key);
-      if (going?.preview) URL.revokeObjectURL(going.preview);
-      return prev.filter((i) => i.key !== key);
-    });
-
-  // Dropping anywhere on the window. Depth-counted, because dragenter and
-  // dragleave fire for every element crossed on the way in.
-  useEffect(() => {
-    const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
-    const enter = (e) => {
-      if (!hasFiles(e)) return;
-      depth.current += 1;
-      setDropping(true);
-    };
-    const leave = () => {
-      depth.current = Math.max(0, depth.current - 1);
-      if (!depth.current) setDropping(false);
-    };
-    const over = (e) => hasFiles(e) && e.preventDefault();
-    const drop = (e) => {
-      if (!hasFiles(e)) return;
-      e.preventDefault();
-      depth.current = 0;
-      setDropping(false);
-      stage(e.dataTransfer.files);
-    };
-    window.addEventListener("dragenter", enter);
-    window.addEventListener("dragleave", leave);
-    window.addEventListener("dragover", over);
-    window.addEventListener("drop", drop);
-    return () => {
-      window.removeEventListener("dragenter", enter);
-      window.removeEventListener("dragleave", leave);
-      window.removeEventListener("dragover", over);
-      window.removeEventListener("drop", drop);
-    };
-  }, [stage]);
-
-  useEffect(() => () => stagedRef.current.forEach((i) => i.preview && URL.revokeObjectURL(i.preview)), []);
-
-  const usable = staged.filter((i) => !i.problem);
+  // In a group, @ brings up its members (components/Mentions.jsx); taking one
+  // writes "@Name " where the @ was, which is how a group hears who answers.
+  const at = useMentions(mentions || [], (chosen, { start, query }) => {
+    const before = `${value.slice(0, start)}@${chosen.name} `;
+    const after = value.slice(start + 1 + query.length).replace(/^\s+/, "");
+    setValue(before + after);
+    requestAnimationFrame(() => input.current?.setSelectionRange(before.length, before.length));
+  });
 
   const submit = async (event) => {
     event.preventDefault();
     // Enter still submits while an answer streams; clearing the box for a
     // send that is then refused would lose what was typed.
-    if (disabled) return;
+    if (disabled || blocked) return;
     if (!value.trim() && !usable.length) return;
     const text = value;
-    const going = usable;
     setValue("");
-    setStaged([]);
-    const files = (await Promise.all(going.map((i) => prepare(i.file)))).filter((f) => !f.error);
-    going.forEach((i) => i.preview && URL.revokeObjectURL(i.preview));
-    onSend(text.trim(), files, control.mode === "none" ? null : { control, value: thinking });
+    const ready = await files.take();
+    onSend(text.trim(), ready, control.mode === "none" ? null : { control, value: thinking });
   };
 
   return (
@@ -266,29 +214,23 @@ export function Composer({ agentName, disabled, provider, model, tray, focusKey,
       data-popping={popping ? "" : undefined}
     >
       <div className="composer-stack" ref={stack}>
+      {mentions ? at.list : null}
       <div className="composer-box">
-        {staged.length ? (
-          <ul className="staged" aria-label="Attached">
-            {staged.map((item) => (
-              <li key={item.key} className="staged-item" data-problem={item.problem ? "" : undefined} title={item.problem ? `${item.file.name} ${item.problem}` : item.file.name}>
-                {item.preview ? <img src={item.preview} alt="" /> : <Icon name={item.problem ? "close" : "file"} size={16} />}
-                <span className="staged-name">{item.file.name}</span>
-                <button type="button" aria-label={`Remove ${item.file.name}`} onClick={() => unstage(item.key)}>
-                  <Icon name="close" size={12} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {files.list}
 
         <textarea
           ref={input}
           rows={1}
           value={value}
-          placeholder={`Message ${agentName}`}
+          placeholder={blocked || `Message ${agentName}`}
           autoComplete="off"
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (mentions) at.follow(e.target);
+          }}
+          onSelect={mentions ? (e) => at.follow(e.currentTarget) : undefined}
           onKeyDown={(e) => {
+            if (mentions && at.onKey(e)) return;
             // Enter sends on a real keyboard; on a phone it is the only way to
             // get a new line.
             const touch = window.matchMedia("(pointer: coarse)").matches;
@@ -300,19 +242,7 @@ export function Composer({ agentName, disabled, provider, model, tray, focusKey,
         />
 
         <div className="composer-row">
-          <input
-            ref={picker}
-            type="file"
-            multiple
-            hidden
-            onChange={(e) => {
-              stage(e.target.files);
-              e.target.value = ""; // so picking the same file again still fires
-            }}
-          />
-          <button type="button" className="chip icon" aria-label="Attach files" title="Attach pictures or text files" onClick={() => picker.current.click()}>
-            <Icon name="paperclip" size={16} />
-          </button>
+          {files.button}
 
           <span className="spacer" />
 
@@ -323,7 +253,7 @@ export function Composer({ agentName, disabled, provider, model, tray, focusKey,
               <Icon name="stop" size={16} />
             </button>
           ) : (
-            <button type="submit" className="round" aria-label="Send" title="Send" disabled={!value.trim() && !usable.length}>
+            <button type="submit" className="round" aria-label="Send" title="Send" disabled={Boolean(blocked) || (!value.trim() && !usable.length)}>
               <Icon name="send" size={16} />
             </button>
           )}

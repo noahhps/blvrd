@@ -39,7 +39,8 @@ export function systemFor(agent, tools, context = "") {
 
 /**
  * Run a turn. `history` already ends with the user's message. Calls `emit`
- * with { type: "text", delta } as words arrive, and with { type: "message",
+ * with { type: "text", delta } as words arrive, { type: "call", name } as a
+ * tool call begins (when the provider says), and with { type: "message",
  * message } for every assistant or tool message as it is completed -- the
  * caller appends those to the chat. Resolves when the agent has answered.
  */
@@ -73,6 +74,7 @@ export async function runTurn({
       signal,
       extra,
       onText: (delta) => emit({ type: "text", delta }),
+      onCall: (name) => emit({ type: "call", name }),
     });
 
     let { text, calls } = result;
@@ -92,6 +94,9 @@ export async function runTurn({
       role: "assistant",
       content: text,
       calls: prepared.map(({ id, name, args }) => ({ id, name, args })),
+      // Text and calls in the order the model made them, when the provider
+      // says (Anthropic); otherwise the text came first, then the calls.
+      ...(result.parts && calls === result.calls ? { parts: orderOf(result.parts, prepared) } : {}),
       ...(result.raw ? { raw: result.raw } : {}),
       ...(result.note ? { note: result.note } : {}),
       ...(result.stop === "refusal" ? { note: "The model declined to answer this." } : {}),
@@ -150,6 +155,12 @@ export async function runTurn({
     provider: provider.id,
   };
   emit({ type: "message", message: stopped });
+}
+
+/* The provider's parts with each call's id as run.js knows it. */
+function orderOf(parts, prepared) {
+  let i = 0;
+  return parts.flatMap((p) => (p.type === "call" ? (prepared[i] ? [{ type: "call", id: prepared[i++].id }] : []) : [p]));
 }
 
 /* A call made ready to run: name resolved, arguments parsed and fitted to the

@@ -8,29 +8,34 @@ import { runTurn } from "./lib/run.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
 import { TOOLS } from "./lib/tools.js";
 import { inDesktop } from "./lib/http.js";
-import { AgentAvatar } from "./components/AgentAvatar.jsx";
+import { listen } from "./lib/desktop.js";
+import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
+import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
 import { Chat } from "./components/Chat.jsx";
 import { Connectors } from "./components/Connectors.jsx";
 import { Gallery } from "./components/Gallery.jsx";
-import { GroupAvatar } from "./components/GroupAvatar.jsx";
 import { GroupChat } from "./components/GroupChat.jsx";
 import { GroupEditor } from "./components/GroupEditor.jsx";
 import { Icon } from "./components/Icon.jsx";
 import { Logo } from "./components/Logo.jsx";
+import { Notice } from "./components/Notice.jsx";
+import { RowMenu } from "./components/RowMenu.jsx";
+import { AgentRow, GroupRow } from "./components/SidebarRows.jsx";
 import { Settings } from "./components/Settings.jsx";
 
-const TIME = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-const DAY = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
-const lastSeen = (at) => {
-  if (!at) return "";
-  const when = new Date(at);
-  return when.toDateString() === new Date().toDateString() ? TIME.format(when) : DAY.format(when);
+/* What goes back to the model: the chat since its last summary (lib/compact.js),
+ * minus turns that failed -- an error is for the reader, not part of the
+ * conversation. */
+const historyOf = (messages) => sinceSummary(messages).rest.filter((m) => !m.failure);
+// The answer arriving, as text and tool calls in the order they come.
+const withText = (parts, delta) => {
+  const last = parts[parts.length - 1];
+  return last?.type === "text" ? [...parts.slice(0, -1), { type: "text", text: last.text + delta }] : [...parts, { type: "text", text: delta }];
 };
-
-/* What goes back to the model: the chat as kept, minus turns that failed --
- * an error is for the reader, not part of the conversation. */
-const historyOf = (messages) => messages.filter((m) => !m.failure);
+// Most recently talked-to first; a chat never used counts from when it was made.
+const lastActive = (item, chats) => chats[item.id]?.at(-1)?.at || item.createdAt || 0;
+const byRecent = (list, chats) => [...list].sort((a, b) => lastActive(b, chats) - lastActive(a, chats));
 
 const RAIL_KEY = "blvrd.rail";
 // On a Mac the window has no title bar of its own: its red, yellow and green
@@ -73,9 +78,15 @@ function useRail() {
   return { pinned, peek, pin, show, hide, close: () => setPeek(false) };
 }
 
-export default function App() {
-  const [state, setState] = useState(load);
-  const [view, setView] = useState(() => (state.agents.length ? { kind: "agent", id: state.agents[0].id } : { kind: "gallery" }));
+/* `fixture`: dev only (src/dev) -- a stand-in for the saved state, to see the
+ * app with other data. It is shown, never saved. */
+export default function App({ fixture = null }) {
+  const [state, setState] = useState(() => fixture || load());
+  const [view, setView] = useState(() => {
+    const recent = byRecent([...state.agents, ...(state.groups || [])], state.chats)[0];
+    if (!recent) return { kind: "gallery" };
+    return { kind: state.agents.includes(recent) ? "agent" : "group", id: recent.id };
+  });
   const [editor, setEditor] = useState(null); // { agent?, initial? }
   const [groupEditor, setGroupEditor] = useState(null); // { group? }
   // The answer arriving: in which chat (an agent's id or a group's), from
@@ -87,18 +98,26 @@ export default function App() {
 
   // Saved a moment after each change rather than on every streamed word.
   useEffect(() => {
+    if (fixture) return undefined;
     const timer = setTimeout(() => save(state), 300);
     return () => clearTimeout(timer);
   }, [state]);
 
   const providers = useMemo(() => providersOf(state), [state.providers, state.custom]);
-  const agents = state.agents;
-  const groups = state.groups || [];
+  const agents = useMemo(() => byRecent(state.agents, state.chats), [state.agents, state.chats]);
+  const groups = useMemo(() => byRecent(state.groups || [], state.chats), [state.groups, state.chats]);
   const selected = view.kind === "agent" ? agents.find((a) => a.id === view.id) : null;
   const selectedGroup = view.kind === "group" ? groups.find((g) => g.id === view.id) : null;
-  const membersOf = (group) => (group?.members || []).map((id) => agents.find((a) => a.id === id)).filter(Boolean);
+  const agentsById = useMemo(() => new Map(state.agents.map((a) => [a.id, a])), [state.agents]);
+  const membersOf = (group) => (group?.members || []).map((id) => agentsById.get(id)).filter(Boolean);
 
   const update = useCallback((fn) => setState((s) => ({ ...s, ...fn(s) })), []);
+
+  /* A notice at the foot of the window: what just happened, with Undo when
+   * it can be taken back. In place of asking first -- a quick undo forgives a
+   * slip without making every deliberate delete answer a question. */
+  const [notice, setNotice] = useState(null); // { id, text, undo }
+  const notify = useCallback((text, undo = null) => setNotice({ id: Date.now() + Math.random(), text, undo }), []);
   const rail = useRail();
   // Picking something from a brought-out sidebar puts it away again.
   useEffect(() => {
@@ -155,9 +174,15 @@ export default function App() {
     setEditor(null);
   };
 
+  /* Deleting a conversation with an agent: the agent goes, with its chat and
+   * notes, and it leaves its groups (what it said there stays). Done at once,
+   * with an Undo in the notice rather than a question first (see `notify`). */
   const deleteAgent = (agent) => {
-    if (!window.confirm(`Delete ${agent.name}? Its chat and notes go with it.`)) return;
     if (running.current?.chatId === agent.id) running.current.controller.abort();
+    const before = stateRef.current;
+    const chat = before.chats[agent.id];
+    const notes = before.notes[agent.id];
+    const seats = Object.fromEntries((before.groups || []).map((g) => [g.id, g.members.indexOf(agent.id)]).filter(([, at]) => at !== -1));
     update((s) => {
       const chats = { ...s.chats };
       const notes = { ...s.notes };
@@ -168,7 +193,21 @@ export default function App() {
       return { agents: s.agents.filter((a) => a.id !== agent.id), chats, notes, groups };
     });
     setEditor(null);
-    setView({ kind: "gallery" });
+    if (view.kind === "agent" && view.id === agent.id) setView({ kind: "gallery" });
+    notify(`Deleted your conversation with ${agent.name}`, () =>
+      update((s) => ({
+        agents: s.agents.some((a) => a.id === agent.id) ? s.agents : [...s.agents, agent],
+        chats: chat ? { ...s.chats, [agent.id]: chat } : s.chats,
+        notes: notes ? { ...s.notes, [agent.id]: notes } : s.notes,
+        // Back in its groups, in the seat it had.
+        groups: (s.groups || []).map((g) => {
+          if (!(g.id in seats) || g.members.includes(agent.id)) return g;
+          const members = [...g.members];
+          members.splice(seats[g.id], 0, agent.id);
+          return { ...g, members };
+        }),
+      })),
+    );
   };
 
   const fromPreset = ({ name, instructions, look }) => ({ name, instructions, look, tools: null, model: null });
@@ -208,7 +247,7 @@ export default function App() {
     if (!target) return fail(`No model chosen for ${agent.name} yet. Pick a default model in Settings, or give ${agent.name} its own with Customize.`);
     if (!target.provider.enabled) return fail(`${target.provider.name} is switched off in Settings.`);
 
-    setLive({ chatId, agentId: agent.id, text: "", status: "", queue });
+    setLive({ chatId, agentId: agent.id, text: "", parts: [], status: "", queue });
     const said = [];
     try {
       await runTurn({
@@ -223,14 +262,15 @@ export default function App() {
         available,
         approve: askFirst(chatId, agent),
         emit: (event) => {
-          if (event.type === "text") setLive((l) => l && { ...l, text: l.text + event.delta, status: "" });
-          else if (event.type === "retext") setLive((l) => l && { ...l, text: event.text });
+          if (event.type === "text") setLive((l) => l && { ...l, text: l.text + event.delta, parts: withText(l.parts, event.delta), status: "" });
+          else if (event.type === "retext") setLive((l) => l && { ...l, text: event.text, parts: event.text ? [{ type: "text", text: event.text }] : [] });
+          else if (event.type === "call") setLive((l) => l && { ...l, parts: [...l.parts, { type: "call", name: event.name }] });
           else if (event.type === "message") {
             const message = { ...event.message, ...tag };
             append(chatId, message);
             said.push(message);
             const calling = message.role === "assistant" && message.calls?.length;
-            setLive((l) => l && { ...l, text: "", status: calling ? `Using ${message.calls.map((c) => c.name).join(", ")}…` : "" });
+            setLive((l) => l && { ...l, text: "", parts: [], status: calling ? `Using ${message.calls.map((c) => c.name).join(", ")}…` : "" });
           }
         },
       });
@@ -244,16 +284,75 @@ export default function App() {
     return said;
   };
 
-  const send = async (text, files = [], thinking = null) => {
-    const agent = selected;
-    if (!agent || running.current) return;
-    const user = { role: "user", content: text, ...(files.length ? { files } : {}) };
-    const history = [...historyOf(state.chats[agent.id] || []), user];
+  const send = (text, files = [], thinking = null) => selected && sendTo(selected, text, files, thinking);
+  /* Compaction (lib/compact.js). `fold` summarizes the older part of a chat
+   * with `agent`'s model and puts the summary in; it returns the chat with
+   * it in, or null if there was nothing to fold or it couldn't be done.
+   * Throws STOPPED when the reader stops it. */
+  const fold = async ({ chatId, chat, agent, keep, controller, loud = false }) => {
+    const target = modelFor(agent);
+    const say = (problem) => (loud ? notify(problem) : console.warn(problem));
+    if (!target || !target.provider.enabled) {
+      say(`Can't summarize without a model: ${agent.name} has none that's switched on.`);
+      return null;
+    }
+    const nameOf = (id) => (id ? agents.find((a) => a.id === id)?.name || "A removed agent" : agent.name);
+    setLive({ chatId, agentId: agent.id, text: "", parts: [], status: "Summarizing earlier messages…", queue: [] });
+    try {
+      const done = await compact({ messages: chat, keep, provider: target.provider, model: target.model, nameOf, signal: controller.signal });
+      if (!done) return null;
+      const summary = { id: newId("m"), at: Date.now(), ...done.summary };
+      update((s) => ({ chats: { ...s.chats, [chatId]: withSummary(s.chats[chatId] || [], done.before, summary) } }));
+      return withSummary(chat, done.before, summary);
+    } catch (problem) {
+      if (controller.signal.aborted) throw STOPPED;
+      say(`Couldn't summarize the chat: ${explain(problem, target)}`);
+      return null;
+    }
+  };
+
+  // Before a turn: a chat past the limit set in Settings keeps about a
+  // quarter of it, the rest summarized.
+  const foldIfLong = async ({ chatId, chat, agent, controller }) => {
+    const limit = compactAtOf(stateRef.current);
+    if (!tooLong(chat, null, limit)) return chat;
+    return (await fold({ chatId, chat, agent, keep: Math.round(limit / 4), controller })) || chat;
+  };
+
+  // Whether a chat has anything to fold: more than one message from the
+  // reader since its last summary.
+  const canCompact = (chatId) => canFold(state.chats[chatId] || []);
+
+  // From the header, the sidebar's menu, or a swipe: all but the last exchange.
+  const compactNow = async (chatId, agent) => {
+    if (running.current || !agent) return;
+    const chat = stateRef.current.chats[chatId] || [];
+    if (!canFold(chat)) {
+      notify("Nothing to compact yet: it needs more than one message from you since the last summary.");
+      return;
+    }
+    const controller = new AbortController();
+    running.current = { chatId, controller };
+    try {
+      await fold({ chatId, chat, agent, keep: 0, controller, loud: true });
+    } catch (stopped) {
+      if (stopped !== STOPPED) throw stopped;
+    } finally {
+      running.current = null;
+      setLive(null);
+    }
+  };
+
+  const sendTo = async (agent, text, files = [], thinking = null) => {
+    if (running.current) return;
+    const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}) };
+    const before = stateRef.current.chats[agent.id] || [];
     append(agent.id, user);
     const controller = new AbortController();
     running.current = { chatId: agent.id, controller };
     try {
-      await answerAs({ agent, chatId: agent.id, history, controller, thinking });
+      const chat = await foldIfLong({ chatId: agent.id, chat: [...before, user], agent, controller });
+      await answerAs({ agent, chatId: agent.id, history: historyOf(chat), controller, thinking, context: summaryContext(chat) });
     } catch (stopped) {
       if (stopped !== STOPPED) throw stopped;
     } finally {
@@ -271,8 +370,8 @@ export default function App() {
     if (!group || running.current) return;
     const members = membersOf(group);
     if (!members.length) return;
-    const user = { role: "user", content: text, ...(files.length ? { files } : {}) };
-    const transcript = [...historyOf(state.chats[group.id] || []), user];
+    const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}) };
+    const before = stateRef.current.chats[group.id] || [];
     append(group.id, user);
 
     const nameOf = (id) => agents.find((a) => a.id === id)?.name || "A removed agent";
@@ -281,6 +380,11 @@ export default function App() {
     running.current = { chatId: group.id, controller };
     let handoffs = 0;
     try {
+      // Too long: summarized by whoever answers first.
+      const first = members.find((m) => m.id === queue[0]) || members[0];
+      const chat = await foldIfLong({ chatId: group.id, chat: [...before, user], agent: first, controller });
+      const transcript = historyOf(chat);
+      const summary = summaryContext(chat);
       while (queue.length && !controller.signal.aborted) {
         const id = queue.shift();
         const agent = members.find((m) => m.id === id);
@@ -290,7 +394,7 @@ export default function App() {
           chatId: group.id,
           history: viewFor(agent.id, transcript, nameOf),
           controller,
-          context: groupBrief(agent, members, group, (m) => taglineOf(m, PRESETS)),
+          context: [groupBrief(agent, members, group, (m) => taglineOf(m, PRESETS)), summary].filter(Boolean).join("\n\n"),
           tag: { agentId: agent.id },
           queue: [...queue],
         });
@@ -326,9 +430,11 @@ export default function App() {
     running.current?.controller.abort();
   };
 
-  const clearChat = () => {
-    if (!selected || !window.confirm(`Clear your chat with ${selected.name}? Its notes are kept.`)) return;
-    update((s) => ({ chats: { ...s.chats, [selected.id]: [] } }));
+  const clearChatOf = (chatId, name) => {
+    if (running.current?.chatId === chatId) running.current.controller.abort();
+    const chat = stateRef.current.chats[chatId] || [];
+    update((s) => ({ chats: { ...s.chats, [chatId]: [] } }));
+    notify(`Cleared the chat with ${name}`, () => update((s) => ({ chats: { ...s.chats, [chatId]: [...chat, ...(s.chats[chatId] || [])] } })));
   };
 
   /* -- groups --------------------------------------------------------------------- */
@@ -345,21 +451,95 @@ export default function App() {
     setGroupEditor(null);
   };
 
+  // A group's conversation: the group and its chat go; its agents stay.
   const deleteGroup = (group) => {
-    if (!window.confirm(`Delete the group ${group.name}? Its chat goes with it; the agents stay.`)) return;
     if (running.current?.chatId === group.id) running.current.controller.abort();
+    const chat = stateRef.current.chats[group.id];
     update((s) => {
       const chats = { ...s.chats };
       delete chats[group.id];
       return { groups: s.groups.filter((g) => g.id !== group.id), chats };
     });
     setGroupEditor(null);
-    setView(agents.length ? { kind: "agent", id: agents[0].id } : { kind: "gallery" });
+    if (view.kind === "group" && view.id === group.id) {
+      setView(agents.length ? { kind: "agent", id: agents[0].id } : { kind: "gallery" });
+    }
+    notify(`Deleted the conversation ${group.name}`, () =>
+      update((s) => ({
+        groups: (s.groups || []).some((g) => g.id === group.id) ? s.groups : [...(s.groups || []), group],
+        chats: chat ? { ...s.chats, [group.id]: chat } : s.chats,
+      })),
+    );
   };
 
-  const clearGroup = () => {
-    if (!selectedGroup || !window.confirm(`Clear the chat in ${selectedGroup.name}?`)) return;
-    update((s) => ({ chats: { ...s.chats, [selectedGroup.id]: [] } }));
+
+  /* -- the sidebar's menu: right-click a row, or its ⋯ -------------------------- */
+
+  const [rowMenu, setRowMenu] = useState(null); // { at: { x, y }, kind, id }
+  // A conversation on its way out: its sidebar row plays its exit
+  // (components/SwipeRow.jsx), then deletes it.
+  const [removing, setRemoving] = useState(null);
+  const removeRow = (id) => {
+    setEditor(null);
+    setGroupEditor(null);
+    setRemoving(id);
+  };
+
+  /* What a sidebar row can do (components/SidebarRows.jsx), behind one
+   * function that never changes, so the memoized rows aren't re-rendered for
+   * every new closure. Each call reaches this render's handlers. */
+  const rowActs = useRef(null);
+  rowActs.current = {
+    view: (kind, id) => setView({ kind, id }),
+    menu: (event, kind, id) => openRowMenu(kind, id)(event),
+    compact: (chatId, agent) => compactNow(chatId, agent),
+    deleteAgent: (agent) => {
+      setRemoving(null);
+      deleteAgent(agent);
+    },
+    deleteGroup: (group) => {
+      setRemoving(null);
+      deleteGroup(group);
+    },
+  };
+  const act = useCallback((name, ...args) => rowActs.current[name](...args), []);
+  const closeRowMenu = useCallback(() => setRowMenu(null), []);
+  const openRowMenu = (kind, id) => (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const box = event.currentTarget.getBoundingClientRect();
+    // Right-click: at the pointer. The ⋯ button: under it.
+    const at = event.type === "contextmenu" ? { x: event.clientX, y: event.clientY } : { x: box.left, y: box.bottom + 4 };
+    setRowMenu({ at, kind, id });
+  };
+  const rowMenuItems = () => {
+    if (!rowMenu) return [];
+    const busy = Boolean(live);
+    if (rowMenu.kind === "agent") {
+      const agent = agents.find((a) => a.id === rowMenu.id);
+      if (!agent) return [];
+      const empty = !(state.chats[agent.id] || []).length;
+      return [
+        { label: "Compact now", disabled: busy || !canCompact(agent.id), run: () => compactNow(agent.id, agent) },
+        { label: "Clear chat", disabled: empty, run: () => clearChatOf(agent.id, agent.name) },
+        "-",
+        { label: "Edit agent…", run: () => setEditor({ agent }) },
+        "-",
+        { label: "Delete conversation", danger: true, run: () => removeRow(agent.id) },
+      ];
+    }
+    const group = groups.find((g) => g.id === rowMenu.id);
+    if (!group) return [];
+    const empty = !(state.chats[group.id] || []).length;
+    const first = membersOf(group)[0];
+    return [
+      { label: "Compact now", disabled: busy || !first || !canCompact(group.id), run: () => compactNow(group.id, first) },
+      { label: "Clear chat", disabled: empty, run: () => clearChatOf(group.id, group.name) },
+      "-",
+      { label: "Edit members…", run: () => setGroupEditor({ group }) },
+      "-",
+      { label: "Delete conversation", danger: true, run: () => removeRow(group.id) },
+    ];
   };
 
   /* -- settings ------------------------------------------------------------------ */
@@ -376,6 +556,29 @@ export default function App() {
     update((s) => ({ custom: [...s.custom, { id: newId("server"), kind: "openai", name, base, key, enabled: true }] }));
 
   const removeCustom = (id) => update((s) => ({ custom: s.custom.filter((p) => p.id !== id) }));
+
+  /* The quickview (lib/quick.js): this window holds its shortcut, and sends
+   * what is written there -- to that agent's chat, brought forward. One
+   * already answering finishes first. */
+  const shortcut = shortcutOf(state);
+  const [shortcutProblem, setShortcutProblem] = useState(null);
+  useEffect(() => holdShortcut(shortcut, toggleQuick, setShortcutProblem), [shortcut]);
+
+  const quickRef = useRef(null);
+  quickRef.current = { sendTo };
+  useEffect(() => {
+    // Released once it is attached, even if this cleanup comes first (as
+    // React's development double-run does) -- else two listeners send twice.
+    const off = listen(QUICK_SEND, async ({ agentId, text, files = [] }) => {
+      const agent = stateRef.current.agents.find((a) => a.id === agentId);
+      if (!agent) return;
+      setView({ kind: "agent", id: agent.id });
+      showMain();
+      while (running.current) await new Promise((done) => setTimeout(done, 250));
+      quickRef.current.sendTo(agent, text, files);
+    });
+    return () => off.then((un) => un());
+  }, []);
 
   // Links in answers and in Settings open in the reader's browser, not in the app.
   useEffect(() => {
@@ -435,7 +638,7 @@ export default function App() {
             aria-pressed={rail.pinned}
             onClick={() => rail.pin(!rail.pinned)}
           >
-            <Icon name={rail.pinned ? "sidebar" : "pin"} />
+            <Icon name={rail.pinned ? "sidebar" : "sidebar-filled"} />
           </button>
         </div>
         <div className="brand">
@@ -443,6 +646,9 @@ export default function App() {
           <span className="wordmark">blvrd</span>
         </div>
 
+        {/* Only the lists scroll: the title bar stays under the window
+            controls, and Connectors and Models stay at the foot. */}
+        <div className="side-scroll">
         <div className="side-head">
           <span className="label">Agents</span>
           <button
@@ -458,35 +664,22 @@ export default function App() {
         </div>
 
         {agents.length === 0 ? (
-          <p className="side-empty">No agents yet -- add one to start.</p>
+          <p className="side-empty">No agents yet — add one to start.</p>
         ) : (
           <ul className="contacts">
-            {agents.map((agent) => {
-              const chat = state.chats[agent.id] || [];
-              const last = chat[chat.length - 1];
-              const answering = busyChat === agent.id;
-              return (
-                <li key={agent.id}>
-                  <button
-                    type="button"
-                    className="contact"
-                    aria-current={selected?.id === agent.id ? "true" : undefined}
-                    onClick={() => setView({ kind: "agent", id: agent.id })}
-                  >
-                    <AgentAvatar look={agent.look} name={agent.name} size={34} spinning={answering} />
-                    <span className="contact-text">
-                      <span className="contact-top">
-                        <span className="contact-name">{agent.name}</span>
-                        {last?.at ? <span className="contact-when">{lastSeen(last.at)}</span> : null}
-                      </span>
-                      <span className="contact-line">
-                        {answering ? "answering…" : last ? preview(last) : taglineOf(agent, PRESETS)}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            {agents.map((agent) => (
+              <AgentRow
+                key={agent.id}
+                agent={agent}
+                chat={state.chats[agent.id]}
+                selected={selected?.id === agent.id}
+                answering={busyChat === agent.id}
+                menuOpen={rowMenu?.id === agent.id}
+                removing={removing === agent.id}
+                busy={Boolean(live)}
+                act={act}
+              />
+            ))}
           </ul>
         )}
 
@@ -507,40 +700,24 @@ export default function App() {
           <p className="side-empty">{agents.length < 2 ? "Add two agents to put them in a group." : "Put agents together to talk to all of them at once."}</p>
         ) : (
           <ul className="contacts contacts-groups">
-            {groups.map((group) => {
-              const chat = state.chats[group.id] || [];
-              const last = chat[chat.length - 1];
-              const answering = busyChat === group.id;
-              const answerer = answering ? agents.find((a) => a.id === live.agentId) : null;
-              const who = last?.agentId ? agents.find((a) => a.id === last.agentId)?.name : null;
-              return (
-                <li key={group.id}>
-                  <button
-                    type="button"
-                    className="contact"
-                    aria-current={selectedGroup?.id === group.id ? "true" : undefined}
-                    onClick={() => setView({ kind: "group", id: group.id })}
-                  >
-                    <GroupAvatar members={membersOf(group)} size={34} answeringId={answering ? live.agentId : null} />
-                    <span className="contact-text">
-                      <span className="contact-top">
-                        <span className="contact-name">{group.name}</span>
-                        {last?.at ? <span className="contact-when">{lastSeen(last.at)}</span> : null}
-                      </span>
-                      <span className="contact-line">
-                        {answering
-                          ? `${answerer?.name || "Someone"} is answering…`
-                          : last
-                            ? (who ? `${who}: ` : "") + preview(last)
-                            : `${membersOf(group).length} agents`}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            {groups.map((group) => (
+              <GroupRow
+                key={group.id}
+                group={group}
+                chat={state.chats[group.id]}
+                agentsById={agentsById}
+                selected={selectedGroup?.id === group.id}
+                answeringId={busyChat === group.id ? live.agentId : null}
+                menuOpen={rowMenu?.id === group.id}
+                removing={removing === group.id}
+                busy={Boolean(live)}
+                act={act}
+              />
+            ))}
           </ul>
         )}
+
+        </div>
 
         <button
           type="button"
@@ -574,6 +751,11 @@ export default function App() {
             onProvider={setProvider}
             onAddCustom={addCustom}
             onRemoveCustom={removeCustom}
+            shortcut={shortcut}
+            shortcutProblem={shortcutProblem}
+            onShortcut={(quickShortcut) => update(() => ({ quickShortcut }))}
+            compactAt={compactAtOf(state)}
+            onCompactAt={(compactAt) => update(() => ({ compactAt }))}
           />
         ) : selected ? (
           <Chat
@@ -594,7 +776,8 @@ export default function App() {
             }}
             onSend={send}
             onStop={stop}
-            onClear={clearChat}
+            onCompact={() => compactNow(selected.id, selected)}
+            canCompact={canCompact(selected.id)}
             onCustomize={() => setEditor({ agent: selected })}
           />
         ) : selectedGroup ? (
@@ -608,7 +791,8 @@ export default function App() {
             busy={Boolean(live)}
             onSend={sendGroup}
             onStop={stop}
-            onClear={clearGroup}
+            onCompact={() => compactNow(selectedGroup.id, membersOf(selectedGroup)[0])}
+            canCompact={canCompact(selectedGroup.id) && membersOf(selectedGroup).length > 0}
             onEdit={() => setGroupEditor({ group: selectedGroup })}
           />
         ) : (
@@ -622,13 +806,15 @@ export default function App() {
         )}
       </main>
 
+      <Notice notice={notice} onDone={() => setNotice(null)} />
+      {rowMenu ? <RowMenu at={rowMenu.at} items={rowMenuItems()} onClose={closeRowMenu} /> : null}
       {groupEditor ? (
         <GroupEditor
           group={groupEditor.group || null}
           agents={agents}
           presets={PRESETS}
           onSave={saveGroup}
-          onDelete={deleteGroup}
+          onDelete={(group) => removeRow(group.id)}
           onClose={() => setGroupEditor(null)}
         />
       ) : null}
@@ -641,26 +827,12 @@ export default function App() {
           defaultModel={state.defaultModel}
           groups={groupsOf(available)}
           onSave={saveAgent}
-          onDelete={deleteAgent}
+          onDelete={(agent) => removeRow(agent.id)}
           onClose={() => setEditor(null)}
         />
       ) : null}
     </div>
   );
-}
-
-function preview(message) {
-  if (message.failure) return "Something went wrong";
-  if (message.role === "tool") return `Used ${message.name}`;
-  if (message.role === "user" && !message.content && message.files?.length) {
-    return `You: ${message.files.map((f) => f.name).join(", ")}`;
-  }
-  const text = (message.content || message.note || "")
-    .replace(/```[\s\S]*?```/g, " [code] ")
-    .replace(/[*_`#>]+/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return (message.role === "user" ? "You: " : "") + text;
 }
 
 /* An error as a sentence the reader can act on. */

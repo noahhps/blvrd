@@ -1,20 +1,22 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { renderMarkdown } from "../lib/markdown.js";
+import { agentCount } from "../lib/preview.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Approval } from "./Approval.jsx";
-import { Turn } from "./Chat.jsx";
+import { timeline } from "../lib/timeline.js";
+import { LiveTurn, Turn } from "./Chat.jsx";
 import { Composer } from "./Composer.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
 import { Icon } from "./Icon.jsx";
 
 const GONE = { id: null, name: "A removed agent", look: { colour: "ink" } };
+const NO_MEMBERS = "This group has no agents left. Add some with Edit group.";
 
 /* A group's chat: the reader and several agents in one thread, each answer
  * labelled with who gave it. Under the composer, who answers the next
  * message -- everyone, or the members picked (or @-mentioned in the text). */
-export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onClear, approval = null, onApprove }) {
+export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onCompact, canCompact = false, approval = null, onApprove }) {
   const thread = useRef(null);
   const area = useRef(null);
   const stuck = useRef(true);
@@ -30,7 +32,7 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
   useLayoutEffect(() => {
     const el = thread.current;
     if (el && stuck.current) el.scrollTop = el.scrollHeight;
-  }, [messages.length, live?.text, live?.agentId]);
+  }, [messages.length, live?.text, live?.parts?.length, live?.agentId]);
 
   useEffect(() => {
     stuck.current = true;
@@ -55,12 +57,20 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
         <span className="chat-who">
           <span className="chat-name">{group.name}</span>
           <span className="chat-tagline">
-            {members.length} agents · {members.map((m) => m.name).join(", ")}
+            {agentCount(members.length)}
+            {members.length ? ` · ${members.map((m) => m.name).join(", ")}` : ""}
           </span>
         </span>
         {messages.length ? (
-          <button type="button" className="btn icon-only" title="Clear this chat" aria-label="Clear this chat" onClick={onClear} disabled={busy}>
-            <Icon name="trash" />
+          <button
+            type="button"
+            className="btn icon-only compact"
+            title={canCompact ? "Compact: summarize the earlier messages" : "Nothing to compact yet"}
+            aria-label="Compact this chat"
+            onClick={onCompact}
+            disabled={busy || !canCompact}
+          >
+            <Icon name="compact" />
           </button>
         ) : null}
         <button type="button" className="btn" onClick={onEdit}>
@@ -98,29 +108,22 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
             <div className="greeting">
               <GroupAvatar members={members} size={72} />
               <h2>{group.name}</h2>
-              <p>
-                Everyone answers in turn. Pick who answers under the box, or write @{members[0]?.name || "Name"} -- and
-                agents can hand a question to each other the same way.
-              </p>
+              {members.length ? (
+                <p>
+                  Everyone answers in turn. Pick who answers under the box, or write @{members[0].name} — and agents can
+                  hand a question to each other the same way.
+                </p>
+              ) : (
+                <p>{NO_MEMBERS}</p>
+              )}
             </div>
           ) : null}
           <div className="turns">
-            {messages.map((m, i) => (
-              <Turn key={m.id || i} message={m} agent={m.role === "user" ? null : agentOf(m.agentId)} speaker />
+            {timeline(messages, Boolean(live)).map(({ key, message }) => (
+              <Turn key={key} message={message} agent={message.role === "user" ? null : agentOf(message.agentId)} speaker />
             ))}
             {live && speaking ? (
-              <div className="turn assistant">
-                <AgentAvatar look={speaking.look} name={speaking.name} size={26} spinning />
-                <div className="answer">
-                  <span className="speaker">{speaking.name}</span>
-                  {live.text ? (
-                    <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(live.text) }} />
-                  ) : (
-                    <p className="thinking">{live.status || "Thinking…"}</p>
-                  )}
-                  {next.length ? <p className="note">Then {next.join(", ")}</p> : null}
-                </div>
-              </div>
+              <LiveTurn live={live} agent={speaking} speaker after={next.length ? <p className="note">Then {next.join(", ")}</p> : null} />
             ) : null}
             <Approval request={approval} onAnswer={onApprove} />
           </div>
@@ -129,10 +132,12 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
         <Composer
           agentName={group.name}
           disabled={busy}
+          blocked={members.length ? null : NO_MEMBERS}
           provider={null}
           model={null}
           focusKey={group.id}
           autoFocus={messages.length === 0}
+          mentions={members}
           onSend={send}
           onStop={onStop}
           tray={

@@ -77,7 +77,7 @@ function Google({ config, patchConnectors }) {
         <h2 className="with-logo"><BrandLogo id="google" size={18} />Google Workspace</h2>
         {signedIn ? <span className="status on">Connected as {c.email || "your account"}</span> : null}
       </div>
-      <p className="hint">Gmail, Google Calendar, Drive and Docs, and Tasks -- through your own Google account.</p>
+      <p className="hint">Gmail, Google Calendar, Drive and Docs, and Tasks — through your own Google account.</p>
 
       {signedIn ? (
         <div className="connector-row">
@@ -156,7 +156,7 @@ function Apple({ config, patchConnectors }) {
       </div>
       <p className="hint">
         {isMac
-          ? "The calendars and reminder lists on this Mac -- iCloud, Google, Exchange, whatever Calendar and Reminders are signed in to."
+          ? "The calendars and reminder lists on this Mac — iCloud, Google, Exchange, whatever Calendar and Reminders are signed in to."
           : "Only on a Mac."}
       </p>
       {c.enabled ? (
@@ -205,7 +205,7 @@ function HomeAssistant({ config, patchConnectors }) {
         {c.enabled ? <span className="status on">Connected{c.name ? ` to ${c.name}` : ""}</span> : null}
       </div>
       <p className="hint">
-        Lights, heating, locks, blinds, media and scenes -- anything in your Home Assistant. Make a token in Home Assistant under
+        Lights, heating, locks, blinds, media and scenes — anything in your Home Assistant. Make a token in Home Assistant under
         your profile → Security → Long-lived access tokens.
       </p>
       <div className="field-row">
@@ -260,7 +260,7 @@ function Mcp({ servers, patchConnectors, getConnectors }) {
     } catch (e) {
       if (e instanceof NeedsSignIn && server.auth !== "bearer") {
         store.patch(server.id, (s) => ({ auth: "oauth", oauth: { ...s.oauth, tokens: null } }));
-        setState(server.id, { error: `${server.name} needs you to sign in -- press Connect again.` });
+        setState(server.id, { error: `${server.name} needs you to sign in — press Connect again.` });
       } else {
         setState(server.id, { error: e.message });
       }

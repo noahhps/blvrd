@@ -3,7 +3,7 @@
  *   listModels(provider)            -> [{ id }]
  *   turn({ provider, model, system, messages, tools, signal, onText, extra })
  *                                   (`extra`: request fields such as thinking)
- *                                   -> { text, calls, raw, stop, note }
+ *                                   -> { text, calls, parts?, raw, stop, note }
  *
  * `messages` are the app's own (lib/run.js):
  *   { role: "user", content, files: [{ name, kind: "image"|"text", dataUrl?, text? }] }
@@ -289,7 +289,7 @@ const anthropic = {
     return ids;
   },
 
-  async turn({ provider, model, system, messages, tools, signal, onText, extra = {} }) {
+  async turn({ provider, model, system, messages, tools, signal, onText, onCall, extra = {} }) {
     const client = clientFor(provider);
     const params = {
       model,
@@ -317,9 +317,20 @@ const anthropic = {
         )
       : client.messages.stream(params, { signal });
     stream.on("text", onText);
+    // A tool call starting between stretches of text, so it can be shown
+    // where the model made it rather than after everything it wrote.
+    if (onCall) {
+      stream.on("streamEvent", (event) => {
+        if (event.type === "content_block_start" && event.content_block?.type === "tool_use") onCall(event.content_block.name);
+      });
+    }
     const message = await stream.finalMessage();
 
-    const text = message.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+    // The blocks in the order the model wrote them: text and calls interleaved.
+    const parts = message.content.flatMap((b) =>
+      b.type === "text" && b.text.trim() ? [{ type: "text", text: b.text }] : b.type === "tool_use" ? [{ type: "call", id: b.id }] : [],
+    );
+    const text = parts.filter((p) => p.type === "text").map((p) => p.text.trim()).join("\n\n");
     const raw = { provider: "anthropic", model, content: message.content };
     if (message.stop_reason === "refusal") {
       return { text, calls: [], raw, stop: "refusal" };
@@ -330,7 +341,7 @@ const anthropic = {
     if (message.stop_reason === "max_tokens" && calls.length) {
       throw new Error("The answer ran out of room in the middle of a tool call. Ask again, or for less at once.");
     }
-    return { text, calls, raw, stop: message.stop_reason === "max_tokens" ? "length" : "end" };
+    return { text, calls, parts, raw, stop: message.stop_reason === "max_tokens" ? "length" : "end" };
   },
 };
 

@@ -55,7 +55,7 @@ export function GroupEditor({ group, agents, presets, onSave, onDelete, onClose 
           <section className="field">
             <span className="label">
               Members · {chosen.length}
-              {chosen.length > 1 ? " -- they answer in this order" : ""}
+              {chosen.length > 1 ? " — they answer in this order" : ""}
             </span>
             <ul className="member-list">
               {agents.map((agent) => {

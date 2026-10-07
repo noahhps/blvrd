@@ -17,10 +17,19 @@ const PATHS = {
   paperclip: "M20.5 11.5 12 20a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8",
   file: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z M14 3v5h5",
   sidebar: "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z M9 5v14",
+  "sidebar-filled": "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z M9 5v14",
+  more: "M12 5.5v.01M12 12v.01M12 18.5v.01",
+  // Two corners drawn in: a chat folded up.
+  compact: "M4 14h6v6 M3 21l7-7 M20 10h-6V4 M21 3l-7 7",
   pin: "M9 4h6l-1 6 3 3H7l3-3-1-6Z M12 13v7",
   plug: "M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0V8Z M12 17v4",
   check: "M5 12.5l4.5 4.5L19 7",
   camera: "M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
+};
+
+/* Solid shapes drawn under a glyph's lines: the filled sidebar's panel. */
+const FILLS = {
+  "sidebar-filled": "M4 5h5v14H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z",
 };
 
 export function Icon({ name, size = 18 }) {
@@ -37,6 +46,7 @@ export function Icon({ name, size = 18 }) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
+      {FILLS[name] ? <path d={FILLS[name]} fill="currentColor" stroke="none" /> : null}
       <path d={PATHS[name]} />
     </svg>
   );

@@ -1,8 +1,9 @@
 /* Small preferences that follow the reader across the whole app.
  *
- * `toolsOpen`: whether a tool call is drawn expanded. Collapsed to begin
- * with; after that it is whatever the reader last left a tool call as -- open
- * one and the next one arrives open, close one and the next arrives closed.
+ * `toolsOpen`: whether a tool call -- or a chain of calls made back to back
+ * -- is drawn expanded. Collapsed to begin with; after that it is whatever
+ * the reader last left one as -- open one and the next one arrives open,
+ * close one and the next arrives closed.
  * One value for every agent's chat, kept between launches. A tool call
  * already on screen keeps the state it was drawn with, so expanding one does
  * not throw open every other one in the thread. */

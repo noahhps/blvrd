@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "quick",
+  "description": "The quickview: shows, hides and moves itself, and hands a message to the main window.",
+  "windows": [
+    "quick"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-position"
+  ]
+}

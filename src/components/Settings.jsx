@@ -2,6 +2,8 @@ import { useState } from "react";
 
 import { HOSTED_CLOSED, HOSTED_OPEN, hostOf, isLocalUrl } from "../lib/catalog.js";
 import { forget, modelsOf } from "../lib/models.js";
+import { COMPACT_CHOICES, DEFAULT_COMPACT_AT } from "../lib/compact.js";
+import { DEFAULT_SHORTCUT, shortcutFromKey, shortcutLabel } from "../lib/quick.js";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 
@@ -11,7 +13,19 @@ import { ModelPicker } from "./ModelPicker.jsx";
  * on its own. Then hosted servers -- those that serve open-weight models, then
  * the closed APIs -- each off until it has a key, and each saying where your
  * messages would go. Then any other OpenAI-compatible server by URL. */
-export function Settings({ providers, defaultModel, onDefaultModel, onProvider, onAddCustom, onRemoveCustom }) {
+export function Settings({
+  providers,
+  defaultModel,
+  onDefaultModel,
+  onProvider,
+  onAddCustom,
+  onRemoveCustom,
+  shortcut,
+  shortcutProblem,
+  onShortcut,
+  compactAt,
+  onCompactAt,
+}) {
   const [probe, setProbe] = useState({}); // id -> { state, count, error }
   const [probing, setProbing] = useState(false);
 
@@ -68,7 +82,7 @@ export function Settings({ providers, defaultModel, onDefaultModel, onProvider, 
         </div>
         <p className="hint">
           Open-source servers that run models on your own hardware. Start one, then look for it here.
-          Change an address if yours runs elsewhere -- another machine on your network counts as local.
+          Change an address if yours runs elsewhere — another machine on your network counts as local.
         </p>
         <ul className="servers">
           {local.map((p) => (
@@ -102,7 +116,7 @@ export function Settings({ providers, defaultModel, onDefaultModel, onProvider, 
 
       <HostedList
         title="Hosted open models"
-        hint="The same open-weight models -- Llama, Qwen, DeepSeek, Mistral, Gemma -- on someone else's GPUs. Useful when a model is too big for this machine."
+        hint="The same open-weight models — Llama, Qwen, DeepSeek, Mistral, Gemma — on someone else's GPUs. Useful when a model is too big for this machine."
         entries={HOSTED_OPEN}
         byId={byId}
         onProvider={onProvider}
@@ -137,11 +151,88 @@ export function Settings({ providers, defaultModel, onDefaultModel, onProvider, 
         <AddServer onAdd={onAddCustom} />
       </section>
 
+      <section className="card">
+        <h2>Long chats</h2>
+        <p className="hint">
+          When a chat grows past this, its older messages are summarized by the agent’s model and only the summary
+          and the recent part are sent. The chat still shows everything. You can also compact one any time:
+          right-click it in the sidebar.
+        </p>
+        <select
+          className="compact-at"
+          value={compactAt === null ? "off" : String(compactAt)}
+          onChange={(e) => onCompactAt(e.target.value === "off" ? null : Number(e.target.value))}
+          aria-label="Compact chats after"
+        >
+          {COMPACT_CHOICES.map((n) => (
+            <option key={n} value={n}>
+              After about {n / 1000}k tokens{n === DEFAULT_COMPACT_AT ? " (default)" : ""}
+            </option>
+          ))}
+          <option value="off">Never</option>
+        </select>
+      </section>
+
+      <QuickviewCard shortcut={shortcut} problem={shortcutProblem} onShortcut={onShortcut} />
+
       <p className="fineprint">
         Agents, chats, notes and keys are stored on this computer only, in the app's own storage. Keys are kept in
         plain text there, so anyone with access to your user account could read them.
       </p>
     </div>
+  );
+}
+
+/* The quickview's shortcut: press "Change", then the keys you want. */
+function QuickviewCard({ shortcut, problem, onShortcut }) {
+  const [recording, setRecording] = useState(false);
+  const onKey = (e) => {
+    e.preventDefault();
+    if (e.key === "Escape") return setRecording(false);
+    const next = shortcutFromKey(e);
+    if (!next) return;
+    setRecording(false);
+    onShortcut(next);
+  };
+  return (
+    <section className="card">
+      <h2>Quickview</h2>
+      <p className="hint">
+        A box that comes up over any app. Type @ to pick an agent, write to it, and press Enter: blvrd opens on
+        that chat with your message sent.
+      </p>
+      <div className="shortcut-row">
+        <button
+          type="button"
+          className={`btn shortcut${recording ? " recording" : ""}`}
+          onClick={() => setRecording(true)}
+          onKeyDown={recording ? onKey : undefined}
+          onBlur={() => setRecording(false)}
+          aria-label={recording ? "Press the keys for the shortcut" : `Shortcut: ${shortcutLabel(shortcut)}. Change it`}
+        >
+          {recording ? "Press keys…" : <kbd>{shortcutLabel(shortcut)}</kbd>}
+        </button>
+        {shortcut !== DEFAULT_SHORTCUT ? (
+          <button type="button" className="btn" onClick={() => onShortcut(DEFAULT_SHORTCUT)}>
+            Use {shortcutLabel(DEFAULT_SHORTCUT)}
+          </button>
+        ) : null}
+        {shortcut ? (
+          <button type="button" className="btn" onClick={() => onShortcut(null)}>
+            Turn off
+          </button>
+        ) : null}
+      </div>
+      {problem ? (
+        <p className="hint warn">
+          Couldn’t take {shortcutLabel(shortcut)}: another app may have it. Pick another. ({problem})
+        </p>
+      ) : (
+        <p className="hint">
+          {recording ? "Hold modifiers and press a key. Esc to cancel." : "Any keys with ⌘, ⌥, ⌃ or ⇧, or an F-key. fn can’t be used: macOS keeps it."}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -207,7 +298,7 @@ function AddServer({ onAdd }) {
     try {
       url = new URL(base.trim());
     } catch {
-      return setError("That address is not a URL -- it should look like http://192.168.1.20:8080/v1");
+      return setError("That address is not a URL — it should look like http://192.168.1.20:8080/v1");
     }
     onAdd({ name: name.trim() || url.host, base: url.href.replace(/\/+$/, ""), key: key.trim() });
     setName("");

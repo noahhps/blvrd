@@ -53,7 +53,7 @@ export function ModelPicker({ providers, value, onChange, allowDefault = false, 
           </optgroup>
         ) : null}
         {hosted.length ? (
-          <optgroup label="Hosted -- sends your messages out">
+          <optgroup label="Hosted — sends your messages out">
             {hosted.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}

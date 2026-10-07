@@ -184,7 +184,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
             <span className="label">Instructions</span>
             <textarea
               value={draft.instructions}
-              placeholder="What this agent is for and how it works -- its role, its voice, what it should always or never do. Given to the model as its system prompt."
+              placeholder="What this agent is for and how it works — its role, its voice, what it should always or never do. Given to the model as its system prompt."
               onChange={(e) => set({ instructions: e.target.value })}
             />
           </label>

@@ -10,7 +10,7 @@ export function Gallery({ presets, onNew, onAdd, onCustomize, firstRun }) {
         <h1>{firstRun ? "Start with an agent" : "Add an agent"}</h1>
         <p>
           An agent is a model with a job: its own instructions, the abilities it may use, and
-          one ongoing chat with you. It runs on whichever model you give it -- one on this
+          one ongoing chat with you. It runs on whichever model you give it — one on this
           computer by default.
         </p>
         <button type="button" className="btn primary" onClick={onNew}>

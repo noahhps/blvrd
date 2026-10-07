@@ -24,12 +24,33 @@
         "trafficLightPosition": {
           "x": 18,
           "y": 24
-        }
+        },
+        "label": "main",
+        "dragDropEnabled": false
+      },
+      {
+        "label": "quick",
+        "title": "blvrd",
+        "url": "index.html#quick",
+        "width": 640,
+        "height": 420,
+        "center": true,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "visibleOnAllWorkspaces": true,
+        "shadow": false,
+        "focus": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
