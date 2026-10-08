@@ -9,6 +9,7 @@ import { load, newId, providersOf, save } from "./lib/store.js";
 import { TOOLS } from "./lib/tools.js";
 import { inDesktop } from "./lib/http.js";
 import { listen } from "./lib/desktop.js";
+import { useArcMood } from "./lib/useArcMood.js";
 import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
 import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
@@ -18,7 +19,7 @@ import { Gallery } from "./components/Gallery.jsx";
 import { GroupChat } from "./components/GroupChat.jsx";
 import { GroupEditor } from "./components/GroupEditor.jsx";
 import { Icon } from "./components/Icon.jsx";
-import { Logo } from "./components/Logo.jsx";
+import { Arc } from "./components/Arc.jsx";
 import { Notice } from "./components/Notice.jsx";
 import { RowMenu } from "./components/RowMenu.jsx";
 import { AgentRow, GroupRow } from "./components/SidebarRows.jsx";
@@ -591,6 +592,8 @@ export default function App() {
   }, []);
 
   const busyChat = live?.chatId;
+  // The Arc in the sidebar: what any agent is doing, wherever you are.
+  const mood = useArcMood({ live, approval, chats: state.chats });
   const target = selected ? modelFor(selected) : null;
 
   return (
@@ -639,7 +642,7 @@ export default function App() {
           </button>
         </div>
         <div className="brand">
-          <Logo size={26} />
+          <Arc mood={mood} size={26} />
           <span className="wordmark">blvrd</span>
         </div>
 
@@ -798,6 +801,7 @@ export default function App() {
             firstRun={agents.length === 0}
             onNew={() => setEditor({ initial: null })}
             onAdd={(preset) => addAgent(fromPreset(preset))}
+            mood={mood}
             onCustomize={(preset) => setEditor({ initial: fromPreset(preset) })}
           />
         )}

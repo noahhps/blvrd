@@ -1,0 +1,113 @@
+/* The Arc (components/Arc.jsx): the logo's quarter circle, moving with the
+ * app's mood. Three nested layers, each with its own pivot:
+ *
+ *   .arc-turn   round the square's centre -- thinking's sweep, corner to corner
+ *   .arc-body   from the corner it sits in -- breathing, leaning, bouncing
+ *   .arc-give   the same corner -- one keystroke's give, replayed per key
+ *
+ * The ripples are the curved edge alone, stroked, growing out and fading.
+ * Constant motion is linear; a shape changing on screen eases. */
+
+.arc { overflow: hidden; }
+.arc path { fill: var(--red); }
+.arc .arc-ripple { fill: none; stroke: var(--red); stroke-width: 5; opacity: 0; }
+.arc .arc-trail path { opacity: 0; }
+
+.arc-turn, .arc-trail { transform-box: view-box; transform-origin: 50% 50%; }
+.arc-body, .arc-give, .arc-ripple { transform-box: view-box; transform-origin: 0 100%; }
+
+.arc-body, .arc-turn, .arc path {
+  transition: transform 420ms var(--ease-out), opacity 300ms var(--ease-out), fill 300ms var(--ease-out);
+}
+
+/* idle: a slow breath. */
+.arc[data-mood="idle"] .arc-body { animation: arc-breathe 4s var(--ease-in-out) infinite; }
+@keyframes arc-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+
+/* listening: leaned out of the corner, giving a little with each key. */
+.arc[data-mood="listening"] .arc-body { transform: scale(1.12); }
+.arc[data-mood="listening"] .arc-give { animation: arc-give 220ms var(--ease-out); }
+@keyframes arc-give {
+  0% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+/* thinking: a quarter turn at a time round the square, each step easing
+   in and out like a hand that pauses on the hour; a faint copy trails it. */
+.arc[data-mood="thinking"] .arc-turn { animation: arc-sweep 2.4s var(--ease-in-out) infinite; }
+.arc[data-mood="thinking"] .arc-trail path { opacity: 0.22; }
+.arc[data-mood="thinking"] .arc-trail { animation: arc-trail 2.4s var(--ease-in-out) infinite; }
+@keyframes arc-sweep {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(90deg); }
+  50% { transform: rotate(180deg); }
+  75% { transform: rotate(270deg); }
+  100% { transform: rotate(360deg); }
+}
+/* The trail sits a little behind the turn it rides on. */
+@keyframes arc-trail {
+  0%, 100% { transform: rotate(0deg); }
+  12% { transform: rotate(-38deg); }
+  25% { transform: rotate(0deg); }
+  37% { transform: rotate(-38deg); }
+  50% { transform: rotate(0deg); }
+  62% { transform: rotate(-38deg); }
+  75% { transform: rotate(0deg); }
+  87% { transform: rotate(-38deg); }
+}
+
+/* speaking: a quick pulse, and the edge rippling outward behind it. */
+.arc[data-mood="speaking"] .arc-body { animation: arc-pulse 0.9s var(--ease-in-out) infinite; }
+.arc[data-mood="speaking"] .arc-ripple { animation: arc-ripple 1.4s var(--ease-out) infinite; }
+.arc[data-mood="speaking"] .arc-ripple-late { animation-delay: 0.7s; }
+@keyframes arc-pulse {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.1); }
+}
+@keyframes arc-ripple {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+/* asking: grown to fill more of the square, holding, blinking slowly. */
+.arc[data-mood="asking"] .arc-body { transform: scale(1.18); }
+.arc[data-mood="asking"] .arc-give path { animation: arc-blink 1.6s var(--ease-in-out) infinite; }
+@keyframes arc-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* done: home to the corner with one small bounce. */
+.arc[data-mood="done"] .arc-body { animation: arc-bounce 700ms var(--ease-out); }
+@keyframes arc-bounce {
+  0% { transform: scale(1.16); }
+  45% { transform: scale(0.94); }
+  75% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* error: a short shake, then dimmed. */
+.arc[data-mood="error"] .arc-turn { animation: arc-shake 420ms var(--ease-out); }
+.arc[data-mood="error"] .arc-body path { opacity: 0.45; }
+@keyframes arc-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+
+/* Motion unwanted: each mood is a still pose instead. */
+@media (prefers-reduced-motion: reduce) {
+  .arc *, .arc .arc-give path { animation: none !important; transition: none; }
+  .arc[data-mood="thinking"] .arc-turn { transform: rotate(90deg); }
+  .arc[data-mood="thinking"] .arc-trail path { opacity: 0; }
+  .arc[data-mood="speaking"] .arc-body { transform: scale(1.1); }
+}
+
+/* Where it sits. */
+.gallery-head .arc { display: block; margin-bottom: 22px; border-radius: 16px; }
+.quick-row .arc { border-radius: 5px; }
