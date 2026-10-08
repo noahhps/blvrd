@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doodle Agents</title>
+<style>
+/* Sketches: doodle-person agents for blvrd, after HEYTEA's line figures.
+ * Identity = the action (and its prop, in the agent's colour) + an accessory.
+ * State rides on the action: idle pauses it, working plays it, "needs you"
+ * looks up with a bubble, done pops a spark. Three drawing styles to compare. */
+
+:root {
+  --ground: #ffffff; --side: #f6f6f5; --well: #ecebea; --line: #e4e4e2;
+  --ink: #141414; --dim: #5e5e5b; --faint: #767672; --red: #e5392b;
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --display: "Bricolage Grotesque", var(--font);
+  --eo: cubic-bezier(0.23, 1, 0.32, 1);
+  --eio: cubic-bezier(0.77, 0, 0.175, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #161616; --side: #1c1c1c; --well: #262626; --line: #2f2f2f;
+    --ink: #f2f2f0; --dim: #aaaaa6; --faint: #8e8e8a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #161616; --side: #1c1c1c; --well: #262626; --line: #2f2f2f;
+  --ink: #f2f2f0; --dim: #aaaaa6; --faint: #8e8e8a; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 var(--font); }
+main { max-width: 1120px; margin: 0 auto; padding: 40px 16px 80px; }
+h1 { font: 700 30px/1.1 var(--display); letter-spacing: -0.02em; margin: 0 0 6px; }
+h2 { font: 650 17px/1.2 var(--font); margin: 0 0 4px; }
+p.lede { color: var(--dim); margin: 0 0 22px; max-width: 64ch; }
+section { margin-top: 44px; }
+section > p { color: var(--dim); margin: 0 0 16px; max-width: 70ch; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; position: sticky; top: 0; padding: 10px 0; background: var(--ground); z-index: 2; border-bottom: 1px solid var(--line); }
+.controls span { color: var(--faint); font-size: 12px; margin-right: 4px; }
+.seg { display: inline-flex; background: var(--well); border-radius: 8px; padding: 2px; }
+.seg button { font: 500 13px var(--font); border: 0; background: none; color: var(--dim); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ground); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+.variant { margin-bottom: 30px; }
+.variant .head { display: flex; gap: 10px; align-items: baseline; margin-bottom: 12px; flex-wrap: wrap; }
+.variant .head b { font-weight: 650; }
+.variant .head em { font-style: normal; color: var(--dim); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.card { background: var(--side); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.card .sizes { display: flex; align-items: end; gap: 10px; }
+.card .who { font-size: 13px; }
+.card .who small { color: var(--faint); display: block; font-size: 12px; }
+
+.tile { background: #fff; border-radius: 22%; overflow: hidden; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+.tile svg { display: block; width: 100%; height: 100%; }
+
+.bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.bar { background: var(--side); border-radius: 12px; padding: 10px; }
+.bar .label { font-size: 12px; color: var(--faint); padding: 2px 8px 8px; }
+.row { display: flex; gap: 10px; align-items: center; padding: 7px 8px; border-radius: 8px; }
+.row.sel { background: var(--well); }
+.row .txt { min-width: 0; flex: 1; }
+.row .nm { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+.row .nm small { color: var(--faint); font-weight: 400; font-size: 11px; }
+.row .st { color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.brand .nm { font: 700 15px var(--display); letter-spacing: -0.01em; }
+.sep { height: 1px; background: var(--line); margin: 6px 8px; }
+
+.accs { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+.notes { background: var(--side); border-radius: 12px; padding: 18px 20px; }
+.notes ul { margin: 6px 0 0; padding-left: 18px; }
+.notes li { margin: 6px 0; }
+
+/* ---------- the doodles ---------- */
+.dood { --k: #141414; --tile: #fff; --bodyf: #fff; --headf: #fff; overflow: hidden; }
+.dood .ln { fill: none; stroke: var(--k); stroke-width: var(--w); stroke-linecap: round; stroke-linejoin: round; }
+.dood .halo { fill: none; stroke: var(--tile); stroke-width: calc(var(--w) + 3.5); stroke-linecap: round; stroke-linejoin: round; }
+.dood .thick.ln { stroke-width: calc(var(--w) * 1.5); }
+.dood .thick.halo { stroke-width: calc(var(--w) * 1.5 + 3.5); }
+.dood .pen.ln { stroke-width: calc(var(--w) * 1.2); }
+.dood .bodyp { fill: var(--bodyf); stroke: var(--k); stroke-width: var(--w); stroke-linejoin: round; }
+.dood .headc { fill: var(--headf); stroke: var(--k); stroke-width: var(--w); }
+.dood .pf { fill: var(--c); }
+.dood .pf.flip { fill: color-mix(in srgb, var(--c) 55%, #fff); }
+.dood .pl { fill: none; stroke: var(--k); stroke-width: calc(var(--w) * .6); stroke-linecap: round; stroke-linejoin: round; }
+.dood .ink { fill: var(--k); }
+.dood .acc-line { fill: none; stroke: var(--k); stroke-width: calc(var(--w) * .65); }
+.dood .acc-fill { fill: var(--k); }
+.dood .bub { fill: var(--k); }
+.dood .q { fill: #fff; font: 800 12px/1 var(--font); text-anchor: middle; }
+.dood .spark { fill: var(--c); stroke: var(--k); stroke-width: 1.6; stroke-linejoin: round; }
+
+/* B: ink silhouette, details cut out in white. */
+.v-solid { --bodyf: #141414; --headf: #141414; }
+.v-solid .acc-line { stroke: #fff; }
+.v-solid .acc-fill { stroke: #fff; stroke-width: 2.4; paint-order: stroke; }
+/* C: a wash of the agent's colour on the body. */
+.v-tint { --bodyf: color-mix(in srgb, var(--c) 24%, #fff); }
+
+/* Pivots, in the drawing's own units. */
+.dood .fig, .dood .head, .dood .act, .dood .flip, .dood .ask-pop, .dood .ask-bob, .dood .fx-done, .dood .tap { transform-box: view-box; }
+.dood .head { transform-origin: 50px 42px; transition: transform 350ms var(--eo); }
+.dood .flip { transform-origin: 50px 67px; }
+.dood .ask-pop { transform-origin: 30px 28px; }
+.dood .fx-done { transform-origin: 73px 16px; }
+
+/* What each state shows. */
+.dood .fx-ask, .dood .fx-done, .dood .talk, .dood .pose-act { display: none; }
+.s-working .pose-act, .s-working .talk { display: inline; }
+.s-working .pose-rest { display: none; }
+.s-blocked .fx-ask, .s-done .fx-done { display: inline; }
+.dood .chk { opacity: 0; }
+.dood .c1 { opacity: 1; }
+.dood .scrib { stroke-dasharray: 24; stroke-dashoffset: 0; }
+
+/* working: the action plays */
+.s-working .write { animation: write 1s linear infinite; }
+.s-working .scrib { animation: scrib 2s linear infinite; }
+.s-working.f-caller .head { animation: nod 1.2s var(--eio) infinite; }
+.s-working .t1 { animation: talk 1.2s ease-in-out infinite; }
+.s-working .t2 { animation: talk 1.2s ease-in-out .2s infinite; }
+.s-working .flip { animation: flip 2s var(--eio) infinite; }
+.s-working .tap { animation: tap .8s ease-in-out infinite; }
+.s-working .c1 { animation: chk1 2.4s linear infinite; }
+.s-working .c2 { animation: chk2 2.4s linear infinite; }
+.s-working .c3 { animation: chk3 2.4s linear infinite; }
+
+/* needs you: looks up, a bubble pops and bobs */
+.s-blocked .head { transform: rotate(-7deg); }
+.s-blocked .ask-pop { animation: pop 420ms var(--spring) both; }
+.s-blocked .ask-bob { animation: bob 1.8s ease-in-out .42s infinite; }
+
+/* done: a hop and a spark (looped here so you can see it) */
+.s-done .fig { animation: hop 2.4s var(--eo) infinite; }
+.s-done .fx-done { animation: spark 2.4s var(--eo) infinite; }
+
+@keyframes write { 0% { transform: translate(0,0) } 20% { transform: translate(-2px,1px) } 40% { transform: translate(-4px,-.5px) } 60% { transform: translate(-6px,1px) } 80% { transform: translate(-3px,0) } 100% { transform: translate(0,0) } }
+@keyframes scrib { from { stroke-dashoffset: 24 } to { stroke-dashoffset: 0 } }
+@keyframes nod { 0%,100% { transform: rotate(0) } 50% { transform: rotate(3deg) } }
+@keyframes talk { 0%,100% { opacity: 0 } 35%,65% { opacity: 1 } }
+@keyframes flip { 0%,25% { transform: scaleX(1) } 75%,100% { transform: scaleX(-1) } }
+@keyframes tap { 0%,100% { transform: translate(0,0) } 50% { transform: translate(1.5px,-1.2px) } }
+@keyframes chk1 { 0%,8% { opacity: 0 } 12%,88% { opacity: 1 } 92%,100% { opacity: 0 } }
+@keyframes chk2 { 0%,38% { opacity: 0 } 42%,88% { opacity: 1 } 92%,100% { opacity: 0 } }
+@keyframes chk3 { 0%,68% { opacity: 0 } 72%,88% { opacity: 1 } 92%,100% { opacity: 0 } }
+@keyframes pop { from { transform: scale(0) } to { transform: scale(1) } }
+@keyframes bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-1.5px) } }
+@keyframes hop { 0% { transform: translateY(0) } 8% { transform: translateY(-3.5px) } 18% { transform: translateY(0) } 24% { transform: translateY(-1px) } 30%,100% { transform: translateY(0) } }
+@keyframes spark { 0% { transform: scale(0) rotate(-30deg) } 14% { transform: scale(1.15) rotate(10deg) } 24%,72% { transform: scale(1) rotate(0) } 86%,100% { transform: scale(0) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dood * { animation: none !important; }
+  .s-working .t1, .s-working .t2, .s-working .c2 { opacity: 1; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Doodle agents</h1>
+  <p class="lede">Line-drawn people after HEYTEA's figures, with as few lines as possible: a head, one line for the body, one arm doing the job, and a flat colour prop with no outline. Each agent is told apart by <b>what it's doing</b>, with the prop in its colour, plus an <b>accessory</b>. State uses the same action: idle pauses it, working plays it, "needs you" looks up with a bubble, and done hops and sparks. Small sizes crop to head, shoulders and prop.</p>
+
+  <div class="controls">
+    <span>State</span>
+    <div class="seg" id="state">
+      <button data-v="mixed" aria-pressed="true">Mixed</button>
+      <button data-v="idle">Idle</button>
+      <button data-v="working">Working</button>
+      <button data-v="blocked">Needs you</button>
+      <button data-v="done">Done</button>
+    </div>
+  </div>
+
+  <section>
+    <h2>Three drawing styles</h2>
+    <p>Each agent is shown at 96px full body, then 40px and 24px cropped (chat header and sidebar).</p>
+    <div id="variants"></div>
+  </section>
+
+  <section>
+    <h2>In the sidebar, at real size</h2>
+    <p>The real test: can you tell six agents apart at a glance, including two writers and two callers, and spot the one that needs you?</p>
+    <div class="bars" id="bars"></div>
+  </section>
+
+  <section>
+    <h2>Same action, different accessories</h2>
+    <p>One drawing per action, with accessories swapped on top, so the drawing count stays at actions + accessories rather than actions × accessories.</p>
+    <div class="accs" id="accs"></div>
+  </section>
+</main>
+
+<script>
+const H = (d, extra = "") => `<path class="halo ${extra}" d="${d}"/><path class="ln ${extra}" d="${d}"/>`;
+const BODY = `<path class="bodyp" d="M26 106C26 68 36 46 50 46C64 46 74 68 74 106"/>`;
+/* As few lines as possible: a head, one line for the body, one arm doing
+   the job. The prop is a flat shape in the agent's colour with no outline;
+   hats are flat ink shapes. Lines only where nothing else will do. */
+const ACC = {
+  none: {},
+  glasses: { head: `<g class="acc-line"><circle cx="45" cy="29" r="3.6"/><circle cx="55" cy="29" r="3.6"/></g>` },
+  beanie: { head: `<path class="acc-fill" d="M37.6 26.5C37.6 12.5 62.4 12.5 62.4 26.5Z"/><circle class="acc-fill" cx="50" cy="12.6" r="3.4"/>` },
+  cap: { head: `<path class="acc-fill" d="M38.2 25C38.2 13.8 61.8 13.8 61.8 23L71 24.6C72.6 24.9 72.4 27 70.8 27Z"/>` },
+  beret: { head: `<path class="acc-fill" d="M36.5 22.5C36 13.5 60 11 64.5 20.5C59 25 43 25.5 36.5 22.5Z"/>` },
+  headphones: { head: `${H("M37.5 29C37.5 8 62.5 8 62.5 29")}<rect class="acc-fill" x="34" y="24" width="6.5" height="11" rx="2.5"/><rect class="acc-fill" x="59.5" y="24" width="6.5" height="11" rx="2.5"/>` },
+  scarf: { neck: H("M39.5 45.5Q50 53 60 46L58 59", "thick") },
+};
+
+const FIG = {
+  writer: {
+    role: "writes",
+    lines: 4,
+    under: `<g transform="rotate(-8 50 65)"><rect class="pf" x="37" y="55" width="25" height="20" rx="2.5"/><path class="pl scrib" d="M42 65q1.5-2.2 3 0t3 0t3 0t3 0"/></g>
+      <g class="act write">${H("M65 57C72 64 71 70 63 71L55.5 65.5")}</g>`,
+  },
+  caller: {
+    role: "calls",
+    lines: 3,
+    over: `<g class="pose-rest">${H("M65 57C70 66 64 72 53 70")}<rect class="pf" x="42" y="55" width="11" height="18" rx="2.5" transform="rotate(-8 47.5 64)"/></g>
+      <g class="pose-act">${H("M66 57Q76 61 75.5 52Q75 41 66.5 32.5")}<rect class="pf" x="58.5" y="19.5" width="9" height="17" rx="2.5" transform="rotate(14 63 28)"/>
+        <path class="pl talk t1" d="M33.5 23q-4 5 0 10"/></g>`,
+  },
+  reader: {
+    role: "reads",
+    lines: 3,
+    tilt: 6,
+    under: `<path class="pf" d="M35 55L50 59L65 55V71L50 75L35 71Z"/><path class="pf flip" d="M50 59L65 55V71L50 75Z"/><path class="pl" d="M50 59V75"/>`,
+  },
+  planner: {
+    role: "plans",
+    lines: 4,
+    under: `<rect class="pf" x="51" y="50" width="26" height="24" rx="2.5"/>
+      <path class="ink" d="M51 56V52.5a2.5 2.5 0 0 1 2.5-2.5h21a2.5 2.5 0 0 1 2.5 2.5V56Z"/>
+      <path class="pl chk c1" d="M55.5 63.5l2.2 2.2l4-4.2"/><path class="pl chk c2" d="M64.5 63.5l2.2 2.2l4-4.2"/><path class="pl chk c3" d="M55.5 69.5l2.2 2.2l4-4.2"/>
+      <g class="act tap">${H("M35 58C38 68 45 68 52 63")}</g>`,
+  },
+};
+
+const FX = `<g class="fx-ask"><g class="ask-pop"><g class="ask-bob">
+    <path class="bub" d="M25 10h13a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4h-7l-4.5 4v-4H25a4 4 0 0 1-4-4v-6a4 4 0 0 1 4-4z"/>
+    <text class="q" x="31.5" y="21.6">?</text></g></g></g>
+  <g class="fx-done"><path class="spark" d="M73 9l1.8 5.2l5.2 1.8l-5.2 1.8l-1.8 5.2l-1.8-5.2l-5.2-1.8l5.2-1.8z"/></g>`;
+
+function doodle(agent, { variant = "line", view = "full", size = 96, state = "idle" } = {}) {
+  const f = FIG[agent.fig];
+  const acc = ACC[agent.acc] || {};
+  const vb = view === "bust" ? "17 9 66 66" : "0 0 100 100";
+  // Optical sizing: lines thicken as the drawing shrinks, so 24px still reads.
+  const w = size <= 28 ? 5 : size <= 44 ? 4.2 : 3;
+  return `<div class="tile" style="width:${size}px;height:${size}px"><svg class="dood v-${variant} s-${state} f-${agent.fig}" viewBox="${vb}" style="--c:${agent.c};--w:${w}" aria-hidden="true">
+    <g class="fig">${BODY}${f.under}${acc.neck || ""}<g class="head"><g transform="rotate(${f.tilt || 0} 50 42)"><circle class="headc" cx="50" cy="28" r="12"/>${acc.head || ""}</g></g>${f.over || ""}</g>${FX}</svg></div>`;
+}
+
+const ARC = `<div class="tile" style="width:24px;height:24px;border-radius:5px"><svg viewBox="0 0 100 100"><path d="M15.09 74.24 A38.5 38.5 0 1 1 84.91 74.24 L76.75 70.44 A29.5 29.5 0 1 0 23.25 70.44 Z" fill="#e5392b" stroke="#e5392b" stroke-width="6" stroke-linejoin="round"/></svg></div>`;
+
+const AGENTS = [
+  { name: "Penny", fig: "writer", acc: "glasses", c: "#3a7bdc", status: "Drafting the Q3 recap…", state: "working", when: "now" },
+  { name: "Dial", fig: "caller", acc: "scarf", c: "#ef8a2b", status: "Needs your OK to book 7:30", state: "blocked", when: "2m" },
+  { name: "Page", fig: "reader", acc: "beanie", c: "#33a061", status: "Read 3 papers on sleep", state: "idle", when: "9:04" },
+  { name: "Kit", fig: "planner", acc: "cap", c: "#8758d6", status: "Week planned · 4 moved", state: "done", when: "now" },
+];
+const MORE = [
+  { name: "Juno", fig: "writer", acc: "headphones", c: "#e3b21f", status: "Newsletter is ready", state: "idle", when: "Tue" },
+  { name: "Otto", fig: "caller", acc: "beret", c: "#e5392b", status: "On hold with the airline…", state: "working", when: "now" },
+];
+const VARIANTS = [
+  { id: "line", name: "A · Line", note: "Closest to HEYTEA: outline only, colour only on the prop." },
+  { id: "solid", name: "B · Ink", note: "Filled silhouette with cut-out details. Most legible small, and heavier." },
+  { id: "tint", name: "C · Tint", note: "Outline with a wash of the agent's colour. Friendliest, but colour does more of the work." },
+];
+const ACC_ROW = ["none", "glasses", "beanie", "cap", "beret", "headphones", "scarf"];
+
+let pick = "mixed";
+const stateOf = (a, fallback = "working") => (pick === "mixed" ? a.state || fallback : pick);
+
+function render() {
+  document.getElementById("variants").innerHTML = VARIANTS.map((v) => `
+    <div class="variant">
+      <div class="head"><b>${v.name}</b><em>${v.note}</em></div>
+      <div class="cards">${AGENTS.map((a) => {
+        const s = stateOf(a);
+        return `<div class="card">
+          ${doodle(a, { variant: v.id, size: 96, state: s })}
+          <div class="sizes">${doodle(a, { variant: v.id, view: "bust", size: 40, state: s })}${doodle(a, { variant: v.id, view: "bust", size: 24, state: s })}</div>
+          <div class="who">${a.name}<small>${FIG[a.fig].role} · ${a.acc} · ${FIG[a.fig].lines} lines</small></div>
+        </div>`;
+      }).join("")}</div>
+    </div>`).join("");
+
+  document.getElementById("bars").innerHTML = VARIANTS.map((v) => `
+    <div class="bar">
+      <div class="label">${v.name}</div>
+      <div class="row brand">${ARC}<div class="txt"><div class="nm">blvrd</div></div></div>
+      <div class="sep"></div>
+      ${[...AGENTS, ...MORE].map((a, i) => `
+        <div class="row${i === 0 ? " sel" : ""}">
+          ${doodle(a, { variant: v.id, view: "bust", size: 24, state: a.state })}
+          <div class="txt"><div class="nm">${a.name}<small>${a.when}</small></div><div class="st">${a.status}</div></div>
+        </div>`).join("")}
+    </div>`).join("");
+
+  document.getElementById("accs").innerHTML = ACC_ROW.map((acc) => {
+    const a = { name: "Penny", fig: "writer", acc, c: "#3a7bdc" };
+    const s = stateOf(a, "working");
+    return `<div class="card">${doodle(a, { variant: "line", size: 80, state: s })}
+      <div class="sizes">${doodle(a, { variant: "line", view: "bust", size: 28, state: s })}</div>
+      <div class="who">${acc}</div></div>`;
+  }).join("");
+}
+
+document.getElementById("state").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  pick = b.dataset.v;
+  for (const x of e.currentTarget.children) x.setAttribute("aria-pressed", String(x === b));
+  render();
+});
+render();
+</script>
+</body>
+</html>

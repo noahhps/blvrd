@@ -12,7 +12,14 @@ import { flushSync } from "react-dom";
  *     <button {...handle(id)}>…</button> …</section>)}</div>
  *
  * Each child of `list` is one piece (marked data-sort); `handle(id)` goes on
- * what it is picked up by. The arrow keys move it too -- at once, since a key
+ * what it is picked up by.
+ *
+ * A piece can also be dropped somewhere else (the Notebook's sections onto
+ * the sidebar): `hooks.onMove(id, point)` hears where the pointer is while
+ * dragging, and `hooks.onDrop(id, point)` returning true takes the drop --
+ * the piece then goes home, and nothing in this list moves. `hooks.onEnd()`
+ * hears when any drag ends.
+ The arrow keys move it too -- at once, since a key
  * press wants the result, not a show. */
 
 // How far the pointer travels before a press becomes a drag.
@@ -36,11 +43,11 @@ export function slotFor(boxes, from, centre) {
 
 const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export function useSortable(ids, onOrder) {
+export function useSortable(ids, onOrder, hooks = {}) {
   const list = useRef(null);
   const drag = useRef(null);
-  const latest = useRef({ ids, onOrder });
-  latest.current = { ids, onOrder };
+  const latest = useRef({ ids, onOrder, hooks });
+  latest.current = { ids, onOrder, hooks };
 
   const pieces = () => [...list.current.children].filter((el) => el.dataset.sort);
 
@@ -62,6 +69,7 @@ export function useSortable(ids, onOrder) {
     const d = drag.current;
     drag.current = null;
     if (!d?.started) return;
+    latest.current.hooks.onEnd?.();
     removeEventListener("keydown", d.onKey);
     const el = d.els[d.from];
     const before = el.getBoundingClientRect().top;
@@ -117,10 +125,17 @@ export function useSortable(ids, onOrder) {
       }
       // Straight under the pointer: direct manipulation, never eased.
       d.els[d.from].style.transform = `translateY(${dy}px)`;
+      d.point = { x: e.clientX, y: e.clientY };
+      latest.current.hooks.onMove?.(d.id, d.point);
       const box = d.boxes[d.from];
       makeRoom(d, slotFor(d.boxes, d.from, box.top + box.height / 2 + dy));
     },
-    onPointerUp: () => finish(true),
+    onPointerUp: () => {
+      const d = drag.current;
+      // Taken elsewhere: this list stays as it was.
+      const taken = Boolean(d?.started && d.point && latest.current.hooks.onDrop?.(d.id, d.point));
+      finish(!taken);
+    },
     onPointerCancel: () => finish(false),
     onLostPointerCapture: () => drag.current?.started && finish(true),
     onKeyDown: (e) => {

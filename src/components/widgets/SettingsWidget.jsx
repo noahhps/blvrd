@@ -1,12 +1,22 @@
 import { Icon } from "../Icon.jsx";
 import { WidgetHead } from "./WidgetHead.jsx";
 
-/* The way to what the agents can reach and which models they run on. */
+/* The way to what agents know about the user (the Notebook), what they can
+ * reach, and which models they run on. */
 export function SettingsWidget({ ctx, handle }) {
   const { view, setView, hasDefaultModel } = ctx;
   return (
     <>
       <WidgetHead label="Settings" handle={handle} />
+      <button
+        type="button"
+        className="side-settings"
+        aria-current={view.kind === "notebook" ? "true" : undefined}
+        onClick={() => setView({ kind: "notebook" })}
+      >
+        <Icon name="book" />
+        Notebook
+      </button>
       <button
         type="button"
         className="side-settings"

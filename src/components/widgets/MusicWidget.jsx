@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { useCover } from "../../lib/cover.js";
 import { useNowPlaying } from "../../lib/music.js";
 import { BrandLogo } from "../BrandLogo.jsx";
 import { Icon } from "../Icon.jsx";
@@ -111,8 +112,29 @@ function Cover({ src }) {
   return <img src={src} alt="" data-loaded={loaded ? "" : undefined} onLoad={() => setLoaded(true)} />;
 }
 
+/* The album's cover behind the whole widget, blurred and darkened, so the
+   song is in its colours. A new cover fades in over the one before once it
+   has loaded -- changing songs never flashes blank. `shown` is true once any
+   cover is up, which is when the widget's text turns light. */
+function useBanner(src) {
+  const [layers, setLayers] = useState([]); // the cover before, and the one coming in
+  useEffect(() => {
+    setLayers((now) => (!src ? [] : now.at(-1)?.src === src ? now : [...now.filter((l) => l.loaded).slice(-1), { src, loaded: false }]));
+  }, [src]);
+  const loaded = (layer) => setLayers((now) => now.map((l) => (l.src === layer ? { ...l, loaded: true } : l)));
+  const node = layers.length ? (
+    <span className="music-banner" aria-hidden="true">
+      {layers.map((l) => (
+        <img key={l.src} src={l.src} alt="" data-loaded={l.loaded ? "" : undefined} onLoad={() => loaded(l.src)} onError={() => setLayers((now) => now.filter((x) => x.src !== l.src))} />
+      ))}
+    </span>
+  ) : null;
+  return { node, shown: layers.some((l) => l.loaded) };
+}
+
 /* What Music or Spotify is playing on this Mac (lib/music.js): the cover,
- * the song and who it's by, back, play/pause and skip, and how far in. */
+ * the song and who it's by, back, play/pause and skip, and how far in --
+ * over the album's cover, blurred, as a banner. */
 export function MusicWidget({ handle }) {
   const { now, problem, available, control } = useNowPlaying();
   const playing = now?.state === "playing";
@@ -125,10 +147,13 @@ export function MusicWidget({ handle }) {
   };
   const track = now ? `${now.app}:${now.title}:${now.artist}` : null;
   const from = pressed.current.command === "back" && Date.now() - pressed.current.at < 3000 ? "back" : "next";
+  const cover = useCover(now);
+  const banner = useBanner(cover);
   return (
     <>
       <WidgetHead label="Now playing" handle={handle} />
-      <div className="widget widget-music" data-state={now?.state}>
+      <div className="widget widget-music" data-state={now?.state} data-banner={banner.shown ? "" : undefined}>
+        {banner.node}
         {!available ? (
           <p className="side-empty">Music and Spotify show here in the desktop app.</p>
         ) : problem && !now ? (
@@ -142,7 +167,7 @@ export function MusicWidget({ handle }) {
                 @starting-style) rather than swapping in place. */}
             <span key={track} className="music-track" data-from={from}>
               <span className="music-art">
-                {now.artwork ? <Cover src={now.artwork} /> : <BrandLogo id={now.app === "spotify" ? "spotify" : "applemusic"} size={22} tile={false} />}
+                {cover ? <Cover key={cover} src={cover} /> : <BrandLogo id={now.app === "spotify" ? "spotify" : "applemusic"} size={22} tile={false} />}
               </span>
               <span className="music-text">
                 <span className="music-title" title={now.title}>

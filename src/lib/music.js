@@ -30,6 +30,13 @@ export function pickPlayer(players = []) {
   return live.find((p) => p.state === "playing") || live.find((p) => p.state === "paused") || null;
 }
 
+/** What's playing right now, once, or null (also outside the desktop app). */
+export async function readNowPlaying() {
+  if (!inDesktop()) return null;
+  const players = await script("music_now");
+  return pickPlayer(Array.isArray(players) ? players : []);
+}
+
 /** { now, problem, available, control(command) } -- read every few seconds
  *  while the window is in view, and at once when it comes back. */
 export function useNowPlaying() {

@@ -11,12 +11,19 @@ import { TOOLS } from "./lib/tools.js";
 import { inDesktop } from "./lib/http.js";
 import { listen } from "./lib/desktop.js";
 import { searchOf } from "./lib/search.js";
+import { NOTEBOOK_TOOLS, notebookBrief } from "./lib/notebookTools.js";
+import { notebook, provideLive, ready as notebookReady } from "./lib/notebook.js";
+import { agentsRows, calendarRows, groupsRows, musicRows, setupRows } from "./lib/liveRows.js";
+import { eventsAhead } from "./lib/useMonthEvents.js";
+import { readNowPlaying } from "./lib/music.js";
 import { hostOf, isLocalUrl } from "./lib/catalog.js";
 import { useArcMood } from "./lib/useArcMood.js";
 import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
 import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
 import { CalendarView } from "./components/CalendarView.jsx";
+import { NotebookView } from "./components/NotebookView.jsx";
+import { DragChip } from "./components/DragChip.jsx";
 import { Chat } from "./components/Chat.jsx";
 import { Connectors } from "./components/Connectors.jsx";
 import { Gallery } from "./components/Gallery.jsx";
@@ -125,6 +132,24 @@ export default function App() {
   });
 
   const providers = useMemo(() => providersOf(state), [state.providers, state.custom]);
+
+  // The sidebar now follows the Notebook: once, it takes the order the
+  // sidebar had (state.widgets) and puts every widget's section in it.
+  useEffect(() => {
+    notebookReady.then(() => notebook.connectSidebar(stateRef.current.widgets));
+  }, []);
+
+  // The Notebook's live sections (lib/notebook.js LIVE): the sidebar's
+  // widgets as rows an agent can read. Each reads the latest state when asked.
+  provideLive("agents", () => agentsRows(byRecent(stateRef.current.agents, stateRef.current.chats), (a) => taglineOf(a, PRESETS)));
+  provideLive("groups", () =>
+    groupsRows(byRecent(stateRef.current.groups || [], stateRef.current.chats), (id) => stateRef.current.agents.find((a) => a.id === id)?.name || "someone no longer here"),
+  );
+  provideLive("setup", () =>
+    setupRows({ defaultModel: stateRef.current.defaultModel, providers: providersOf(stateRef.current), connectors: stateRef.current.connectors, search: searchOf(stateRef.current) }),
+  );
+  provideLive("calendar", async () => calendarRows(await eventsAhead(stateRef.current.connectors, patchConnectors)));
+  provideLive("music", async () => musicRows(await readNowPlaying()));
   const agents = useMemo(() => byRecent(state.agents, state.chats), [state.agents, state.chats]);
   const groups = useMemo(() => byRecent(state.groups || [], state.chats), [state.groups, state.chats]);
   const selected = view.kind === "agent" ? agents.find((a) => a.id === view.id) : null;
@@ -157,7 +182,7 @@ export default function App() {
   // Every tool an agent could be given: the built-in ones and every connected
   // account's and server's.
   const available = useMemo(
-    () => [...TOOLS, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
+    () => [...TOOLS, ...NOTEBOOK_TOOLS, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.connectors],
   );
@@ -249,6 +274,10 @@ export default function App() {
   };
 
   const notebookOf = (agentId) => ({
+    // The Notebook (lib/notebookTools.js): who is writing, and how to name
+    // another agent that wrote before them.
+    agentId,
+    nameOf: (id) => stateRef.current.agents.find((a) => a.id === id)?.name || "an assistant no longer here",
     // Read when the tool runs, from the latest state, so a note saved earlier
     // in the same turn is already there.
     notes: () => stateRef.current.notes[agentId] || [],
@@ -281,7 +310,7 @@ export default function App() {
         signal: controller.signal,
         notebook: notebookOf(agent.id),
         thinking,
-        context,
+        context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
         available,
         approve: askFirst(chatId, agent),
         emit: (event) => {
@@ -627,6 +656,26 @@ export default function App() {
   const mood = useArcMood({ live, approval, chats: state.chats });
   const target = selected ? modelFor(selected) : null;
 
+  // What every widget draws from -- in the sidebar and on the Notebook page.
+  const widgetCtx = {
+    view,
+    setView,
+    connectors: state.connectors,
+    patchConnectors,
+    agents,
+    groups,
+    chats: state.chats,
+    agentsById,
+    busyChat,
+    live,
+    busy: Boolean(live),
+    rowMenu,
+    removing,
+    act,
+    newGroup: () => setGroupEditor({}),
+    hasDefaultModel: Boolean(state.defaultModel?.model),
+  };
+
   return (
     <div
       className="app"
@@ -681,28 +730,7 @@ export default function App() {
             order the reader dragged them into; they scroll as one column
             under the title bar. */}
         <div className="side-scroll">
-          <Widgets
-            ids={state.widgets}
-            onOrder={(widgets) => update(() => ({ widgets }))}
-            ctx={{
-              view,
-              setView,
-              connectors: state.connectors,
-              patchConnectors,
-              agents,
-              groups,
-              chats: state.chats,
-              agentsById,
-              busyChat,
-              live,
-              busy: Boolean(live),
-              rowMenu,
-              removing,
-              act,
-              newGroup: () => setGroupEditor({}),
-              hasDefaultModel: Boolean(state.defaultModel?.model),
-            }}
-          />
+          <Widgets ctx={widgetCtx} />
         </div>
       </aside>
 
@@ -714,6 +742,8 @@ export default function App() {
             patchConnectors={patchConnectors}
             onConnect={() => setView({ kind: "connectors" })}
           />
+        ) : view.kind === "notebook" ? (
+          <NotebookView focus={view} notify={notify} widgetCtx={widgetCtx} nameOf={(id) => agents.find((a) => a.id === id)?.name || "an agent no longer here"} />
         ) : view.kind === "connectors" ? (
           <Connectors connectors={state.connectors} patchConnectors={patchConnectors} getConnectors={getConnectors} />
         ) : view.kind === "settings" ? (
@@ -782,6 +812,7 @@ export default function App() {
         )}
       </main>
 
+      <DragChip ctx={widgetCtx} />
       <Notice notice={notice} onDone={() => setNotice(null)} />
       {rowMenu ? <RowMenu at={rowMenu.at} items={rowMenuItems()} onClose={closeRowMenu} /> : null}
       {groupEditor ? (

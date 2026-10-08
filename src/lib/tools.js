@@ -128,7 +128,8 @@ export const TOOL_BY_NAME = new Map(TOOLS.map((tool) => [tool.name, tool]));
 export function toolsFor(agent, available = TOOLS) {
   if (!agent || agent.tools == null) return available;
   const allowed = new Set(agent.tools);
-  return available.filter((tool) => allowed.has(tool.name) || (tool.group && allowed.has(`group:${tool.group}`)));
+  // `always`: every agent has it whatever its list says (the Notebook).
+  return available.filter((tool) => tool.always || allowed.has(tool.name) || (tool.group && allowed.has(`group:${tool.group}`)));
 }
 
 /* A long page cut to `limit` characters: the first three quarters of the

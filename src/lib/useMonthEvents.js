@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { calendarSources, dayKey, monthEvents } from "./calendar.js";
+import { onCalendarChange } from "./calendarBus.js";
 import { allMonths, pruneMonths, putMonth } from "./calendarDb.js";
 
 /* A month's events from every connected calendar, for the sidebar's widget
@@ -22,6 +23,13 @@ const cache = new Map(); // key -> { at, data } | { at?, data?, promise }
 // What the database holds, read once; nothing is fetched before it is in.
 const ready = allMonths().then((rows) => {
   for (const { key, at, data } of rows) if (!cache.has(key) && data?.events) cache.set(key, { at, data });
+});
+
+// Something was added: every kept month is out of date. Its events keep
+// showing while the months on screen are asked for again (each hook hears
+// this too, below).
+onCalendarChange(() => {
+  for (const [key, hit] of cache) if (hit.data) cache.set(key, { ...hit, at: 0 });
 });
 
 const keyOf = (sources, { year, month }) => `${sources.join(",")}|${year}-${month}`;
@@ -53,6 +61,21 @@ async function fetchMonth(key, connectors, patchConnectors, month, force) {
   return promise;
 }
 
+/** Every event from now to `days` ahead, through the same months the widget
+ *  keeps (so an agent reading the calendar asks the calendars no more than
+ *  the widget would). Empty when no calendar is connected. */
+export async function eventsAhead(connectors, patchConnectors, days = 7) {
+  const sources = calendarSources(connectors);
+  if (!sources.length) return [];
+  const now = new Date();
+  const end = new Date(now.getTime() + days * 86400000);
+  const months = [{ year: now.getFullYear(), month: now.getMonth() }];
+  if (end.getMonth() !== now.getMonth()) months.push({ year: end.getFullYear(), month: end.getMonth() });
+  const lists = await Promise.all(months.map((m) => fetchMonth(keyOf(sources, m), connectors, patchConnectors, m, false).then((d) => d.events).catch(() => [])));
+  const seen = new Set();
+  return lists.flat().filter((e) => !seen.has(e.id) && seen.add(e.id));
+}
+
 /** { events, problems, loading, sources } for `month` ({ year, month }). */
 export function useMonthEvents(connectors, patchConnectors, month) {
   const sources = calendarSources(connectors);
@@ -82,10 +105,12 @@ export function useMonthEvents(connectors, patchConnectors, month) {
     const onFocus = () => load(false);
     const timer = setInterval(() => load(false), CHECK_MS);
     window.addEventListener("focus", onFocus);
+    const offChange = onCalendarChange(() => load(true));
     return () => {
       live = false;
       clearInterval(timer);
       window.removeEventListener("focus", onFocus);
+      offChange();
     };
     // `key` names the sources and the month; the rest is read through `latest`.
     // eslint-disable-next-line react-hooks/exhaustive-deps

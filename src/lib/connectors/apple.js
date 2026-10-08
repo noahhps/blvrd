@@ -5,6 +5,7 @@
  * code. Whatever accounts Calendar and Reminders are signed in to (iCloud,
  * Google, Exchange) come with them. macOS asks once before blvrd may use each. */
 
+import { calendarChanged } from "../calendarBus.js";
 import { invoke } from "../desktop.js";
 
 const obj = (properties, required = []) => ({ type: "object", properties, required });
@@ -53,6 +54,7 @@ export function appleTools(config) {
         summary: (a) => `Add “${a.title}” to ${a.calendar || "Calendar"}, ${when(a.start)}`,
         run: async (a) => {
           const r = await apple("calendar_add", a);
+          calendarChanged();
           return `Added “${r.added}” to ${r.calendar}.`;
         },
       },

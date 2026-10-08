@@ -10,6 +10,7 @@
  * Reading never asks. Anything that sends, creates or changes something is a
  * `confirm` tool, so the reader approves it in the chat first. */
 
+import { calendarChanged } from "../calendarBus.js";
 import { failure, httpFetch } from "../http.js";
 import { isStale, signIn, tokenRequest } from "../oauth.js";
 import { htmlToText } from "../tools.js";
@@ -281,6 +282,7 @@ export function googleTools(config, saveTokens) {
               attendees: a.attendees ? a.attendees.split(",").map((e) => ({ email: e.trim() })).filter((x) => x.email) : undefined,
             },
           });
+          calendarChanged();
           return `Added: ${event.htmlLink}`;
         },
       },

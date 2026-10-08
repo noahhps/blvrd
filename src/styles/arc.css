@@ -14,14 +14,27 @@
    drawn in the light theme's ink whatever the theme. */
 .arc { overflow: hidden; flex: none; --ink: #141414; }
 .arc path { fill: none; stroke-linecap: butt; }
-/* The band, filled and stroked in one colour: the round joins soften its
-   corners and nothing else, so the feet stay flat (Arc.jsx). */
-.arc .arc-fill { fill: var(--arc, var(--red)); stroke: var(--arc, var(--red)); stroke-width: 6; stroke-linejoin: round; }
-.arc .arc-ripple { stroke: var(--arc, var(--red)); stroke-width: 4; opacity: 0; }
+/* The band: the arch's line drawn 12 wide with round ends (Arc.jsx). */
+.arc .arc-fill { fill: none; stroke: var(--arc-paint, var(--arc, var(--red))); stroke-width: 12; stroke-linecap: round; }
+.arc .arc-ripple { stroke: var(--arc-paint, var(--arc, var(--red))); stroke-width: 4; opacity: 0; }
+
+/* The gradient (Arc.jsx), made from the one colour: lighter and turned a
+   little warmer at the top left, deeper and a touch richer at the feet. For
+   the brand red that's a sunrise -- coral into deep red; every agent's
+   colour gets its own blend the same way. Where the colour maths isn't
+   there, both ends are the plain colour, so it's never drawn wrong. */
+.arc .arc-stop-from, .arc .arc-stop-to { stop-color: var(--arc, var(--red)); }
+@supports (color: oklch(from red l c h)) {
+  /* The light end is well lighter than the colour, for contrast along the
+     arch, but never past 0.86 -- a yellow or orange would otherwise fade
+     into the white tile at its top. */
+  .arc .arc-stop-from { stop-color: oklch(from var(--arc, var(--red)) min(l + 0.17, 0.86) c calc(h + 32)); }
+  .arc .arc-stop-to { stop-color: oklch(from var(--arc, var(--red)) calc(l - 0.06) calc(c + 0.02) calc(h - 6)); }
+}
 .arc .arc-light {
   stroke: #fff;
   stroke-linecap: round;
-  stroke-width: 7;
+  stroke-width: 5.5;
   stroke-dasharray: 16 84;
   stroke-dashoffset: 16;
   opacity: 0;

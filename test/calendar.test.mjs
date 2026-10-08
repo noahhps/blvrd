@@ -35,3 +35,22 @@ test("months shift across years", () => {
   assert.deepEqual(shiftMonth({ year: 2026, month: 11 }, 1), { year: 2027, month: 0 });
   assert.deepEqual(shiftMonth({ year: 2026, month: 0 }, -1), { year: 2025, month: 11 });
 });
+
+import { calendarChanged, onCalendarChange } from "../src/lib/calendarBus.js";
+
+test("an added event is heard by every listener, until it stops listening", () => {
+  let a = 0;
+  let b = 0;
+  const offA = onCalendarChange(() => (a += 1));
+  const offB = onCalendarChange(() => {
+    b += 1;
+    throw new Error("one listener failing");
+  });
+  calendarChanged();
+  offA();
+  calendarChanged();
+  offB();
+  calendarChanged();
+  assert.equal(a, 1);
+  assert.equal(b, 2);
+});
