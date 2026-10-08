@@ -1,12 +1,15 @@
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { Arc } from "./Arc.jsx";
 import { Icon } from "./Icon.jsx";
 
 /* Adding agents: the ready-made ones, and a blank one to make your own. "Add"
  * takes a preset as it is; the pencil opens it in the editor first. */
-export function Gallery({ presets, onNew, onAdd, onCustomize, firstRun }) {
+export function Gallery({ presets, onNew, onAdd, onCustomize, firstRun, mood = "idle" }) {
   return (
     <div className="gallery">
       <header className="gallery-head">
+        {/* The first thing you meet: the Arc, large, breathing. */}
+        {firstRun ? <Arc mood={mood} size={72} label="blvrd" /> : null}
         <h1>{firstRun ? "Start with an agent" : "Add an agent"}</h1>
         <p>
           An agent is a model with a job: its own instructions, the abilities it may use, and

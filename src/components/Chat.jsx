@@ -200,7 +200,7 @@ export function LiveTurn({ live, agent, speaker = false, after = null }) {
     }
     out.push(
       <div className="turn assistant" key={i}>
-        <AgentAvatar look={agent.look} name={agent.name} size={26} spinning={i === lastText && i === parts.length - 1} />
+        <AgentAvatar look={agent.look} name={agent.name} size={26} mood={i === lastText && i === parts.length - 1 ? "speaking" : null} />
         <div className="answer">
           {speaker && !seenText ? <span className="speaker">{agent.name}</span> : null}
           <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(part.text) }} />

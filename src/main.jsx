@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import { Quick } from "./components/Quick.jsx";
 import "./styles/app.css";
 import "./styles/orbit.css";
+import "./styles/arc.css";
 
 // The same page is two windows: the app, and the quickview (lib/quick.js).
 const quick = location.hash === "#quick";
