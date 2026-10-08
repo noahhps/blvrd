@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { HOSTED_CLOSED, HOSTED_OPEN, hostOf, isLocalUrl } from "../lib/catalog.js";
 import { forget, modelsOf } from "../lib/models.js";
+import { findBase } from "../lib/serverBase.js";
 import { COMPACT_CHOICES, DEFAULT_COMPACT_AT } from "../lib/compact.js";
 import { FREE, PAID } from "../lib/search.js";
 import { DEFAULT_SHORTCUT, shortcutFromKey, shortcutLabel } from "../lib/quick.js";
@@ -382,30 +383,32 @@ function AddServer({ onAdd }) {
   const [base, setBase] = useState("");
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
 
-  const add = (e) => {
+  // Added only where it answers (lib/serverBase.js): http or https, with or
+  // without /v1, whichever the server actually serves.
+  const add = async (e) => {
     e.preventDefault();
-    let url;
-    try {
-      url = new URL(base.trim());
-    } catch {
-      return setError("That address is not a URL — it should look like http://192.168.1.20:8080/v1");
-    }
-    onAdd({ name: name.trim() || url.host, base: url.href.replace(/\/+$/, ""), key: key.trim() });
+    if (checking) return;
+    setChecking(true);
+    setError("");
+    const found = await findBase(base, key.trim());
+    setChecking(false);
+    if (found.problem) return setError(found.problem);
+    onAdd({ name: name.trim() || new URL(found.base).host, base: found.base, key: key.trim() });
     setName("");
     setBase("");
     setKey("");
-    setError("");
   };
 
   return (
     <form className="add-server" onSubmit={add}>
       <input type="text" value={name} placeholder="Name" aria-label="Name" onChange={(e) => setName(e.target.value)} />
-      <input type="text" value={base} placeholder="http://host:port/v1" aria-label="Address" spellCheck={false} onChange={(e) => setBase(e.target.value)} />
+      <input type="text" value={base} placeholder="192.168.1.20:8080" aria-label="Address" spellCheck={false} onChange={(e) => setBase(e.target.value)} />
       <input type="password" value={key} placeholder="Key (if it needs one)" aria-label="Key" autoComplete="off" onChange={(e) => setKey(e.target.value)} />
-      <button type="submit" className="btn" disabled={!base.trim()}>
+      <button type="submit" className="btn" disabled={!base.trim() || checking}>
         <Icon name="plus" />
-        Add
+        {checking ? "Checking…" : "Add"}
       </button>
       {error ? <p className="error-line">{error}</p> : null}
     </form>

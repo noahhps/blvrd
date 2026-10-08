@@ -1,5 +1,6 @@
 import {
   siApple,
+  siApplemusic,
   siAtlassian,
   siGithub,
   siGmail,
@@ -13,6 +14,7 @@ import {
   siModelcontextprotocol,
   siNotion,
   siSentry,
+  siSpotify,
   siStripe,
   siSupabase,
   siVercel,
@@ -46,6 +48,8 @@ const BRANDS = {
   supabase: siSupabase,
   vercel: siVercel,
   huggingface: siHuggingface,
+  applemusic: siApplemusic,
+  spotify: siSpotify,
 };
 
 function dark(hex) {

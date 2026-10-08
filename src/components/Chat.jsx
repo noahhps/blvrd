@@ -6,6 +6,7 @@ import { getToolsOpen, setToolsOpen } from "../lib/prefs.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { timeline } from "../lib/timeline.js";
 import { TOOLS, toolsFor } from "../lib/tools.js";
+import { launchFrom, useLaunch } from "../lib/launch.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Approval } from "./Approval.jsx";
@@ -52,6 +53,8 @@ export function Chat({
     const el = thread.current;
     if (el && stuck.current) el.scrollTop = el.scrollHeight;
   }, [messages.length, live?.text, live?.parts?.length]);
+  // After the scroll above, so the sent bubble is measured where it rests.
+  useLaunch(thread, messages.length);
 
   useEffect(() => {
     stuck.current = true;
@@ -59,6 +62,7 @@ export function Chat({
 
   const send = (text, files, thinking) => {
     stuck.current = true;
+    launchFrom(area.current?.querySelector(".composer textarea"));
     onSend(text, files, thinking);
   };
 

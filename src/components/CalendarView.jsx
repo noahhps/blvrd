@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { byDay, fromDayKey, monthOf, shiftMonth } from "../lib/calendar.js";
 import { useMonthEvents, useToday } from "../lib/useMonthEvents.js";
@@ -9,11 +9,14 @@ const timeOf = (iso) => new Date(iso).toLocaleTimeString(undefined, { hour: "num
 
 /* The calendar screen, opened from the sidebar's widget: a month of every
  * connected calendar, red by how full each day is, and the picked day's
- * events beneath. */
-export function CalendarView({ connectors, patchConnectors, onConnect }) {
+ * events beneath. `focus` is the view that opened it: { day } when a day in
+ * the widget was clicked, so the screen opens on that day -- and moves to
+ * another clicked while it is already open. */
+export function CalendarView({ connectors, patchConnectors, onConnect, focus = null }) {
   const today = useToday();
-  const [month, setMonth] = useState(() => monthOf(fromDayKey(today)));
-  const [picked, setPicked] = useState(today);
+  const start = focus?.day || today;
+  const [month, setMonth] = useState(() => monthOf(fromDayKey(start)));
+  const [picked, setPicked] = useState(start);
   const { events, problems, loading, sources } = useMonthEvents(connectors, patchConnectors, month);
   const days = useMemo(() => byDay(events), [events]);
 
@@ -34,6 +37,12 @@ export function CalendarView({ connectors, patchConnectors, onConnect }) {
     const d = monthOf(fromDayKey(key));
     if (d.year !== month.year || d.month !== month.month) setMonth(d);
   };
+  // A day clicked in the widget while this screen is already open.
+  useEffect(() => {
+    if (focus?.day) pick(focus.day);
+    // Each click is a new view object, so the same day clicked again still lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus]);
 
   const dayEvents = days[picked] || [];
   const pickedName = fromDayKey(picked).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });

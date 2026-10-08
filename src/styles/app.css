@@ -306,11 +306,9 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .logo { display: block; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
 .wordmark { font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: -0.02em; }
 
-.side-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 6px 8px; }
 .side-empty { color: var(--dim); padding: 8px; margin: 0; }
-/* Agents, then groups, scroll as one between the title bar and the foot. It
-   reaches the rail's edges, so the selected contact's red mark (at -10px)
-   isn't clipped. */
+/* The widgets scroll as one column under the title bar. It reaches the
+   rail's edges, so the selected contact's red mark (at -10px) isn't clipped. */
 .side-scroll {
   flex: 1;
   min-height: 0;
@@ -319,7 +317,6 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   padding: 0 10px 8px;
 }
 .contacts { list-style: none; margin: 0; padding: 0; }
-.side-head-groups { margin-top: 18px; }
 .contact {
   position: relative;
   width: 100%;
@@ -365,15 +362,58 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   cursor: pointer;
 }
 .side-settings:hover, .side-settings[aria-current="true"] { background: var(--well); }
-/* Connectors, then Models, pinned together to the rail's foot. */
-.side > .side-settings:not(.side-settings-last) { margin-top: 6px; }
 .side-settings .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-left: auto; }
 
 /* -- widgets ------------------------------------------------------------------- */
 
-/* Glanceable panes at the top of the rail (components/widgets), each a way
-   into a screen of its own; they stay put while the lists below scroll. */
-.widgets { flex: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+/* The rail's parts (components/widgets), one column in the reader's order.
+   lib/sortable.js measures the gap, so the pieces it slides aside land exactly
+   where the new order puts them. */
+.widgets { display: flex; flex-direction: column; gap: 16px; }
+.widget-slot { position: relative; display: flex; flex-direction: column; }
+.widget-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; padding: 0 4px 4px 0; }
+/* A widget's name is what it is picked up by. */
+.widget-grip {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .widget-grip:hover { background: var(--well); }
+}
+.widget-grip:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+/* Moving one. The others slide aside on a transition, so a pointer that
+   changes its mind turns them around from where they are; the one in hand
+   has none -- it is wherever the pointer is. It lifts off the column a
+   little (on its own layer, so the lift eases while the slot tracks). */
+.widget-slot { transition: transform 200ms var(--ease-out); }
+.widget-slot[data-dragging] { z-index: 3; transition: none; }
+.widgets[data-sorting], .widgets[data-sorting] * { cursor: grabbing; }
+.widgets[data-sorting] .widget-slot:not([data-dragging]) { pointer-events: none; }
+.widget-lift {
+  border-radius: var(--r-card);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+.widget-slot[data-dragging] .widget-lift {
+  transform: scale(1.02);
+  background: var(--side);
+  box-shadow: var(--shadow), 0 0 0 1px var(--line);
+}
+@media (prefers-reduced-motion: reduce) {
+  .widget-slot { transition: none; }
+  .widget-lift { transition: box-shadow 160ms ease, background-color 160ms ease; }
+  .widget-slot[data-dragging] .widget-lift { transform: none; }
+}
+
 .widget {
   display: block;
   width: 100%;
@@ -386,7 +426,33 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 }
 .widget:hover { background: var(--well); }
 .widget[aria-current="true"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
-.widget-head { display: flex; align-items: baseline; padding: 0 2px 6px; }
+
+/* What's playing (components/widgets/MusicWidget): the cover, the song and
+   who it's by, and back, play/pause and skip. */
+.widget-music { display: flex; align-items: center; gap: 10px; padding: 6px 8px; cursor: default; }
+.widget-music:hover { background: none; }
+.widget-music > .side-empty { padding: 2px 0; }
+.music-art {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--well);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.music-art img { width: 100%; height: 100%; object-fit: cover; }
+.music-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.music-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.music-artist { color: var(--dim); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.widget-music[data-state="paused"] .music-text { opacity: 0.6; }
+.music-controls { flex: none; display: flex; gap: 4px; }
+.round.music-button { width: 28px; height: 28px; background: var(--well); color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .round.music-button:hover { background: var(--line); }
+}
 
 /* A month (components/MonthGrid): numbers in the stylesheet's grey, and each
    day washed in the brand red by how many events it holds -- --heat, set per
@@ -420,6 +486,15 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .month-day[data-today] { color: var(--ink); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--ink); }
 .month-day[data-today][data-strong] { color: #fff; }
 .month[data-size="small"] .month-day[data-out] { visibility: hidden; }
+/* The widget's days are each a way to that day on the calendar screen. */
+.widget-calendar { cursor: default; }
+.widget-calendar:hover { background: none; }
+.month[data-size="small"] button.month-day { cursor: pointer; }
+@media (hover: hover) and (pointer: fine) {
+  .month[data-size="small"] button.month-day:not([style]):hover { background: var(--well); }
+}
+.month[data-size="small"] .month-day[data-selected]:not([data-today]) { box-shadow: inset 0 0 0 1.5px var(--line); }
+.month-day:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 
 .month[data-size="large"] { gap: 4px; }
 .month[data-size="large"] .month-row { gap: 4px; }
@@ -668,20 +743,13 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* A message just sent rises out of the composer below it, so it reads as the
-   same words moving up into the thread rather than appearing in place. Sent
-   tens of times a day, so it stays short and small. */
-.turn.user[data-sent] {
-  transform-origin: bottom right;
-  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
-}
-@starting-style {
-  .turn.user[data-sent] { opacity: 0; transform: translateY(10px) scale(0.98); }
-}
+/* A message just sent travels from the composer into the thread
+   (lib/launch.js). With motion turned down it doesn't travel; it fades in
+   where it lands. */
 @media (prefers-reduced-motion: reduce) {
   .turn.user[data-sent] { transition: opacity 150ms ease; }
   @starting-style {
-    .turn.user[data-sent] { transform: none; }
+    .turn.user[data-sent] { opacity: 0; }
   }
 }
 .turn.assistant { display: flex; gap: 12px; align-items: flex-start; }

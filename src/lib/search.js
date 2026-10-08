@@ -14,6 +14,7 @@
  *   search(query, { limit, settings, signal }) -> { results: [{ title, url, snippet }], via }
  */
 
+import { isStop } from "./abort.js";
 import { failure, httpFetch } from "./http.js";
 
 /* What Settings stores under `search`. */
@@ -167,7 +168,6 @@ const tidy = (results, limit) =>
       return { title: String(r.title || "").trim() || r.url, url: r.url, snippet: snippet.length > 500 ? `${snippet.slice(0, 500)}…` : snippet };
     });
 
-const aborted = (problem) => problem?.name === "AbortError";
 
 /* Each free vendor in turn from the cursor, until one answers. */
 async function searchFree(q, limit, signal) {
@@ -180,7 +180,7 @@ async function searchFree(q, limit, signal) {
       const results = await FREE[id].search(q, limit, signal);
       return { results, via: FREE[id].name };
     } catch (problem) {
-      if (aborted(problem)) throw problem;
+      if (isStop(problem, signal)) throw problem;
       problems.push(problem.message);
     }
   }
@@ -198,7 +198,7 @@ async function searchWith(settings, q, limit, signal) {
   try {
     return { results: await chosen.search(q, limit, signal, secret), via: chosen.name };
   } catch (problem) {
-    if (aborted(problem) || !settings.fallback) throw problem;
+    if (isStop(problem, signal) || !settings.fallback) throw problem;
     const free = await searchFree(q, limit, signal);
     return { ...free, note: `${chosen.name} failed (${problem.message}), so the free tier answered.` };
   }

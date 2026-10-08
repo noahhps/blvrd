@@ -2,8 +2,8 @@ import { WEEKDAYS, WEEKDAY_NAMES, heatOf, monthGrid } from "../lib/calendar.js";
 
 /* A month, Monday first, each day washed in the brand's red by how many events
  * it holds (lib/calendar.js heatOf): the more, the stronger. Small in the
- * sidebar's widget, where the whole month is one button; large on the
- * calendar screen, where each day can be picked. */
+ * sidebar's widget, large on the calendar screen; with `onPick`, each day is
+ * a button. */
 export function MonthGrid({ month, days, today, selected = null, onPick = null, size = "small" }) {
   const weeks = monthGrid(month);
   return (
