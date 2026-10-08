@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { taglineOf } from "../lib/agents.js";
+import { colourOf, taglineOf } from "../lib/agents.js";
 import { hostOf, isLocalUrl } from "../lib/catalog.js";
 import { getToolsOpen, setToolsOpen } from "../lib/prefs.js";
 import { renderMarkdown } from "../lib/markdown.js";
@@ -85,7 +85,7 @@ export function Chat({
   return (
     <div className="chat">
       <header className="chat-head" data-tauri-drag-region>
-        <AgentAvatar look={agent.look} name={agent.name} size={30} spinning={busy} />
+        <AgentAvatar look={agent.look} name={agent.name} size={45} spinning={busy} follow poke />
         <span className="chat-who">
           <span className="chat-name">{agent.name}</span>
           <span className="chat-tagline">{taglineOf(agent, presets)}</span>
@@ -143,7 +143,7 @@ export function Chat({
         <div className="thread" ref={thread} onScroll={onScroll}>
           {messages.length === 0 && !live ? (
             <div className="greeting">
-              <AgentAvatar look={agent.look} name={agent.name} size={64} intro />
+              <AgentAvatar look={agent.look} name={agent.name} size={96} intro follow poke />
               <h2>Hi, I’m {agent.name}.</h2>
               <p>{taglineOf(agent, presets)}</p>
             </div>
@@ -187,6 +187,10 @@ export function Chat({
   );
 }
 
+/* An agent's words sit in a bubble of its own colour (app.css), as yours sit
+   in grey: the colour its character is drawn in. */
+const tint = (agent) => ({ "--agent": colourOf(agent?.look, agent?.name) });
+
 /* The answer still arriving, its text and calls in the order they come. */
 export function LiveTurn({ live, agent, speaker = false, after = null }) {
   const parts = live.parts?.length ? live.parts : live.text ? [{ type: "text", text: live.text }] : [];
@@ -199,8 +203,8 @@ export function LiveTurn({ live, agent, speaker = false, after = null }) {
       return;
     }
     out.push(
-      <div className="turn assistant" key={i}>
-        <AgentAvatar look={agent.look} name={agent.name} size={26} mood={i === lastText && i === parts.length - 1 ? "speaking" : null} />
+      <div className="turn assistant" key={i} style={tint(agent)}>
+        <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} mood={i === lastText && i === parts.length - 1 ? "speaking" : null} />
         <div className="answer">
           {speaker && !seenText ? <span className="speaker">{agent.name}</span> : null}
           <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(part.text) }} />
@@ -213,8 +217,8 @@ export function LiveTurn({ live, agent, speaker = false, after = null }) {
   // Waiting on the model, or on a tool: say so under whatever came before.
   if (!parts.length || parts[parts.length - 1].type === "call") {
     out.push(
-      <div className="turn assistant" key="waiting">
-        <AgentAvatar look={agent.look} name={agent.name} size={26} spinning />
+      <div className="turn assistant" key="waiting" style={tint(agent)}>
+        <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} spinning />
         <div className="answer">
           {speaker && !seenText ? <span className="speaker">{agent.name}</span> : null}
           <p className="thinking">{parts.length ? "Working…" : live.status || "Thinking…"}</p>
@@ -261,8 +265,8 @@ export function Turn({ message, agent, speaker = false }) {
   const label = speaker ? <span className="speaker">{agent.name}</span> : null;
   if (message.failure) {
     return (
-      <div className="turn assistant">
-        <AgentAvatar look={agent.look} name={agent.name} size={26} />
+      <div className="turn assistant" style={tint(agent)}>
+        <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} />
         <div className="answer">
           {label}
           <p className="error-box">{message.failure}</p>
@@ -273,8 +277,8 @@ export function Turn({ message, agent, speaker = false }) {
   const hasText = Boolean(message.content?.trim());
   if (!hasText && !message.note) return null;
   return (
-    <div className="turn assistant">
-      <AgentAvatar look={agent.look} name={agent.name} size={26} />
+    <div className="turn assistant" style={tint(agent)}>
+      <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} />
       <div className="answer">
         {label}
         {hasText ? <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} /> : null}

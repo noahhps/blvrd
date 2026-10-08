@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-/* What the Arc (components/Arc.jsx) shows for the app as a whole.
+/* What blvrd's arch (components/Mascot.jsx) shows for the app as a whole.
  *
  * While an agent works: asking when it waits on the reader's Allow, speaking
  * once its words are arriving, thinking before that. When an answer lands --
