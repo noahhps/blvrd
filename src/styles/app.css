@@ -1696,6 +1696,35 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .nb-toggle-label { color: var(--dim); transition: color 200ms ease; }
 .nb-toggle:has(input:checked) .nb-toggle-label { color: var(--ink); }
 
+/* Which version the page is at, whether what's typed is saved yet, and the
+   way back and forward. The draft saves itself a few seconds after the hand
+   leaves the page, so "Unsaved" is usually brief. */
+.nb-save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--dim); }
+.nb-save .btn { height: 28px; font-size: 13px; }
+.nb-save .btn.icon-only { width: 28px; }
+.nb-version { font-variant-numeric: tabular-nums; color: var(--faint); font-size: 12px; }
+.nb-unsaved { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+.nb-saved { color: var(--faint); }
+
+/* Every version, newest first (History). */
+.nb-history { display: flex; flex-direction: column; gap: 2px; margin: -14px 0 30px; padding: 6px 0 14px; border-bottom: 1px solid var(--line); max-height: 360px; overflow-y: auto; font-size: 13px; }
+.nb-history > .btn { align-self: flex-start; margin-top: 8px; }
+.nb-history-none { margin: 0; color: var(--faint); }
+.nb-version-row { padding: 6px 0; }
+.nb-version-head { display: flex; align-items: baseline; gap: 8px; }
+.nb-version-who { color: var(--ink); font-weight: 500; }
+.nb-version-label { color: var(--dim); }
+.nb-version-when { flex: 1; color: var(--faint); }
+.nb-version-lines { margin: 2px 0 0; padding: 0 0 0 38px; list-style: none; color: var(--dim); line-height: 1.5; }
+.nb-version-lines li { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* A row an agent changed while the user was changing it too. */
+.nb-clash { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; background: var(--well); color: var(--dim); font-size: 13px; }
+.nb-clash-button { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
+.nb-clash-button:hover { text-decoration: underline; }
+/* Typed and not saved yet: a quiet mark by the heading. */
+.nb-block[data-unsaved] .nb-heading::before { content: ""; flex: none; width: 6px; height: 6px; margin-right: -2px; border-radius: 50%; background: var(--faint); align-self: center; }
+
 /* Inputs that read as text. */
 .nb-title, .nb-key, .nb-value, .nb-item-text, .nb-text, .nb-slash-input {
   width: 100%;

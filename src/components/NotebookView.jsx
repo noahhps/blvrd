@@ -1,7 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { LIVE, TYPES, isFixed, notebook, useNotebook } from "../lib/notebook.js";
+import { versionLines } from "../lib/notebookSync.js";
 import { GRID, freeSpot, packRows, pushDown, snap } from "../lib/placement.js";
 import { outside, sidebarIndexAt, widgetDrop } from "../lib/widgetDrop.js";
 import { Icon } from "./Icon.jsx";
@@ -20,7 +21,12 @@ import { WidgetPlace } from "./widgets/WidgetHead.jsx";
  * playing...). Drag empty space to look around. A widget's handles sit above
  * its corner: + for a widget under it, ⋮⋮ to move it -- it lands snapped into
  * the open space where it's dropped, or onto the sidebar -- or, clicked, its
- * menu. */
+ * menu.
+ *
+ * What's typed waits in a draft (lib/notebook.js) until it's saved: with ⌘S
+ * or Save, or a few seconds after the hand leaves the page. ⌘Z and ⇧⌘Z undo
+ * and redo the user's own steps; History shows every version, agents'
+ * included, and can undo any of them. */
 
 const KINDS = {
   facts: { icon: "props", also: ["table", "properties", "details", "info", "key", "value"] },
@@ -57,9 +63,71 @@ function useCaret(body) {
 }
 
 export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
-  const { sections, settings, loaded } = useNotebook();
+  const { sections, settings, loaded, head, pending, dirty, conflicts, canUndo, canRedo } = useNotebook();
   const sidebar = settings.sidebar || [];
   const scroll = useRef(null);
+  const [history, setHistory] = useState(false);
+
+  // While the hand is in the notebook its draft waits; once focus leaves --
+  // for a chat, the sidebar, another app -- the count to saving it starts.
+  useEffect(() => {
+    const box = scroll.current;
+    if (!box) return undefined;
+    const into = () => notebook.hold(true);
+    const out = (e) => !box.contains(e.relatedTarget) && notebook.hold(false);
+    const away = () => notebook.hold(false);
+    box.addEventListener("focusin", into);
+    box.addEventListener("focusout", out);
+    addEventListener("blur", away);
+    return () => {
+      box.removeEventListener("focusin", into);
+      box.removeEventListener("focusout", out);
+      removeEventListener("blur", away);
+      notebook.hold(false);
+    };
+  }, []);
+
+  const undo = () => {
+    const done = notebook.undo();
+    if (done?.skipped.length) notify(`Undone, except ${done.skipped.length === 1 ? "one change" : `${done.skipped.length} changes`} made since by someone else`);
+  };
+  const redo = () => {
+    const done = notebook.redo();
+    if (done?.skipped.length) notify(`Redone, except ${done.skipped.length === 1 ? "one change" : `${done.skipped.length} changes`} that no longer fit`);
+  };
+  // What's being typed in a field joins the draft as the field is left; ⌘S
+  // takes it too, without moving the caret.
+  const save = () => {
+    const el = document.activeElement;
+    if (el && scroll.current?.contains(el)) {
+      el.blur();
+      el.focus();
+    }
+    notebook.save();
+  };
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key === "s") {
+        e.preventDefault();
+        return save();
+      }
+      // A field being typed in keeps its own undo.
+      const el = document.activeElement;
+      if (el && (el.isContentEditable || el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type !== "checkbox"))) return;
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const canvas = useRef(null);
   const flow = useRef(null);
   // Agents' changes since the user last opened the page, fixed for the visit
@@ -229,7 +297,37 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
             </span>
             <span className="nb-toggle-label">Ask before saving</span>
           </label>
+          <span className="nb-prop-key">
+            <Icon name="history" size={14} />
+            Version
+          </span>
+          <div className="nb-save" aria-live="polite">
+            <span className="nb-version">v{head}</span>
+            {pending ? (
+              <>
+                <span className="nb-unsaved">
+                  <span className="nb-dot" />
+                  Unsaved changes
+                </span>
+                <button type="button" className="btn nb-save-button" onClick={save} title="Save now (⌘S) — it also saves a few seconds after you leave the notebook">
+                  Save
+                </button>
+              </>
+            ) : (
+              <span className="nb-saved">Saved</span>
+            )}
+            <button type="button" className="btn icon-only" disabled={!canUndo} onClick={undo} aria-label="Undo" title="Undo (⌘Z)">
+              <Icon name="undo" size={16} />
+            </button>
+            <button type="button" className="btn icon-only" disabled={!canRedo} onClick={redo} aria-label="Redo" title="Redo (⇧⌘Z)">
+              <Icon name="redo" size={16} />
+            </button>
+            <button type="button" className="btn" aria-pressed={history} onClick={() => setHistory((h) => !h)}>
+              History
+            </button>
+          </div>
         </div>
+        {history ? <History nameOf={nameOf} notify={notify} head={head} /> : null}
       </header>
 
       {!loaded ? null : (
@@ -313,6 +411,9 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
         onFocused={() => setFresh(null)}
         editor={section.edited && section.edited.by !== "user" ? nameOf(section.edited.by) : null}
         marked={section.edited?.by !== "user" && section.edited?.at > since}
+        unsaved={dirty.includes(section.id)}
+        clashes={conflicts.filter((c) => c.sec === section.id)}
+        nameOf={nameOf}
         onAddBelow={onAddBelow}
         onMenu={onMenu}
         inSidebar={sidebar.includes(section.id)}
@@ -472,7 +573,7 @@ function TextItem({ section, handle, onMenu }) {
 
 /* -- a section --------------------------------------------------------------- */
 
-function Block({ section, handle, autoFocus, onFocused, editor, marked, onAddBelow, onMenu, inSidebar }) {
+function Block({ section, handle, autoFocus, onFocused, editor, marked, unsaved, clashes = [], nameOf, onAddBelow, onMenu, inSidebar }) {
   const root = useRef(null);
   const title = useRef(null);
   useLayoutEffect(() => {
@@ -493,7 +594,7 @@ function Block({ section, handle, autoFocus, onFocused, editor, marked, onAddBel
   };
 
   return (
-    <section ref={root} className="nb-block" id={`section-${section.id}`} data-sort={section.id} data-marked={marked ? "" : undefined}>
+    <section ref={root} className="nb-block" id={`section-${section.id}`} data-sort={section.id} data-marked={marked ? "" : undefined} data-unsaved={unsaved ? "" : undefined}>
       <Gutter section={section} handle={handle} onAddBelow={onAddBelow} onMenu={onMenu} />
       <div className="nb-heading">
         <input
@@ -527,9 +628,87 @@ function Block({ section, handle, autoFocus, onFocused, editor, marked, onAddBel
         ) : null}
       </div>
 
+      {clashes.map((c) => (
+        <p className="nb-clash" key={c.target}>
+          {nameOf(c.by)} changed {clashWhat(section, c)} while you were editing.
+          <button type="button" className="nb-clash-button" onClick={() => notebook.settle(c.target, "mine")}>
+            Keep mine
+          </button>
+          <button type="button" className="nb-clash-button" onClick={() => notebook.settle(c.target, "theirs")}>
+            Use theirs
+          </button>
+        </p>
+      ))}
+
       {section.type === "facts" ? <Facts section={section} /> : section.type === "list" ? <Todo section={section} /> : <Text section={section} />}
 
     </section>
+  );
+}
+
+/* What a clash was over, in words: a row, an item, or the section. */
+function clashWhat(section, clash) {
+  const entry = (section.data.rows || section.data.items || []).find((e) => e.id === clash.id);
+  return entry ? `“${entry.key ?? entry.text}”` : "this";
+}
+
+/* -- history ---------------------------------------------------------------------
+ * Every version kept, newest first: who, when, what it did -- and Undo, which
+ * reverses it with a new version (anything changed since is left alone). */
+
+const PAGE = 40;
+
+function History({ nameOf, notify, head }) {
+  const [shown, setShown] = useState(PAGE);
+  const [open, setOpen] = useState(null);
+  // Read again whenever the head moves.
+  const versions = useMemo(() => notebook.history(), [head]); // eslint-disable-line react-hooks/exhaustive-deps
+  const who = (by) => (by === "user" ? "You" : nameOf(by));
+  const undo = (v) => {
+    const done = notebook.revert(v);
+    if (!done?.version) notify(`Nothing to undo in v${v}: what it changed has been changed since`);
+    else if (done.skipped.length) notify(`Undid v${v}, except what's been changed since`);
+    else notify(`Undid v${v}`);
+  };
+  if (!versions.length) return <div className="nb-history"><p className="nb-history-none">No versions yet: they start with your next change.</p></div>;
+  return (
+    <div className="nb-history" role="list" aria-label="Versions">
+      {versions.slice(0, shown).map((r) => {
+        const lines = versionLines(r);
+        const more = open === r.v ? lines : lines.slice(0, 2);
+        return (
+          <div className="nb-version-row" role="listitem" key={r.v}>
+            <div className="nb-version-head">
+              <span className="nb-version">v{r.v}</span>
+              <span className="nb-version-who">{who(r.by)}</span>
+              {r.label ? <span className="nb-version-label">{r.label}</span> : null}
+              {r.revertOf != null ? <span className="nb-version-label">undid v{r.revertOf}</span> : null}
+              <span className="nb-version-when">{ago(r.at)}</span>
+              <button type="button" className="nb-clash-button" onClick={() => undo(r.v)}>
+                Undo
+              </button>
+            </div>
+            <ul className="nb-version-lines">
+              {more.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+              {lines.length > 2 ? (
+                <li>
+                  <button type="button" className="nb-clash-button" onClick={() => setOpen(open === r.v ? null : r.v)}>
+                    {open === r.v ? "Less" : `${lines.length - 2} more`}
+                  </button>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+        );
+      })}
+      {versions.length > shown ? (
+        <button type="button" className="btn" onClick={() => setShown((n) => n + PAGE)}>
+          Older versions
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -617,7 +796,8 @@ function Facts({ section }) {
   const rows = draft.rows.length ? draft.rows : [{ key: "", value: "" }];
   const set = (next) => setDraft({ rows: next });
   const change = (i, patch) => set(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
-  const clean = (d) => ({ rows: d.rows.map((r) => ({ key: r.key.trim(), value: r.value.trim() })).filter((r) => r.key) });
+  // Rows keep their ids, so a changed label is the same row changed.
+  const clean = (d) => ({ rows: d.rows.map((r) => ({ ...r, key: r.key.trim(), value: r.value.trim() })).filter((r) => r.key) });
 
   return (
     <div className="nb-body nb-facts" ref={body} {...bodyProps(clean)}>

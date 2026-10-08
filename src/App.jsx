@@ -12,6 +12,7 @@ import { inDesktop } from "./lib/http.js";
 import { listen } from "./lib/desktop.js";
 import { searchOf } from "./lib/search.js";
 import { NOTEBOOK_TOOLS, notebookBrief } from "./lib/notebookTools.js";
+import { behindNote } from "./lib/notebookSync.js";
 import { notebook, provideLive, ready as notebookReady } from "./lib/notebook.js";
 import { agentsRows, calendarRows, groupsRows, musicRows, setupRows } from "./lib/liveRows.js";
 import { eventsAhead } from "./lib/useMonthEvents.js";
@@ -137,6 +138,19 @@ export default function App() {
   // sidebar had (state.widgets) and puts every widget's section in it.
   useEffect(() => {
     notebookReady.then(() => notebook.connectSidebar(stateRef.current.widgets));
+  }, []);
+
+  // The user's unsaved notebook edits are saved when the window is hidden or
+  // closed, without waiting for the usual few seconds.
+  useEffect(() => {
+    const flush = () => document.hidden && notebook.save();
+    const quit = () => notebook.save();
+    document.addEventListener("visibilitychange", flush);
+    addEventListener("pagehide", quit);
+    return () => {
+      document.removeEventListener("visibilitychange", flush);
+      removeEventListener("pagehide", quit);
+    };
   }, []);
 
   // The Notebook's live sections (lib/notebook.js LIVE): the sidebar's
@@ -273,11 +287,14 @@ export default function App() {
     return provider ? { provider, model: choice.model } : null;
   };
 
-  const notebookOf = (agentId) => ({
-    // The Notebook (lib/notebookTools.js): who is writing, and how to name
-    // another agent that wrote before them.
+  const agentName = (id) => stateRef.current.agents.find((a) => a.id === id)?.name || "an assistant no longer here";
+  const notebookOf = (agentId, chatId) => ({
+    // The Notebook (lib/notebookTools.js): who is writing, in which
+    // conversation (each has its own place in the notebook's versions), and
+    // how to name another agent that wrote before them.
     agentId,
-    nameOf: (id) => stateRef.current.agents.find((a) => a.id === id)?.name || "an assistant no longer here",
+    chatId,
+    nameOf: agentName,
     // Read when the tool runs, from the latest state, so a note saved earlier
     // in the same turn is already there.
     notes: () => stateRef.current.notes[agentId] || [],
@@ -301,6 +318,9 @@ export default function App() {
 
     setLive({ chatId, agentId: agent.id, text: "", parts: [], status: "", queue });
     const said = [];
+    // The user's unsaved notebook edits are saved first: an agent is never
+    // behind what's on their screen.
+    notebook.save();
     try {
       await runTurn({
         agent,
@@ -308,9 +328,10 @@ export default function App() {
         model: target.model,
         history,
         signal: controller.signal,
-        notebook: notebookOf(agent.id),
+        notebook: notebookOf(agent.id, chatId),
         thinking,
         context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
+        note: behindNote(agent.id, chatId, history, agentName),
         available,
         approve: askFirst(chatId, agent),
         emit: (event) => {
