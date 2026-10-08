@@ -32,7 +32,7 @@ import { Gallery } from "./components/Gallery.jsx";
 import { GroupChat } from "./components/GroupChat.jsx";
 import { GroupEditor } from "./components/GroupEditor.jsx";
 import { Icon } from "./components/Icon.jsx";
-import { Arc } from "./components/Arc.jsx";
+import { Mascot } from "./components/Mascot.jsx";
 import { Notice } from "./components/Notice.jsx";
 import { RowMenu } from "./components/RowMenu.jsx";
 import { Settings } from "./components/Settings.jsx";
@@ -690,7 +690,7 @@ export default function App() {
   }, []);
 
   const busyChat = live?.chatId;
-  // The Arc in the sidebar: what any agent is doing, wherever you are.
+  // blvrd in the sidebar: what any agent is doing, wherever you are.
   const mood = useArcMood({ live, approval, chats: state.chats });
   const target = selected ? modelFor(selected) : null;
 
@@ -760,7 +760,7 @@ export default function App() {
           </button>
         </div>
         <div className="brand">
-          <Arc mood={mood} size={26} />
+          <Mascot shape="arc" colour="var(--red)" mood={mood} size={26} />
           <span className="wordmark">blvrd</span>
         </div>
 

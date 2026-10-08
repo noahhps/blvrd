@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { COLOURS, colourIdOf } from "../lib/agents.js";
+import { COLOURS, SHAPES, colourIdOf, shapeOf } from "../lib/agents.js";
 import { avatarFrom } from "../lib/attach.js";
 import { TOOLS } from "../lib/tools.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
@@ -16,13 +16,15 @@ function draftFrom(agent) {
     all: agent?.tools == null,
     chosen: new Set(agent?.tools || TOOLS.filter((t) => !t.network).map((t) => t.name)),
     colour: colourIdOf(agent) || "red",
+    // null until one is chosen: until then the character follows the name.
+    shape: agent?.look?.shape || null,
     image: agent?.look?.image || null,
     model: agent?.model || null,
   };
 }
 
 /**
- * Customise an agent: its colour, what it is for, which model it runs on,
+ * Customise an agent: its character and colour, what it is for, which model it runs on,
  * and what it may use. One sheet for a new agent, one from a preset, and one
  * being changed -- `agent` is the stored agent, or null for a new one;
  * `initial` is what a new one starts from.
@@ -38,12 +40,14 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const shape = draft.shape || shapeOf(null, draft.name);
   const look = useMemo(
     () => ({
       colour: draft.colour,
+      shape,
       ...(draft.image ? { image: draft.image } : {}),
     }),
-    [draft.colour, draft.image],
+    [draft.colour, shape, draft.image],
   );
   const picker = useRef(null);
 
@@ -95,7 +99,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
         <div className="sheet-head">
           {/* The picture is chosen on the avatar itself: a camera at its
               bottom-right, and -- once there is a picture -- a cross at its
-              top-right that goes back to the Arc. */}
+              top-right that goes back to the character. */}
           <div className="avatar-edit">
             <AgentAvatar look={look} name={draft.name} size={80} />
             <button
@@ -111,7 +115,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
               <button
                 type="button"
                 className="avatar-badge avatar-remove"
-                aria-label="Remove the picture and go back to the Arc"
+                aria-label="Remove the picture and go back to the character"
                 title="Remove picture"
                 onClick={() => set({ image: null })}
               >
@@ -144,9 +148,24 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
           <section className="field">
             <span className="label">Avatar</span>
             {draft.image ? (
-              <p className="hint">A picture of your own. Remove it (the × on the picture) to go back to the Arc.</p>
+              <p className="hint">A picture of your own. Remove it (the × on the picture) to go back to the character.</p>
             ) : (
               <>
+                <div className="wear-row" role="radiogroup" aria-label="Character">
+                  {SHAPES.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      role="radio"
+                      className="wear"
+                      aria-checked={shape === s.id}
+                      title={s.label}
+                      onClick={() => set({ shape: s.id })}
+                    >
+                      <AgentAvatar look={{ colour: draft.colour, shape: s.id }} size={30} alive={false} />
+                    </button>
+                  ))}
+                </div>
                 <div className="wear-row" role="radiogroup" aria-label="Colour">
                   {COLOURS.map((colour) => (
                     <button
@@ -158,7 +177,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
                       title={colour.label}
                       onClick={() => set({ colour: colour.id })}
                     >
-                      <AgentAvatar look={{ colour: colour.id }} size={30} />
+                      <AgentAvatar look={{ colour: colour.id, shape }} size={30} alive={false} />
                     </button>
                   ))}
                 </div>
