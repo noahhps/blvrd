@@ -225,10 +225,13 @@ export function LiveTurn({ live, agent, speaker = false, after = null }) {
 /* One message. `speaker` labels an agent's turn with its name -- in a group,
    where more than one agent answers in the same thread. */
 export function Turn({ message, agent, speaker = false }) {
+  // Only a message sent just now rises in from the composer; opening a chat
+  // shows what was already said as it stands.
+  const [fresh] = useState(() => message.role === "user" && Date.now() - (message.at || 0) < 1000);
   if (message.role === "user") {
     const files = message.files || [];
     return (
-      <div className="turn user">
+      <div className="turn user" data-sent={fresh ? "" : undefined}>
         {files.length ? (
           <div className="sent-files">
             {files.map((f, i) =>

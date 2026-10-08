@@ -668,6 +668,22 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* A message just sent rises out of the composer below it, so it reads as the
+   same words moving up into the thread rather than appearing in place. Sent
+   tens of times a day, so it stays short and small. */
+.turn.user[data-sent] {
+  transform-origin: bottom right;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+@starting-style {
+  .turn.user[data-sent] { opacity: 0; transform: translateY(10px) scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn.user[data-sent] { transition: opacity 150ms ease; }
+  @starting-style {
+    .turn.user[data-sent] { transform: none; }
+  }
+}
 .turn.assistant { display: flex; gap: 12px; align-items: flex-start; }
 .answer { flex: 1; min-width: 0; padding-top: 3px; }
 .thinking { color: var(--faint); margin: 0; }
