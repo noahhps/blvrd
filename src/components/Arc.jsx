@@ -1,5 +1,5 @@
-/* The Arc: blvrd's mascot, alive. A red arch -- one sweeping curve, the
- * boulevard's gateway -- standing on the floor of a white square, moving
+/* The Arc: blvrd's mascot, alive. A red arch -- the outline of a soft
+ * dome, open at the floor, the boulevard's gateway -- on a white square, moving
  * with what the app is doing. The app and every agent wear it.
  *
  *   idle       breathes, slowly
@@ -20,14 +20,10 @@
 
 export const ARC_MOODS = ["idle", "listening", "thinking", "speaking", "asking", "done", "error"];
 
-// The arch: one continuous curve, like a gateway arch -- legs that lean in
-// as they rise and sweep into the top, with no straight run and no corner.
-// Outer edge up and over, then the opening back the other way; the band is
-// broader at the feet than at the crown.
-const BODY = "M8 100 C14 52 28 14 50 14 C72 14 86 52 92 100 H68 C66 62 60 34 50 34 C40 34 34 62 32 100 Z";
-const EDGE = "M8 100 C14 52 28 14 50 14 C72 14 86 52 92 100";
-// The middle of the band, for thinking's light to run along.
-const SPINE = "M20 100 C24 57 36 24 50 24 C64 24 76 57 80 100";
+// The arch: the outline of a soft dome -- broad, rounded shoulders and sides
+// that swell a little before tucking in -- drawn as one stroke, with its
+// floor left open. The same line carries thinking's light, and its ripples.
+const LINE = "M24 86 C17 62 18 22 50 22 C82 22 83 62 76 86";
 
 export function Arc({ mood = "idle", size = 28, tick = 0, label = null, colour = null, className = "" }) {
   return (
@@ -46,12 +42,12 @@ export function Arc({ mood = "idle", size = 28, tick = 0, label = null, colour =
       <g className="arc-shake">
         <g className="arc-body">
           <g className="arc-give" key={mood === "listening" ? tick : 0}>
-            <path className="arc-fill" d={BODY} />
-            <path className="arc-light" d={SPINE} pathLength="100" />
+            <path className="arc-fill" d={LINE} />
+            <path className="arc-light" d={LINE} pathLength="100" />
           </g>
         </g>
-        <path className="arc-ripple" d={EDGE} />
-        <path className="arc-ripple arc-ripple-late" d={EDGE} />
+        <path className="arc-ripple" d={LINE} />
+        <path className="arc-ripple arc-ripple-late" d={LINE} />
       </g>
     </svg>
   );

@@ -2,10 +2,10 @@
  * given. Layers, each with one job:
  *
  *   .arc-shake  side to side -- error's shake
- *   .arc-body   from the middle of its floor -- breathing, growing, bouncing
+ *   .arc-body   from the middle of its open floor -- breathing, growing, bouncing
  *   .arc-give   the same pivot -- one keystroke's give, replayed per key
- *   .arc-light  a short bright dash along the band -- thinking
- *   .arc-ripple the outer curve alone, stroked, growing out and fading
+ *   .arc-light  a short bright dash along the line -- thinking
+ *   .arc-ripple the line again, thin, growing out and fading
  *
  * Only transforms, opacity and a dash offset, so it keeps moving while an
  * answer streams. Constant motion is linear; a shape changing eases. */
@@ -13,12 +13,12 @@
 /* The tile is white in both themes, as the logo's is, so an agent in Ink is
    drawn in the light theme's ink whatever the theme. */
 .arc { overflow: hidden; flex: none; --ink: #141414; }
-.arc .arc-fill { fill: var(--arc, var(--red)); }
-.arc .arc-ripple { fill: none; stroke: var(--arc, var(--red)); stroke-width: 5; opacity: 0; }
+.arc path { fill: none; stroke-linecap: round; }
+.arc .arc-fill { stroke: var(--arc, var(--red)); stroke-width: 15; }
+.arc .arc-ripple { stroke: var(--arc, var(--red)); stroke-width: 4; opacity: 0; }
 .arc .arc-light {
-  fill: none;
   stroke: #fff;
-  stroke-width: 9;
+  stroke-width: 7;
   stroke-linecap: round;
   stroke-dasharray: 16 84;
   stroke-dashoffset: 16;
@@ -26,7 +26,7 @@
 }
 
 .arc-shake { transform-box: view-box; transform-origin: 50% 50%; }
-.arc-body, .arc-give, .arc-ripple { transform-box: view-box; transform-origin: 50% 100%; }
+.arc-body, .arc-give, .arc-ripple { transform-box: view-box; transform-origin: 50% 86%; }
 
 .arc-body, .arc .arc-fill {
   transition: transform 420ms var(--ease-out), opacity 300ms var(--ease-out);
