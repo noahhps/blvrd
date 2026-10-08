@@ -1,67 +1,15 @@
-/* An agent's avatar: dots on a circle, or a picture (components/AgentAvatar.jsx).
- *
- * Everything is a transform, so it composites off the main thread and keeps
- * moving while an answer streams in. Sizes are fractions of --size, so the
- * same drawing works at 28px beside an answer and 88px in the editor.
- *
- *   still      the ring, flat, facing you
- *   spinning   the dots run round the ring (1.6s a turn) while the ring rolls
- *              through 3D about a diagonal axis (3.2s a turn); each dot
- *              swells and shrinks in turn as it goes
- *   intro      one turn into place, for the greeting
- *
- * The spin and the roll are constant motion, so they are linear; the swell is
- * a shape changing on screen, so it eases in and out. */
+/* An agent with a picture of its own (components/AgentAvatar.jsx) -- the
+ * rest wear the Arc (arc.css). The picture stays still; while the agent
+ * works, three small dots in its colour run round it (1.6s a turn).
+ * Sizes are fractions of --size, so it works at any size. */
 
 .orbit {
-  --r: calc(var(--size) * 0.36);
-  /* Fewer dots are drawn larger, so two dots and twelve both read as a ring
-     of the same weight. */
-  --d: calc(var(--size) * clamp(0.11, 0.88 / (var(--n) + 0), 0.24));
   position: relative;
   display: inline-block;
   flex: none;
   width: var(--size);
   height: var(--size);
-  perspective: calc(var(--size) * 4);
 }
-
-.orbit-tumble,
-.orbit-spin {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-}
-
-/* Each dot is placed by its own transform -- turned to its slot, pushed out to
-   the circumference -- and drawn by its ::before, which is free to swell. */
-.orbit i {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: var(--d);
-  height: var(--d);
-  margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2);
-  transform: rotate(var(--a)) translateY(calc(var(--r) * -1));
-  /* A change of count is a move on screen: the dots that stay glide round to
-     their new spacing. */
-  transition: transform 280ms var(--ease-in-out);
-}
-.orbit i::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: var(--dot);
-  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
-}
-/* A dot arriving grows out of the top one; a dot leaving slides back into it
-   and fades. Never from nothing: half size, not zero. */
-@starting-style {
-  .orbit i[data-entering] { transform: rotate(0deg) translateY(calc(var(--r) * -1)); }
-  .orbit i[data-entering]::before { opacity: 0; transform: scale(0.5); }
-}
-.orbit i[data-leaving]::before { opacity: 0; transform: scale(0.5); }
 
 /* A picture: round, and arriving as a crossfade -- with a touch of blur, so
    the old face and the new one read as one change rather than two images. */
@@ -96,74 +44,12 @@
   transform: rotate(var(--a)) translateY(calc(var(--size) * -0.58));
 }
 
-.orbit[data-spinning] .orbit-tumble {
-  animation: orbit-roll 3.2s linear infinite;
-}
-.orbit[data-spinning] .orbit-spin {
-  animation: orbit-spin 1.6s linear infinite;
-}
-.orbit[data-spinning] i::before {
-  animation: orbit-swell 1.6s var(--ease-in-out) infinite;
-  /* Negative delays start every dot mid-cycle, so the swell is already
-     running round the ring on the first frame. */
-  animation-delay: calc(var(--i) * -1.6s / var(--n)); /* spread evenly over the 1.6s cycle */
-}
-
-/* Working, the dots also walk through formations (lib/formations.js): each
-   dot is placed by x and y in units of the ring's radius, and moves to its
-   next place with the strong in-out -- a move on screen -- while the spin and
-   the tumble carry on around it. */
-.orbit[data-shape] i {
-  transform: translate(calc(var(--r) * var(--fx)), calc(var(--r) * var(--fy)));
-  transition: transform 400ms var(--ease-in-out);
-}
-
 @keyframes orbit-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-@keyframes orbit-roll {
-  from { transform: rotate3d(1, 1, 0, 0deg); }
-  to { transform: rotate3d(1, 1, 0, 360deg); }
-}
-@keyframes orbit-swell {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(0.55); }
-}
-
-/* The greeting: one turn into place, opacity and roll together. */
-.orbit[data-intro] .orbit-tumble {
-  animation: orbit-intro 700ms var(--ease-out) both;
-}
-@keyframes orbit-intro {
-  from { opacity: 0; transform: rotate3d(1, 1, 0, -150deg) scale(0.95); }
-  to { opacity: 1; transform: none; }
-}
-
-/* Reduced motion: nothing turns. The dots dim one after another instead, so
-   "answering" is still legible without anything moving. */
+/* Reduced motion: the halo's dots stay put. */
 @media (prefers-reduced-motion: reduce) {
-  /* A change of count fades rather than glides. */
-  .orbit i { transition: none; }
   .orbit-halo { animation: none; }
   .orbit-photo { transition: opacity 220ms ease; }
-  .orbit[data-spinning] .orbit-tumble,
-  .orbit[data-spinning] .orbit-spin {
-    animation: none;
-  }
-  .orbit[data-spinning] i::before {
-    animation: orbit-wait 1.2s ease infinite;
-    animation-delay: calc(var(--i) * 1.2s / var(--n));
-  }
-  .orbit[data-intro] .orbit-tumble {
-    animation: orbit-fade 300ms ease both;
-  }
-}
-@keyframes orbit-wait {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-@keyframes orbit-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }

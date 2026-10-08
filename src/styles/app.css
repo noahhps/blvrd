@@ -46,7 +46,6 @@
   /* Motion. The two curves every animation here takes its timing from. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --orbit-settle: 500ms;
   /* The iOS-style drawer curve, for the sidebar sliding out. */
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   /* The window controls' corner on a Mac with the title bar hidden. */
@@ -230,11 +229,6 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   .avatar-badge:active { transform: none; }
 }
 
-/* The dot count: a slider, its value beside it. */
-.dots-range { display: flex; align-items: center; gap: 12px; max-width: 380px; }
-.dots-range > span { font-size: 13px; color: var(--dim); }
-.dots-range input { flex: 1; accent-color: var(--ink); cursor: pointer; }
-.dots-range output { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
 
 /* -- layout ------------------------------------------------------------------- */
 
@@ -425,7 +419,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .group-avatar-member {
   display: grid;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 24%;
   background: var(--surface);
   box-shadow: 0 0 0 2px var(--surface);
 }
@@ -446,13 +440,13 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   text-align: center;
   box-shadow: 0 0 0 2px var(--surface);
 }
-/* No members left: an empty ring where they would be. */
+/* No members left: an empty tile where they would be. */
 .group-avatar-empty {
   width: var(--each);
   height: var(--each);
   box-sizing: border-box;
   border: 1.5px dashed var(--line-strong);
-  border-radius: 50%;
+  border-radius: 22%;
 }
 
 /* Who said it, above each answer in a group. */

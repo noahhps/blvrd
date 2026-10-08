@@ -5,7 +5,7 @@
  *
  * A preset is just an agent's fields plus a tagline for its card. Adding one
  * copies it, so editing an agent never changes the preset it came from.
- * `look.colour` is the colour its dots are drawn in (lib/agents.js). */
+ * `look.colour` is the colour its Arc is drawn in (lib/agents.js). */
 
 export const PRESETS = [
   {

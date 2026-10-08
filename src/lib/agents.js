@@ -1,8 +1,9 @@
 /* What tells one agent from another: its colour, and a line under its name.
  *
- * An agent is drawn as a ring of dots (components/AgentAvatar.jsx) in one of
- * these colours, stored as `look.colour`, with `look.dots` of them -- or as a
- * picture of the reader's own, `look.image`. An agent saved before colours
+ * An agent is drawn as the Arc, blvrd's mascot (components/AgentAvatar.jsx),
+ * in one of these colours, stored as `look.colour` -- or as a picture of the
+ * reader's own, `look.image`. (A `look.dots` from when agents were rings of
+ * dots is kept but no longer drawn.) An agent saved before colours
  * existed -- or with Bom's old hat-and-item look -- gets one picked from its
  * name, so it is never blank and always the same. */
 
@@ -24,19 +25,9 @@ function hashed(text) {
   return COLOURS[(h >>> 0) % (COLOURS.length - 1)];
 }
 
-/** The CSS colour an agent's dots are drawn in. `look` may be null. */
+/** The CSS colour an agent's Arc is drawn in. `look` may be null. */
 export function colourOf(look, seed = "") {
   return (BY_ID.get(look?.colour) || hashed(seed || look?.name || "")).value;
-}
-
-/* How many dots an agent is drawn with: 2 to 12, four unless chosen. */
-export const DOTS_MIN = 2;
-export const DOTS_MAX = 12;
-export const DOTS_DEFAULT = 4;
-
-export function dotsOf(look) {
-  const n = Math.round(Number(look?.dots));
-  return Number.isFinite(n) && n >= DOTS_MIN && n <= DOTS_MAX ? n : DOTS_DEFAULT;
 }
 
 /** The colour id an agent wears, for the editor's swatches. */
