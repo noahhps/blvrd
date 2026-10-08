@@ -3,6 +3,12 @@
 Status: proposal, nothing built yet. Builds on the Notebook (`src/lib/notebook.js`,
 `src/lib/notebookTools.js`) rather than replacing it.
 
+How the Notebook itself is versioned and synced between agents and the user —
+version keys, per-agent cursors, drafts, undo/redo — and each agent's own
+`MEMORY.md` are designed in detail in **`docs/notebook-sync.md`**. Where the two
+differ (the section `log` in §3.2, per-agent private sections in §3.2 and §6),
+that document wins.
+
 ## In one paragraph
 
 Keep the Notebook as the one place memory lives and the one place the user
