@@ -5,12 +5,12 @@
  *
  * A preset is just an agent's fields plus a tagline for its card. Adding one
  * copies it, so editing an agent never changes the preset it came from.
- * `look.colour` is the colour its Arc is drawn in (lib/agents.js). */
+ * `look` is the character it is drawn as and its colour (lib/agents.js). */
 
 export const PRESETS = [
   {
     id: "researcher",
-    look: { colour: "blue" },
+    look: { colour: "blue", shape: "magnifier" },
     name: "Researcher",
     tagline: "Searches the web, reads the sources, and says where each answer came from.",
     instructions:
@@ -18,7 +18,7 @@ export const PRESETS = [
   },
   {
     id: "coder",
-    look: { colour: "green" },
+    look: { colour: "green", shape: "laptop" },
     name: "Coder",
     tagline: "Writes small, correct code and explains the one thing that matters.",
     instructions:
@@ -26,7 +26,7 @@ export const PRESETS = [
   },
   {
     id: "writer",
-    look: { colour: "violet" },
+    look: { colour: "violet", shape: "pencil" },
     name: "Writer",
     tagline: "Drafts and edits prose in your voice.",
     instructions:
@@ -34,7 +34,7 @@ export const PRESETS = [
   },
   {
     id: "planner",
-    look: { colour: "orange" },
+    look: { colour: "orange", shape: "calendar" },
     name: "Planner",
     tagline: "Turns a goal into ordered, concrete steps.",
     instructions:
@@ -42,7 +42,7 @@ export const PRESETS = [
   },
   {
     id: "analyst",
-    look: { colour: "yellow" },
+    look: { colour: "yellow", shape: "chart" },
     name: "Analyst",
     tagline: "Computes from the numbers rather than guessing.",
     instructions:
@@ -50,23 +50,23 @@ export const PRESETS = [
   },
   {
     id: "designer",
-    look: { colour: "red" },
+    look: { colour: "red", shape: "palette" },
     name: "Designer",
     tagline: "Gives a clear direction for how something should look.",
     instructions:
       "You help things look finished: pages, slides, posters, interfaces. Settle the direction first -- the audience, one accent colour, a type scale, a spacing scale -- then give concrete values (hex colours, sizes in px, font names) rather than adjectives. When asked for markup, write clean HTML and CSS in fenced blocks. End with the one change that would help most.",
   },
   {
-    id: "companion",
-    look: { colour: "ink" },
-    name: "Companion",
-    tagline: "Here to talk — warm, curious, unhurried.",
+    id: "organizer",
+    look: { colour: "ink", shape: "briefcase" },
+    name: "Organizer",
+    tagline: "Keeps your Notebook's lists and notes up to date as you talk.",
     instructions:
-      "You are here to talk. Attention first: reach for a tool only when the user asks for something a tool is for. Be warm and curious, follow what the user actually said, ask real questions, and do not rush to solve. Match their tone and length. Remember what they tell you about themselves with remember, and look it up with recall when it would help.",
+      "You keep the user's Notebook in order. Start with notebook_contents to see which sections there are, and read a section with notebook_read before you change it. As the user mentions things, use notebook_edit to add items to a list, tick them off, remove what's done with, and keep facts current. You can't add sections: when something has no home, say which section the user might add for it. After each change, say in one line what you changed. Check today's date with current_time before writing anything with a date in it.",
   },
   {
     id: "tutor",
-    look: { colour: "blue" },
+    look: { colour: "blue", shape: "book" },
     name: "Tutor",
     tagline: "Teaches by asking, one step at a time.",
     instructions:

@@ -1,5 +1,5 @@
 /* An agent with a picture of its own (components/AgentAvatar.jsx) -- the
- * rest wear the Arc (arc.css). The picture stays still; while the agent
+ * rest are characters (mascot.css). The picture stays still; while the agent
  * works, three small dots in its colour run round it (1.6s a turn).
  * Sizes are fractions of --size, so it works at any size. */
 

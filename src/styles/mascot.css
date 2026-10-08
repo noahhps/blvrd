@@ -1,0 +1,113 @@
+/* An agent's character (components/Mascot.jsx): a flat shape in the agent's
+ * colour (--c), googly eyes, and its moods. The eyes' saccades, blinks and
+ * lean are WAAPI in the component; here is everything the mood decides:
+ *
+ *   thinking, idle  a breath, barely there
+ *   speaking        a small bob as the words come
+ *   asking          eyes wide, a squash-and-stretch hop for attention
+ *   done            one hop, and a wink at its top
+ *   error           a shake
+ *
+ * Transforms and opacity only. Each loop's phase is offset by the eyes'
+ * randomness above it, so a list of characters never moves in step. */
+
+.mascot { flex: none; overflow: visible; }
+.mascot * { transform-box: fill-box; }
+
+.mascot .m-body { fill: var(--c); }
+.mascot .m-round { stroke: var(--c); stroke-width: 7; stroke-linejoin: round; }
+.mascot .m-dark { fill: color-mix(in srgb, var(--c) 68%, #000); }
+.mascot .m-paper { fill: #fff; }
+.mascot .m-fold { fill: none; stroke: color-mix(in srgb, var(--c) 68%, #000); stroke-width: 3.4; stroke-linejoin: round; stroke-linecap: round; }
+.mascot .m-handle { fill: none; stroke: color-mix(in srgb, var(--c) 45%, #000); stroke-width: 11; stroke-linecap: round; }
+.mascot .m-handle-thin { fill: none; stroke: color-mix(in srgb, var(--c) 60%, #000); stroke-width: 5; }
+/* A pencil and a palette keep their own colours. */
+.mascot .m-wood { fill: #f2d3a0; }
+.mascot .m-lead { fill: #333; }
+.mascot .m-metal { fill: #c9c9c9; }
+.mascot .m-eraser { fill: #f28fb0; }
+.mascot .m-paint1 { fill: #ef5350; }
+.mascot .m-paint2 { fill: #f5c518; }
+.mascot .m-paint3 { fill: #3a7bdc; }
+
+.mascot .m-white { fill: #fff; stroke: #1a1a1a; stroke-width: 2.4; }
+.mascot .m-pupil { fill: #1a1a1a; }
+.mascot .m-wink { fill: none; stroke: #1a1a1a; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; display: none; }
+.mascot .m-lid, .mascot .m-wide { transform-origin: 50% 50%; }
+.mascot .m-whole, .mascot .m-give, .mascot .m-lean { transform-origin: 50% 100%; }
+.mascot .m-flip { transform-origin: 50% 50%; }
+
+/* Pokeable (the open chat's): it's a button, and it notices you coming. */
+.mascot[data-pokeable] { cursor: pointer; border-radius: 6px; }
+.mascot[data-pokeable]:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.mascot .m-wide { transition: transform 160ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .mascot[data-pokeable]:hover .m-wide { transform: scale(1.08); }
+}
+
+/* A winking character keeps its wink, except when it needs you. */
+.mascot[data-wink] .m-eye-r .m-lid { display: none; }
+.mascot[data-wink] .m-eye-r .m-wink { display: inline; }
+.mascot[data-wink][data-mood="asking"] .m-eye-r .m-lid { display: inline; }
+.mascot[data-wink][data-mood="asking"] .m-eye-r .m-wink { display: none; }
+
+/* thinking, idle: a breath. */
+.mascot[data-mood="thinking"] .m-whole,
+.mascot[data-mood="idle"] .m-whole { animation: m-breathe 3.6s ease-in-out infinite; }
+
+/* speaking: a small bob as the words come. */
+.mascot[data-mood="speaking"] .m-whole { animation: m-bob 0.9s var(--ease-in-out) infinite; }
+
+/* asking: eyes wide, and a hop every so often. */
+.mascot[data-mood="asking"] .m-wide { animation: m-widen 220ms var(--ease-out) both; }
+.mascot[data-mood="asking"] .m-whole { animation: m-hop 2.8s var(--ease-in-out) infinite; }
+
+/* done: one hop, a wink at its top. */
+.mascot[data-mood="done"] .m-whole { animation: m-hop-once 650ms var(--ease-in-out); }
+.mascot[data-mood="done"]:not([data-wink]) .m-eye-r .m-lid { animation: m-wink-off 650ms; }
+.mascot[data-mood="done"]:not([data-wink]) .m-eye-r .m-wink { display: inline; animation: m-wink-on 650ms both; }
+
+/* error: a shake. */
+.mascot[data-mood="error"] .m-whole { animation: m-shake 420ms var(--ease-out); }
+
+@keyframes m-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, 1.022); } }
+@keyframes m-bob { 0%, 100% { transform: translateY(0) scale(1, 1); } 45% { transform: translateY(-1.5px) scale(0.99, 1.02); } }
+@keyframes m-widen { from { transform: scale(1); } to { transform: scale(1.16); } }
+/* Anticipation squash, stretch going up, hang, squash landing, settle. */
+@keyframes m-hop {
+  0% { transform: translateY(0) scale(1, 1); }
+  6% { transform: translateY(0) scale(1.06, 0.9); }
+  13% { transform: translateY(-9%) scale(0.95, 1.07); }
+  19% { transform: translateY(-10%) scale(1, 1); }
+  26% { transform: translateY(0) scale(1.07, 0.92); }
+  32% { transform: translateY(0) scale(0.98, 1.02); }
+  37%, 100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes m-hop-once {
+  0% { transform: translateY(0) scale(1, 1); }
+  15% { transform: translateY(0) scale(1.06, 0.9); }
+  35% { transform: translateY(-9%) scale(0.95, 1.07); }
+  50% { transform: translateY(-10%) scale(1, 1); }
+  70% { transform: translateY(0) scale(1.07, 0.92); }
+  86% { transform: translateY(0) scale(0.98, 1.02); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes m-wink-off { 0%, 30% { opacity: 1; } 34%, 80% { opacity: 0; } 86%, 100% { opacity: 1; } }
+@keyframes m-wink-on { 0%, 30% { opacity: 0; } 34%, 80% { opacity: 1; } 86%, 100% { opacity: 0; } }
+@keyframes m-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6%); }
+  40% { transform: translateX(5%); }
+  60% { transform: translateX(-3%); }
+  80% { transform: translateX(1.5%); }
+}
+
+/* Motion unwanted: no hops, bobs or shakes; the eyes stay put (the
+   component), and the wide eyes of asking hold still. */
+@media (prefers-reduced-motion: reduce) {
+  .mascot * { animation: none !important; }
+  .mascot[data-mood="asking"] .m-wide { transform: scale(1.16); }
+}
+
+/* Where it sits. */
+.gallery-head .mascot { display: block; margin-bottom: 22px; }
