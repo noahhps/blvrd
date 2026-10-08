@@ -4,6 +4,7 @@ import { COLOURS, colourIdOf } from "../lib/agents.js";
 import { avatarFrom } from "../lib/attach.js";
 import { TOOLS } from "../lib/tools.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { AgentMemory } from "./AgentMemory.jsx";
 import { BrandLogo } from "./BrandLogo.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
@@ -173,6 +174,9 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
               onChange={(e) => set({ instructions: e.target.value })}
             />
           </label>
+
+          {/* Its own MEMORY.md: there once the agent is. */}
+          {agent ? <AgentMemory agent={agent} /> : null}
 
           <section className="field">
             <span className="label">Model</span>

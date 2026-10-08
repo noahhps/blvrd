@@ -61,7 +61,8 @@ ending with nothing.
 |---|---|
 | Clock | today's date and time |
 | Calculator | exact arithmetic, parsed rather than `eval`ed |
-| Notes | remember and recall facts, per agent, between chats |
+| Notebook | read and keep up to date the notebook you share with every agent (always on) |
+| Memory | its own `MEMORY.md`, which you can read and edit under Customize (always on) |
 | Read a web page | fetch a URL and read its text -- **the one that uses the internet** |
 
 An agent can be limited to any subset. Small local models often call tools
@@ -70,6 +71,27 @@ could have meant (a prefixed or misspelled name, wrong-case or wrapped
 arguments, a number sent as text, nearly-JSON, a call written into the reply
 as text), and the model is told what was fixed. A model that won't take tools
 at all still works as a chat. See `src/lib/heal.js` and `src/lib/run.js`.
+
+## Memory
+
+**The Notebook** is one page shared by you and every agent. It is kept in
+versions: each save of yours, and each change an agent makes, is the next
+version (`v57`). An agent remembers, per conversation, the version it last saw,
+and every notebook call first tells it only what changed since -- never the
+whole notebook again. An edit to something someone else changed after the
+agent last looked isn't saved; the agent is told what it now says.
+
+Your own edits show at once and are saved with ⌘S, or a few seconds after you
+leave the notebook (and always before an agent answers). ⌘Z / ⇧⌘Z undo and redo
+your steps; **History** lists every version, agents' included, and can undo
+any of them.
+
+**Each agent's `MEMORY.md`** is its own: how it works with you, what it's in the
+middle of. It's a real file (`<app data>/agents/<id>/MEMORY.md`, with its last
+20 saves kept beside it), given to the agent in full every turn, and shown under
+Customize, where you can edit it, undo, or open the file.
+
+See `docs/notebook-sync.md`.
 
 ## Connectors
 
@@ -101,10 +123,14 @@ src/lib/tools.js       the built-in abilities
 src/lib/connectors/    Google, Apple, Home Assistant, MCP -- tools from your accounts
 src/lib/oauth.js       browser sign-in: PKCE, loopback redirect, MCP discovery
 src/lib/group.js       group chats: who answers, what each agent sees
+src/lib/notebook.js    the Notebook: versions, the user's draft, undo, history
+src/lib/versions.js    a change as operations: diff, apply, undo, net effect
+src/lib/notebookSync.js  agents catching up from the version they last saw
+src/lib/agentMemory.js each agent's MEMORY.md
 src/lib/store.js       everything kept, in the app's own storage
 src/components/        the screens; AgentAvatar is the four-dot ring
 src-tauri/             the desktop shell: HTTP (no CORS, streams), links, sign-in
-                       listener, Apple scripts, local MCP servers
+                       listener, Apple scripts, local MCP servers, MEMORY.md files
 ```
 
 Requests go through Tauri's HTTP plugin, not the webview's `fetch`, so local
@@ -112,7 +138,8 @@ servers that send no CORS headers (llama.cpp, LM Studio, vLLM) still answer.
 
 ## Privacy
 
-Agents, chats, notes and API keys stay on this computer, in the app's storage.
+Agents, chats, the Notebook, agents' memory files and API keys stay on this
+computer, in the app's storage and data folder.
 Keys are stored in plain text there.
 
 ## Tests

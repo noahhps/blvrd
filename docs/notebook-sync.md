@@ -1,6 +1,9 @@
 # The Notebook as shared, versioned memory — design
 
-Status: design, nothing built yet. Refines `docs/memory-proposal.md`: this is
+Status: built (`src/lib/versions.js`, `notebook.js`, `notebookSync.js`,
+`notebookTools.js`, `agentMemory.js`, `components/AgentMemory.jsx`,
+`src-tauri/src/memory.rs`); see "As built" at the end for where it differs
+from this design. Refines `docs/memory-proposal.md`: this is
 how the Notebook itself works as memory (versions, sync, undo) and where each
 agent keeps memory of its own. The proposal's tidy-up, diary, index and forget
 build on top of it unchanged.
@@ -514,3 +517,30 @@ In `test/notebook.test.mjs` and a new `test/sync.test.mjs`, without a browser
    History.
 5. **`MEMORY.md` is in the prompt whole**, capped, rather than searched — it is
    the agent's working memory, not an archive.
+
+---
+
+## As built
+
+Where the code differs from the design above, and why:
+
+- **No snapshots.** "View as of v40" and a section's restore rebuild the old
+  state *backwards* from the head, applying each later version's inverse —
+  every operation already carries its before and after, so periodic full
+  copies weren't needed.
+- **The cursor is `{ v, anchor }`** with no per-section map. Every notebook
+  call catches the agent up on the whole notebook first, so after any call all
+  of it is at the head.
+- **Layout is kept apart from memory.** Where sections sit on the page lives in
+  its own `layout` map, never in a version or the draft, so moving a widget
+  makes no version and undo never moves things around.
+- **`remember` / `recall` are removed, not aliased.** The tool list is given to
+  the model every turn, so `my_memory` is what it sees; old notes are moved into
+  each agent's `MEMORY.md` under "Learned" on first launch.
+- **`my_memory` has a `read` action** (optionally filtered by words), for models
+  that look things up rather than reading their prompt.
+- **Redo of a saved step** is shown in History as "undid" the undo version, since
+  it is one.
+- **Deleting an agent removes its folder at once**; the notice's Undo writes the
+  file back (its `.history` copies don't come back).
+

@@ -171,6 +171,10 @@ export const find = (sections, name) => sections.find((s) => s.id === name || sa
  * (lib/notebookSync.js). With no IndexedDB (the tests) it all lives in memory. */
 
 const NAME = "blvrd-notebook";
+// The quickview (lib/quick.js) is the same page in a second window. It loads
+// this module too but never shows or changes the notebook, so it only reads:
+// two windows writing one notebook would each make "the next" version.
+const reader = typeof location !== "undefined" && location.hash === "#quick";
 let opening = null;
 function db() {
   if (typeof indexedDB === "undefined") return Promise.resolve(null);
@@ -188,7 +192,7 @@ function db() {
   return opening;
 }
 const run = (store, mode, fn) =>
-  db().then(
+  reader && mode !== "readonly" ? Promise.resolve(null) : db().then(
     (d) =>
       d &&
       new Promise((resolve) => {
@@ -327,7 +331,7 @@ function later() {
   clearTimeout(timer);
   timer = null;
   const delay = settings.saveDelay;
-  if (held || delay == null || !draft.length) return;
+  if (reader || held || delay == null || !draft.length) return;
   timer = setTimeout(() => notebook.save(), delay);
 }
 

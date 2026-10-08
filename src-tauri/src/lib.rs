@@ -1,19 +1,22 @@
 // The whole app is the webview: agents, chats and settings live in its storage,
 // and model servers are reached through the HTTP plugin. Rust hosts it, and
-// does the three things a webview can't do for itself:
+// does the things a webview can't do for itself:
 //
 //   * hear a sign-in come back (`oauth_listen`) -- a one-shot listener on a
 //     loopback port, for Google and for MCP servers that sign in with OAuth;
 //   * talk to Calendar and Reminders on macOS (`apple_script`) -- fixed
 //     scripts, compiled into the app, with the arguments passed separately;
 //   * run local MCP servers (`mcp_spawn` / `mcp_send` / `mcp_stop`) -- a
-//     command the reader configured, spoken to over stdin and stdout.
+//     command the reader configured, spoken to over stdin and stdout;
+//   * keep each agent's own memory as a file, MEMORY.md, the reader can open
+//     (`agent_memory_*`).
 //
 // It also carries the global-shortcut plugin, which the main window uses to
 // open the quickview (the "quick" window) from any app.
 
 mod apple;
 mod mcp;
+mod memory;
 mod oauth;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,6 +33,10 @@ pub fn run() {
             mcp::mcp_spawn,
             mcp::mcp_send,
             mcp::mcp_stop,
+            memory::agent_memory_read,
+            memory::agent_memory_write,
+            memory::agent_memory_reveal,
+            memory::agent_memory_remove,
         ])
         .build(tauri::generate_context!())
         .expect("error while building blvrd")

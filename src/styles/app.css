@@ -1718,6 +1718,18 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .nb-version-lines { margin: 2px 0 0; padding: 0 0 0 38px; list-style: none; color: var(--dim); line-height: 1.5; }
 .nb-version-lines li { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
+/* An agent's own memory, in its Customize sheet (components/AgentMemory). */
+.memory-label { display: flex; align-items: center; gap: 8px; }
+.memory-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; text-transform: none; letter-spacing: normal; }
+.memory-actions .btn { height: 28px; font-size: 13px; }
+.memory-actions .btn.icon-only { width: 28px; }
+.memory-view { max-height: 260px; overflow-y: auto; padding: 10px 12px; border-radius: 10px; background: var(--well); font-size: 14px; cursor: text; }
+.memory-view > :first-child { margin-top: 0; }
+.memory-view > :last-child { margin-bottom: 0; }
+.memory-text { min-height: 220px; font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.memory-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; margin: 0; }
+.memory-links { display: flex; gap: 12px; }
+
 /* A row an agent changed while the user was changing it too. */
 .nb-clash { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 8px; padding: 6px 10px; border-radius: 8px; background: var(--well); color: var(--dim); font-size: 13px; }
 .nb-clash-button { padding: 0; border: 0; background: none; color: var(--ink); font: inherit; font-weight: 500; cursor: pointer; }
