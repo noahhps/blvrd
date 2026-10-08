@@ -1,5 +1,5 @@
-/* The Arc: blvrd's mascot, alive. A red arch -- two legs and a round top,
- * the boulevard's gateway -- standing on the floor of a white square, moving
+/* The Arc: blvrd's mascot, alive. A red arch -- one sweeping curve, the
+ * boulevard's gateway -- standing on the floor of a white square, moving
  * with what the app is doing. The app and every agent wear it.
  *
  *   idle       breathes, slowly
@@ -20,12 +20,14 @@
 
 export const ARC_MOODS = ["idle", "listening", "thinking", "speaking", "asking", "done", "error"];
 
-// The arch: outer edge up the left leg, over the top, down the right; then
-// the opening back the other way. Legs 22 wide, standing on the floor.
-const BODY = "M14 100 V52 A36 36 0 0 1 86 52 V100 H64 V52 A14 14 0 0 0 36 52 V100 Z";
-const EDGE = "M14 100 V52 A36 36 0 0 1 86 52 V100";
+// The arch: one continuous curve, like a gateway arch -- legs that lean in
+// as they rise and sweep into the top, with no straight run and no corner.
+// Outer edge up and over, then the opening back the other way; the band is
+// broader at the feet than at the crown.
+const BODY = "M8 100 C14 52 28 14 50 14 C72 14 86 52 92 100 H68 C66 62 60 34 50 34 C40 34 34 62 32 100 Z";
+const EDGE = "M8 100 C14 52 28 14 50 14 C72 14 86 52 92 100";
 // The middle of the band, for thinking's light to run along.
-const SPINE = "M25 100 V52 A25 25 0 0 1 75 52 V100";
+const SPINE = "M20 100 C24 57 36 24 50 24 C64 24 76 57 80 100";
 
 export function Arc({ mood = "idle", size = 28, tick = 0, label = null, colour = null, className = "" }) {
   return (
