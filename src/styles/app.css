@@ -428,8 +428,39 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .widget[aria-current="true"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
 
 /* What's playing (components/widgets/MusicWidget): the cover, the song and
-   who it's by, and back, play/pause and skip. */
-.widget-music { display: flex; align-items: center; gap: 10px; padding: 6px 8px; cursor: default; }
+   who it's by, back, play/pause and skip, and how far in. */
+.widget-music { display: flex; flex-direction: column; gap: 8px; padding: 6px 8px 8px; cursor: default; }
+.music-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.music-track { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+
+/* Motion. A new song slides in a little from the side it came from -- the
+   right for Next or a song starting by itself, the left after Back -- so a
+   skip reads as moving through the queue rather than a swap. A transition,
+   not keyframes: skipping twice quickly turns it around from where it is. */
+.music-track {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+@starting-style {
+  .music-track { opacity: 0; transform: translateX(8px); }
+  .music-track[data-from="back"] { opacity: 0; transform: translateX(-8px); }
+}
+/* The cover fades up once it has loaded, rather than popping in late. */
+.music-art img { opacity: 0; transition: opacity 200ms var(--ease-out); }
+.music-art img[data-loaded] { opacity: 1; }
+/* Play and pause trade places with a quick grow from 90%, so the press
+   visibly landed. */
+.music-glyph { display: grid; place-items: center; transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out); }
+@starting-style {
+  .music-glyph { opacity: 0; transform: scale(0.9); }
+}
+/* Paused dims the song and the bar; playing brings them back. */
+.music-text, .music-progress-fill { transition: opacity 200ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  @starting-style {
+    .music-track, .music-track[data-from="back"] { transform: none; }
+    .music-glyph { transform: none; }
+  }
+}
 .widget-music:hover { background: none; }
 .widget-music > .side-empty { padding: 2px 0; }
 .music-art {
@@ -450,6 +481,99 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .widget-music[data-state="paused"] .music-text { opacity: 0.6; }
 .music-controls { flex: none; display: flex; gap: 4px; }
 .round.music-button { width: 28px; height: 28px; background: var(--well); color: var(--ink); }
+/* The bar: constant motion, so linear, on transform alone. Paused, it stops
+   where it is; a new read starts it again from the player's own position. */
+.music-progress { display: block; height: 3px; overflow: hidden; border-radius: 2px; background: var(--well); }
+.music-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transform-origin: left;
+  transform: scaleX(var(--at));
+  animation-name: music-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+.widget-music[data-state="paused"] .music-progress-fill { animation-play-state: paused; opacity: 0.5; }
+@keyframes music-progress {
+  from { transform: scaleX(var(--at)); }
+  to { transform: scaleX(1); }
+}
+/* Seeking. The bar has a taller hit area than it looks; under the pointer it
+   thickens a little and a knob shows at the playhead, so it reads as
+   something to grab (a quick, plain response: this is passed over often). */
+.music-scrub { position: relative; margin: -6px 0; padding: 6px 0; cursor: pointer; touch-action: none; outline: none; }
+.music-progress { transition: transform 150ms ease; }
+.music-knob-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 0;
+  pointer-events: none;
+  transform: translateX(calc(var(--at) * 100%));
+  animation-name: music-knob;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes music-knob {
+  from { transform: translateX(calc(var(--at) * 100%)); }
+  to { transform: translateX(100%); }
+}
+.widget-music[data-state="paused"] .music-knob-rail { animation-play-state: paused; }
+.music-knob {
+  position: absolute;
+  left: -4.5px;
+  top: -4.5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ink);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .music-scrub:hover .music-progress { transform: scaleY(1.67); }
+  .music-scrub:hover .music-knob { opacity: 1; transform: none; }
+}
+.music-scrub:focus-visible .music-knob { opacity: 1; transform: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+/* Dragging: the bar and knob are wherever the pointer is -- no animation
+   between, it's the reader's hand -- and a bubble over the knob says where
+   letting go will land. The bubble leans left at the start of the bar and
+   right at the end, so it is never cut off by the sidebar's edge. */
+.music-scrub[data-scrubbing] { cursor: grabbing; }
+.music-scrub[data-scrubbing] .music-progress { transform: scaleY(1.67); }
+.music-scrub[data-scrubbing] .music-progress-fill,
+.music-scrub[data-scrubbing] .music-knob-rail { animation: none; }
+.music-scrub[data-scrubbing] .music-knob { opacity: 1; transform: none; }
+/* The lean follows the drag directly; only the bubble inside animates in. */
+.music-time { position: absolute; bottom: 9px; left: 0; transform: translateX(calc(var(--at) * -100%)); }
+.music-time-bubble {
+  display: block;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform-origin: bottom center;
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+@starting-style {
+  .music-time-bubble { opacity: 0; transform: scale(0.95); }
+}
+/* Motion turned down: no creeping, just where it stood at the last read; no
+   growing, only fades. */
+@media (prefers-reduced-motion: reduce) {
+  .music-progress-fill, .music-knob-rail { animation: none; }
+  .music-progress { transition: none; }
+  .music-knob { transform: none; }
+  @starting-style {
+    .music-time-bubble { transform: none; }
+  }
+}
 @media (hover: hover) and (pointer: fine) {
   .round.music-button:hover { background: var(--line); }
 }

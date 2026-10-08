@@ -1,4 +1,5 @@
-// What Music and Spotify are playing, from whichever of them is open. An app
+// What Music and Spotify are playing -- and how far in -- from whichever of
+// them is open. An app
 // that isn't open is skipped without starting it; one not installed is too.
 function run() {
   const out = [];
@@ -18,6 +19,14 @@ function run() {
       }
       const t = app.currentTrack;
       const item = { app: id, state, title: t.name(), artist: t.artist(), album: t.album() };
+      // Where in the song, and how long it is, in seconds. Spotify says its
+      // length is in seconds but gives milliseconds; no song is ten hours.
+      try {
+        let length = Number(t.duration());
+        if (length > 36000) length /= 1000;
+        item.duration = length;
+        item.position = Number(app.playerPosition());
+      } catch (e) {}
       if (id === "spotify") {
         try {
           item.artwork = t.artworkUrl();
