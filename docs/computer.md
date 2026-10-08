@@ -340,6 +340,11 @@ browser context; **Reset machine** restores the clean snapshot.
 
 ## 10. Building it
 
+**Phase 0 -- every provider's models can drive it** (`docs/computer-providers.md`)
+- Know each model's window and tool support; a prompted-tools mode for
+  models without native calls; a probe per model; fixtures for every wire
+  dialect. Done before the toggle can be turned on.
+
 **Phase 1 -- the computer, on this Mac (shell, files, browser, worker)**
 - `computer/` -- the daemon: MCP stdio server, `shell` / `read` / `write` /
   `edit` / `browser`, page views and diffs, output spill files. Its own tests
