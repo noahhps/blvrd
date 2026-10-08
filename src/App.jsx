@@ -12,6 +12,8 @@ import { inDesktop } from "./lib/http.js";
 import { listen } from "./lib/desktop.js";
 import { searchOf } from "./lib/search.js";
 import { NOTEBOOK_TOOLS, notebookBrief } from "./lib/notebookTools.js";
+import { behindNote } from "./lib/notebookSync.js";
+import { MEMORY_TOOLS, migrateNotes, readMemory, removeMemory } from "./lib/agentMemory.js";
 import { notebook, provideLive, ready as notebookReady } from "./lib/notebook.js";
 import { agentsRows, calendarRows, groupsRows, musicRows, setupRows } from "./lib/liveRows.js";
 import { eventsAhead } from "./lib/useMonthEvents.js";
@@ -139,6 +141,33 @@ export default function App() {
     notebookReady.then(() => notebook.connectSidebar(stateRef.current.widgets));
   }, []);
 
+  // Notes agents kept the old way (state.notes) move into each one's
+  // MEMORY.md, once, where the user can see them.
+  useEffect(() => {
+    const kept = stateRef.current.notes || {};
+    for (const [id, notes] of Object.entries(kept)) {
+      const agent = stateRef.current.agents.find((a) => a.id === id);
+      if (!notes?.length || !agent) continue;
+      migrateNotes(id, agent.name, notes)
+        .then(() => update((s) => ({ notes: Object.fromEntries(Object.entries(s.notes || {}).filter(([k]) => k !== id)) })))
+        .catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The user's unsaved notebook edits are saved when the window is hidden or
+  // closed, without waiting for the usual few seconds.
+  useEffect(() => {
+    const flush = () => document.hidden && notebook.save();
+    const quit = () => notebook.save();
+    document.addEventListener("visibilitychange", flush);
+    addEventListener("pagehide", quit);
+    return () => {
+      document.removeEventListener("visibilitychange", flush);
+      removeEventListener("pagehide", quit);
+    };
+  }, []);
+
   // The Notebook's live sections (lib/notebook.js LIVE): the sidebar's
   // widgets as rows an agent can read. Each reads the latest state when asked.
   provideLive("agents", () => agentsRows(byRecent(stateRef.current.agents, stateRef.current.chats), (a) => taglineOf(a, PRESETS)));
@@ -182,7 +211,7 @@ export default function App() {
   // Every tool an agent could be given: the built-in ones and every connected
   // account's and server's.
   const available = useMemo(
-    () => [...TOOLS, ...NOTEBOOK_TOOLS, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
+    () => [...TOOLS, ...NOTEBOOK_TOOLS, ...MEMORY_TOOLS, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.connectors],
   );
@@ -222,7 +251,7 @@ export default function App() {
   };
 
   /* Deleting a conversation with an agent: the agent goes, with its chat and
-   * notes, and it leaves its groups (what it said there stays). Done at once,
+   * its MEMORY.md, and it leaves its groups (what it said there stays). Done at once,
    * with an Undo in the notice rather than a question first (see `notify`). */
   const deleteAgent = (agent) => {
     if (running.current?.chatId === agent.id) running.current.controller.abort();
@@ -230,6 +259,7 @@ export default function App() {
     const chat = before.chats[agent.id];
     const notes = before.notes[agent.id];
     const seats = Object.fromEntries((before.groups || []).map((g) => [g.id, g.members.indexOf(agent.id)]).filter(([, at]) => at !== -1));
+    const memoryBack = removeMemory(agent.id);
     update((s) => {
       const chats = { ...s.chats };
       const notes = { ...s.notes };
@@ -241,7 +271,8 @@ export default function App() {
     });
     setEditor(null);
     if (view.kind === "agent" && view.id === agent.id) setView({ kind: "gallery" });
-    notify(`Deleted your conversation with ${agent.name}`, () =>
+    notify(`Deleted your conversation with ${agent.name}`, () => {
+      memoryBack.then((back) => back());
       update((s) => ({
         agents: s.agents.some((a) => a.id === agent.id) ? s.agents : [...s.agents, agent],
         chats: chat ? { ...s.chats, [agent.id]: chat } : s.chats,
@@ -253,8 +284,8 @@ export default function App() {
           members.splice(seats[g.id], 0, agent.id);
           return { ...g, members };
         }),
-      })),
-    );
+      }));
+    });
   };
 
   const fromPreset = ({ name, instructions, look }) => ({ name, instructions, look, tools: null, model: null });
@@ -273,16 +304,16 @@ export default function App() {
     return provider ? { provider, model: choice.model } : null;
   };
 
-  const notebookOf = (agentId) => ({
-    // The Notebook (lib/notebookTools.js): who is writing, and how to name
-    // another agent that wrote before them.
+  const agentName = (id) => stateRef.current.agents.find((a) => a.id === id)?.name || "an assistant no longer here";
+  const notebookOf = (agentId, chatId) => ({
+    // The Notebook (lib/notebookTools.js): who is writing, in which
+    // conversation (each has its own place in the notebook's versions), and
+    // how to name another agent that wrote before them.
     agentId,
-    nameOf: (id) => stateRef.current.agents.find((a) => a.id === id)?.name || "an assistant no longer here",
-    // Read when the tool runs, from the latest state, so a note saved earlier
-    // in the same turn is already there.
-    notes: () => stateRef.current.notes[agentId] || [],
-    addNote: (note) =>
-      update((s) => ({ notes: { ...s.notes, [agentId]: [...(s.notes[agentId] || []), { text: note, at: Date.now() }] } })),
+    chatId,
+    nameOf: agentName,
+    // Its own MEMORY.md is called after it, the first time it's made.
+    agentName: agentName(agentId),
     search: () => searchOf(stateRef.current),
   });
 
@@ -301,6 +332,11 @@ export default function App() {
 
     setLive({ chatId, agentId: agent.id, text: "", parts: [], status: "", queue });
     const said = [];
+    // The user's unsaved notebook edits are saved first: an agent is never
+    // behind what's on their screen. Its own memory is read fresh, in case
+    // it was edited in another editor.
+    notebook.save();
+    const memory = await readMemory(agent.id, agent.name).catch(() => "");
     try {
       await runTurn({
         agent,
@@ -308,9 +344,11 @@ export default function App() {
         model: target.model,
         history,
         signal: controller.signal,
-        notebook: notebookOf(agent.id),
+        notebook: notebookOf(agent.id, chatId),
         thinking,
         context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
+        note: behindNote(agent.id, chatId, history, agentName),
+        memory,
         available,
         approve: askFirst(chatId, agent),
         emit: (event) => {

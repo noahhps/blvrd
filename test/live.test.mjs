@@ -40,9 +40,9 @@ test("every widget is in the notebook once; agents read it but can't change it",
   provideLive("music", async () => musicRows({ app: "music", state: "paused", title: "So What", artist: "Miles Davis" }));
   const tool = (name) => NOTEBOOK_TOOLS.find((t) => t.name === name);
   const ctx = { agentId: "a1", nameOf: () => "A" };
-  assert.match(await tool("notebook_contents").run({}, ctx), /Now playing \(kept current by the app; read-only\)/);
+  assert.match(await tool("notebook_sync").run({}, ctx), /Now playing \(kept current by the app; read-only\)/);
   assert.match(await tool("notebook_read").run({ section: "now playing" }, ctx), /Paused: So What — Miles Davis/);
-  await assert.rejects(tool("notebook_edit").run({ section: "Calendar", action: "set", key: "x", value: "y" }, ctx), /kept up to date by the app/);
+  assert.match(await tool("notebook_edit").run({ section: "Calendar", action: "set", key: "x", value: "y" }, ctx), /Not saved:\n- Calendar — .*kept up to date by the app/);
 
   // Taken out, it stays out (it isn't put back on the next load).
   const calendar = live.find((s) => s.source === "calendar");

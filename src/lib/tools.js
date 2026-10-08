@@ -1,10 +1,14 @@
 /* What an agent can do besides talk: its abilities.
  *
- * Kept small and local on purpose. Four run entirely on this machine; two,
+ * Kept small and local on purpose. Two run entirely on this machine; two,
  * `web_search` and `read_page`, reach the internet and say so (`network:
  * true`), so the editor can mark them and a reader who wants an agent that
  * never leaves the machine can switch them off. An agent is offered only the tools it is allowed
  * (`agent.tools`, null meaning all), and a call to any other is refused.
+ *
+ * What an agent remembers isn't here: the Notebook it shares with the user
+ * (lib/notebookTools.js) and its own MEMORY.md (lib/agentMemory.js) are
+ * every agent's, whatever its list says.
  */
 
 import { calculate } from "./calc.js";
@@ -36,41 +40,6 @@ export const TOOLS = [
     run: ({ expression }) => {
       const value = calculate(expression);
       return `${expression} = ${+value.toPrecision(15)}`;
-    },
-  },
-  {
-    name: "remember",
-    label: "Notes: remember",
-    description: "Save a short note to this agent's own notebook, kept between conversations -- a preference, a fact about the user, a decision. One fact per note.",
-    parameters: {
-      type: "object",
-      properties: { note: { type: "string", description: "The fact to keep, in one sentence." } },
-      required: ["note"],
-    },
-    run: ({ note }, ctx) => {
-      const text = String(note).trim();
-      if (!text) throw new Error("the note is empty");
-      ctx.addNote(text);
-      return `Saved: ${text}`;
-    },
-  },
-  {
-    name: "recall",
-    label: "Notes: recall",
-    description: "Look through this agent's notebook. With a query, only notes containing those words; without one, all of them.",
-    parameters: {
-      type: "object",
-      properties: { query: { type: "string", description: "Words to look for (optional)." } },
-      required: [],
-    },
-    run: ({ query }, ctx) => {
-      const notes = ctx.notes();
-      const words = String(query || "").toLowerCase().split(/\s+/).filter(Boolean);
-      const hits = words.length
-        ? notes.filter((n) => words.some((w) => n.text.toLowerCase().includes(w)))
-        : notes;
-      if (!hits.length) return notes.length ? "No notes match." : "The notebook is empty.";
-      return hits.map((n) => `- ${n.text} (${new Date(n.at).toLocaleDateString()})`).join("\n");
     },
   },
   {

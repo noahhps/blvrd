@@ -40,7 +40,7 @@ test("a repaired tool call runs, and the model answers from its result", async (
       events.push(e);
       if (e.type === "text") text += e.delta;
     },
-    notebook: { notes: () => [], addNote: () => {} },
+    notebook: {},
   });
 
   assert.equal(requests.length, 2);
@@ -80,7 +80,7 @@ test("a tool the agent is not allowed is not offered, and a call to it is refuse
     model: "m",
     history: [{ role: "user", content: "read example.com" }],
     emit: (e) => e.type === "message" && messages.push(e.message),
-    notebook: { notes: () => [], addNote: () => {} },
+    notebook: {},
   });
   assert.ok(fetches.every((u) => u.includes("127.0.0.1")), "the page itself was never fetched");
   assert.equal(messages[1].error, true);
@@ -104,7 +104,7 @@ test("a model that will not take tools still answers, with a note", async (t) =>
     model: "gemma:2b",
     history: [{ role: "user", content: "hi" }],
     emit: (e) => e.type === "message" && messages.push(e.message),
-    notebook: { notes: () => [], addNote: () => {} },
+    notebook: {},
   });
   assert.equal(calls, 2);
   assert.equal(messages[0].content, "Hello.");
@@ -140,7 +140,7 @@ test("stopping ends the turn even while a tool that ignores the signal is runnin
     history: [{ role: "user", content: "look it up" }],
     signal: controller.signal,
     emit: () => {},
-    notebook: { notes: () => [], addNote: () => {} },
+    notebook: {},
     available: [slow],
   });
   await running;
@@ -164,7 +164,7 @@ test("stopping while a confirm-first tool waits for the reader ends the turn", a
     history: [{ role: "user", content: "send it" }],
     signal: controller.signal,
     emit: () => {},
-    notebook: { notes: () => [], addNote: () => {} },
+    notebook: {},
     available: [{ name: "send_it", description: "Sends.", parameters: { type: "object", properties: {} }, confirm: true, run: () => (ran = true) }],
     // A question nobody answers.
     approve: () => {
@@ -176,4 +176,60 @@ test("stopping while a confirm-first tool waits for the reader ends the turn", a
   controller.abort();
   await assert.rejects(turn, (e) => e.name === "AbortError");
   assert.equal(ran, false);
+});
+
+test("two turns with the notebook: caught up once, then told only what changed, behind-note and memory in the request", async (t) => {
+  const { notebook, ready } = await import("../src/lib/notebook.js");
+  const { NOTEBOOK_TOOLS } = await import("../src/lib/notebookTools.js");
+  const { behindNote } = await import("../src/lib/notebookSync.js");
+  await ready;
+  notebook.setSaveDelay(null);
+  const s = notebook.add("list", "Places to try", undefined, { items: [{ id: "i1", text: "Nopa", done: false }] });
+  notebook.save();
+
+  const requests = [];
+  const replies = [];
+  t.mock.method(globalThis, "fetch", async (url, init) => {
+    requests.push(JSON.parse(init.body));
+    return ndjsonResponse(replies.shift());
+  });
+  const callSync = [{ message: { role: "assistant", content: "", tool_calls: [{ function: { name: "notebook_sync", arguments: {} } }] }, done: true }];
+  const answer = (text) => [{ message: { role: "assistant", content: text }, done: true }];
+
+  const chat = [];
+  const turn = async (userText) => {
+    chat.push({ role: "user", content: userText });
+    await runTurn({
+      agent: { id: "planner", name: "Planner", instructions: "Plan.", tools: [] },
+      provider: { id: "ollama", kind: "ollama", name: "Ollama", base: "http://127.0.0.1:11434" },
+      model: "qwen3",
+      history: [...chat],
+      available: NOTEBOOK_TOOLS,
+      notebook: { agentId: "planner", chatId: "planner", nameOf: () => "someone" },
+      note: behindNote("planner", "planner", chat, () => "someone"),
+      memory: "# Planner's memory\n- Window seats",
+      emit: (e) => e.type === "message" && chat.push(e.message),
+    });
+  };
+
+  replies.push(callSync, answer("Nopa is on your list."));
+  await turn("where should we eat?");
+  assert.match(requests[0].messages[0].content, /Your own memory \(MEMORY\.md\)[\s\S]*Window seats/);
+  assert.match(requests[0].messages.at(-1).content, /You haven't read it in this conversation/);
+  assert.match(chat.find((m) => m.role === "tool").content, /Places to try:\n- \[ \] Nopa/);
+
+  // The user adds a place; next turn the agent is told it's behind, and the
+  // catch-up has just that.
+  notebook.write(s.id, { items: [{ id: "i1", text: "Nopa", done: false }, { id: "i2", text: "Zuni", done: false }] });
+  notebook.save();
+  replies.push(callSync, answer("Zuni too."));
+  await turn("anything new?");
+  const second = requests[2].messages;
+  assert.match(second.at(-1).content, /you last saw v\d+ — 1 change, in Places to try/);
+  assert.equal(second[0].content, requests[0].messages[0].content, "the system prompt didn't change");
+  const caught = chat.filter((m) => m.role === "tool").at(-1).content;
+  assert.match(caught, /Places to try: added “Zuni” \(the user, v\d+\)/);
+  assert.doesNotMatch(caught, /Its sections/);
+  // The note was for the request only, not kept in the chat.
+  assert.equal(chat.filter((m) => m.role === "user").at(-1).content, "anything new?");
 });

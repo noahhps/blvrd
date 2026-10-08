@@ -12,14 +12,17 @@ import { checkStopped, isStop, stoppedError, untilStopped } from "./abort.js";
 import { callsInText, fitArgs, parseArgs, resolveName, usageOf } from "./heal.js";
 import { adapterFor } from "./providers.js";
 import { thinkingFields } from "./thinking.js";
+import { memoryBrief } from "./agentMemory.js";
 import { toolsFor } from "./tools.js";
 
 export const MAX_ROUNDS = 8;
 
 const newId = () => `call_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 
-/** The system prompt: who the agent is, then what it was told to be. */
-export function systemFor(agent, tools, context = "") {
+/** The system prompt: who the agent is, what it was told to be, its own
+ *  memory (lib/agentMemory.js) -- the parts that stay the same from turn to
+ *  turn first, so a model server can reuse its cache of them. */
+export function systemFor(agent, tools, context = "", memory = "") {
   const parts = [
     `You are ${agent.name}, an assistant in blvrd, running for the user on their own computer.`,
     "Answer in Markdown when formatting helps. Be direct; say plainly when you are unsure.",
@@ -32,6 +35,7 @@ export function systemFor(agent, tools, context = "") {
     parts.push("You have no tools in this conversation; answer from what you know and say when you cannot check something.");
   }
   if (agent.instructions?.trim()) parts.push(agent.instructions.trim());
+  if (memory) parts.push(memoryBrief(memory));
   // Where the agent is answering, when that is more than a one-to-one chat --
   // a group (lib/group.js).
   if (context.trim()) parts.push(context.trim());
@@ -57,12 +61,14 @@ export async function runTurn({
   context = "",
   available,
   approve = null,
+  note = "",
+  memory = "",
 }) {
   const adapter = adapterFor(provider);
   const tools = toolsFor(agent, available);
   const names = tools.map((t) => t.name);
-  const system = systemFor(agent, tools, context);
-  const messages = [...history];
+  const system = systemFor(agent, tools, context, memory);
+  const messages = withNote(history, note);
   const extra = thinkingFields(provider.kind, thinking?.control, thinking?.value);
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -137,7 +143,9 @@ export async function runTurn({
           // Not every tool listens for the signal (a connector's, an
           // AppleScript), so the turn stops waiting for it the moment the
           // reader stops -- whatever it was doing is left to finish unheard.
-          const output = await untilStopped(tool.run(call.args, { signal, ...notebook }), signal);
+          // `callId` and `messages`: what the model can see, so the notebook
+          // knows what an agent has already been told (lib/notebookSync.js).
+          const output = await untilStopped(tool.run(call.args, { signal, ...notebook, callId: call.id, messages }), signal);
           message.content = call.notes.length
             ? `${output}\n\n(Your call was repaired: ${call.notes.join("; ")}. Spell it that way next time.)`
             : String(output);
@@ -161,6 +169,16 @@ export async function runTurn({
     provider: provider.id,
   };
   emit({ type: "message", message: stopped });
+}
+
+/* `note` added to the end of the user's last message, for this request only
+ * -- what changes from turn to turn goes there rather than in the system
+ * prompt, which a model server can then reuse its cache of. */
+function withNote(history, note) {
+  const messages = [...history];
+  const last = messages[messages.length - 1];
+  if (note && last?.role === "user") messages[messages.length - 1] = { ...last, content: [last.content, note].filter(Boolean).join("\n\n") };
+  return messages;
 }
 
 /* The provider's parts with each call's id as run.js knows it. */

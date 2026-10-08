@@ -6,7 +6,8 @@
  *   groups     [{ id, name, members: [agentId], createdAt }] -- group chats
  *   chats      { [agentId | groupId]: message[] } -- one ongoing chat per agent
  *              and per group; a group's agent messages carry `agentId`
- *   notes      { [agentId]: [{ text, at }] } -- each agent's notebook
+ *   notes      { [agentId]: [{ text, at }] } -- notes agents kept before each
+ *              had its own MEMORY.md; moved into it once (lib/agentMemory.js)
  *   providers  { [id]: { base?, key?, enabled? } } -- changes to the catalog
  *   custom     [{ id, kind, name, base, key }] -- servers the reader added
  *   defaultModel  { provider, model } | null
