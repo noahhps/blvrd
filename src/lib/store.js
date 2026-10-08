@@ -11,6 +11,8 @@
  *   custom     [{ id, kind, name, base, key }] -- servers the reader added
  *   defaultModel  { provider, model } | null
  *   connectors    accounts and servers agents can use (lib/connectors/index.js)
+ *   search        { provider, keys, searxng, fallback } -- the web_search
+ *                 tool's provider (lib/search.js); absent means the free tier
  *   widgets       [widgetId] -- the sidebar's widgets, top to bottom
  *                 (components/widgets)
  *

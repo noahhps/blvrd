@@ -3,6 +3,7 @@ import { useState } from "react";
 import { HOSTED_CLOSED, HOSTED_OPEN, hostOf, isLocalUrl } from "../lib/catalog.js";
 import { forget, modelsOf } from "../lib/models.js";
 import { COMPACT_CHOICES, DEFAULT_COMPACT_AT } from "../lib/compact.js";
+import { FREE, PAID } from "../lib/search.js";
 import { DEFAULT_SHORTCUT, shortcutFromKey, shortcutLabel } from "../lib/quick.js";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
@@ -25,6 +26,8 @@ export function Settings({
   onShortcut,
   compactAt,
   onCompactAt,
+  search,
+  onSearch,
 }) {
   const [probe, setProbe] = useState({}); // id -> { state, count, error }
   const [probing, setProbing] = useState(false);
@@ -98,17 +101,34 @@ export function Settings({
                 </span>
                 <span className="server-note">{withCode(p.note)}</span>
               </span>
-              <input
-                className="server-url"
-                type="text"
-                value={p.base}
-                aria-label={`${p.name} address`}
-                spellCheck={false}
-                onChange={(e) => {
-                  forget(p);
-                  onProvider(p.id, { base: e.target.value });
-                }}
-              />
+              <span className="server-fields">
+                <input
+                  className="server-url"
+                  type="text"
+                  value={p.base}
+                  aria-label={`${p.name} address`}
+                  spellCheck={false}
+                  onChange={(e) => {
+                    forget(p);
+                    onProvider(p.id, { base: e.target.value });
+                  }}
+                />
+                {p.localKey ? (
+                  <input
+                    className="server-url"
+                    type="password"
+                    value={p.key}
+                    placeholder="API key"
+                    aria-label={`${p.name} API key`}
+                    spellCheck={false}
+                    autoComplete="off"
+                    onChange={(e) => {
+                      forget(p);
+                      onProvider(p.id, { key: e.target.value.trim() });
+                    }}
+                  />
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>
@@ -173,6 +193,8 @@ export function Settings({
         </select>
       </section>
 
+      <SearchCard search={search} onSearch={onSearch} />
+
       <QuickviewCard shortcut={shortcut} problem={shortcutProblem} onShortcut={onShortcut} />
 
       <p className="fineprint">
@@ -180,6 +202,75 @@ export function Settings({
         plain text there, so anyone with access to your user account could read them.
       </p>
     </div>
+  );
+}
+
+/* Where an agent's web searches go. The free tier needs nothing; a provider
+ * of the reader's own takes a key (or, for SearXNG, an address) and is asked
+ * first. */
+function SearchCard({ search, onSearch }) {
+  const id = search.provider;
+  const paid = PAID[id];
+  const free = Object.values(FREE).map((v) => v.name).join(", ");
+  return (
+    <section className="card">
+      <h2>Web search</h2>
+      <p className="hint">
+        What an agent’s “Search the web” ability uses. Only the search itself is sent, never your chat.
+      </p>
+      <div className="search-fields">
+        <select value={id} onChange={(e) => onSearch({ provider: e.target.value })} aria-label="Search provider">
+          <option value="free">Free, no key ({free} in turn)</option>
+          {Object.entries(PAID).map(([key, p]) => (
+            <option key={key} value={key}>
+              {p.name}
+              {key === "searxng" ? " (your own server)" : " (your key)"}
+            </option>
+          ))}
+        </select>
+        {id === "searxng" ? (
+          <input
+            type="text"
+            value={search.searxng}
+            placeholder="http://127.0.0.1:8080"
+            aria-label="SearXNG address"
+            spellCheck={false}
+            onChange={(e) => onSearch({ searxng: e.target.value.trim() })}
+          />
+        ) : paid ? (
+          <input
+            type="password"
+            value={search.keys[id] || ""}
+            placeholder={`${paid.name} API key`}
+            aria-label={`${paid.name} API key`}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(e) => onSearch({ keys: { ...search.keys, [id]: e.target.value.trim() } })}
+          />
+        ) : null}
+      </div>
+      {id === "free" ? (
+        <p className="hint">
+          Each search goes to the next of these services’ free tiers, and to the one after if it’s busy. Fine for
+          everyday use; a key of your own is steadier.
+        </p>
+      ) : id === "searxng" ? (
+        <p className="hint">Your SearXNG needs the JSON format turned on (search.formats in its settings.yml).</p>
+      ) : (
+        <p className="hint">
+          <a href={paid.keys} target="_blank" rel="noreferrer">
+            Get a {paid.name} key
+          </a>
+          . Searches go to {paid.name}.
+        </p>
+      )}
+      {paid ? (
+        <label className="check search-fallback">
+          <input type="checkbox" checked={search.fallback} onChange={(e) => onSearch({ fallback: e.target.checked })} />
+          When {paid.name} fails, use the free services instead
+        </label>
+      ) : null}
+    </section>
   );
 }
 

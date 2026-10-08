@@ -9,6 +9,7 @@ import { load, newId, providersOf, save } from "./lib/store.js";
 import { TOOLS } from "./lib/tools.js";
 import { inDesktop } from "./lib/http.js";
 import { listen } from "./lib/desktop.js";
+import { searchOf } from "./lib/search.js";
 import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
 import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
@@ -231,6 +232,7 @@ export default function App() {
     notes: () => stateRef.current.notes[agentId] || [],
     addNote: (note) =>
       update((s) => ({ notes: { ...s.notes, [agentId]: [...(s.notes[agentId] || []), { text: note, at: Date.now() }] } })),
+    search: () => searchOf(stateRef.current),
   });
 
   /* One agent's turn, in whichever chat. Everything it says is appended to
@@ -771,6 +773,8 @@ export default function App() {
             onShortcut={(quickShortcut) => update(() => ({ quickShortcut }))}
             compactAt={compactAtOf(state)}
             onCompactAt={(compactAt) => update(() => ({ compactAt }))}
+            search={searchOf(state)}
+            onSearch={(patch) => update((s) => ({ search: { ...searchOf(s), ...patch } }))}
           />
         ) : selected ? (
           <Chat
@@ -859,6 +863,7 @@ function explain(problem, { provider, model }) {
       : `${provider.name} isn't answering at ${provider.base}. Is it running? (Settings → Find local servers.)`;
   }
   if (/\b401\b|\b403\b|authentication|api key|x-api-key/i.test(text)) {
+    if (!provider.key) return `${provider.name} wants a key. Add one in Settings. (${text})`;
     return `${provider.name} turned the key down. Check it in Settings. (${text})`;
   }
   if (/\b404\b|not found|model .* (does not exist|not found)/i.test(text)) {

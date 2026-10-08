@@ -1,14 +1,15 @@
 /* What an agent can do besides talk: its abilities.
  *
- * Kept small and local on purpose. Four run entirely on this machine; one,
- * `read_page`, reaches the internet and says so (`network: true`), so the
- * editor can mark it and a reader who wants an agent that never leaves the
- * machine can switch it off. An agent is offered only the tools it is allowed
+ * Kept small and local on purpose. Four run entirely on this machine; two,
+ * `web_search` and `read_page`, reach the internet and say so (`network:
+ * true`), so the editor can mark them and a reader who wants an agent that
+ * never leaves the machine can switch them off. An agent is offered only the tools it is allowed
  * (`agent.tools`, null meaning all), and a call to any other is refused.
  */
 
 import { calculate } from "./calc.js";
 import { httpFetch } from "./http.js";
+import { formatResults, search } from "./search.js";
 
 export const TOOLS = [
   {
@@ -73,6 +74,25 @@ export const TOOLS = [
     },
   },
   {
+    name: "web_search",
+    label: "Search the web",
+    network: true,
+    description:
+      "Search the web and get back a ranked list of results: title, URL and a short excerpt each. Use it for anything current, or that you are not sure of, then read_page the most promising results before you rely on them.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "What to search for, as you would type it into a search engine." },
+        count: { type: "integer", description: "How many results, 1 to 10. Default 5." },
+      },
+      required: ["query"],
+    },
+    run: async ({ query, count }, ctx) => {
+      const found = await search(query, { limit: count ?? 5, settings: ctx.search?.(), signal: ctx.signal });
+      return formatResults(String(query).trim(), found);
+    },
+  },
+  {
     name: "read_page",
     label: "Read a web page",
     network: true,
@@ -95,8 +115,7 @@ export const TOOLS = [
       const type = response.headers.get("content-type") || "";
       const body = await response.text();
       const text = /html/i.test(type) || /^\s*</.test(body) ? htmlToText(body) : body;
-      const limit = 12000;
-      return text.length > limit ? `${text.slice(0, limit)}\n\n[...cut at ${limit} characters of ${text.length}]` : text;
+      return clip(text);
     },
   },
 ];
@@ -110,6 +129,24 @@ export function toolsFor(agent, available = TOOLS) {
   if (!agent || agent.tools == null) return available;
   const allowed = new Set(agent.tools);
   return available.filter((tool) => allowed.has(tool.name) || (tool.group && allowed.has(`group:${tool.group}`)));
+}
+
+/* A long page cut to `limit` characters: the first three quarters of the
+ * budget from the top, the last quarter from the end -- where conclusions,
+ * dates and references tend to be -- each cut at a line break, with a marker
+ * saying how much of the middle was left out. */
+export function clip(text, limit = 15000) {
+  if (text.length <= limit) return text;
+  const headBudget = Math.floor(limit * 0.75);
+  const tailBudget = limit - headBudget;
+  // Back to the last line break within the budget, if there is one not too far back.
+  const headCut = text.lastIndexOf("\n", headBudget);
+  const head = text.slice(0, headCut > headBudget / 2 ? headCut : headBudget);
+  const tailFrom = text.length - tailBudget;
+  const tailCut = text.indexOf("\n", tailFrom);
+  const tail = text.slice(tailCut !== -1 && tailCut < tailFrom + tailBudget / 2 ? tailCut + 1 : tailFrom);
+  const left = text.length - head.length - tail.length;
+  return `${head}\n\n[... ${left} characters from the middle of the page left out, of ${text.length} ...]\n\n${tail}`;
 }
 
 const ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
