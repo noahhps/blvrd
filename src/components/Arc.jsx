@@ -1,10 +1,10 @@
-/* The Arc: blvrd's mascot, alive. A red arch -- the outline of a soft
- * dome, open at the floor, the boulevard's gateway -- on a white square, moving
+/* The Arc: blvrd's mascot, alive. A red arch -- two-thirds of a circle,
+ * open at the bottom like a sun on the horizon -- on a white square, moving
  * with what the app is doing. The app and every agent wear it.
  *
  *   idle       breathes, slowly
  *   listening  stands taller, and gives a little with each keystroke
- *   thinking   a light runs up one leg, over the top and down the other
+ *   thinking   a light runs up one side, over the top and down the other
  *   speaking   ripples out from its curve as an answer comes in
  *   asking     grows, holds, and blinks, waiting for your Allow
  *   done       settles with a small squash and bounce
@@ -20,10 +20,11 @@
 
 export const ARC_MOODS = ["idle", "listening", "thinking", "speaking", "asking", "done", "error"];
 
-// The arch: the outline of a soft dome -- broad, rounded shoulders and sides
-// that swell a little before tucking in -- drawn as one stroke, with its
-// floor left open. The same line carries thinking's light, and its ripples.
-const LINE = "M24 86 C17 62 18 22 50 22 C82 22 83 62 76 86";
+// The arch: two-thirds of a circle, open at the bottom -- a rising sun's
+// outline with the horizon left out. The arc runs 240 degrees, from the
+// lower left over the top to the lower right, drawn as one stroke. The same
+// line carries thinking's light, and its ripples.
+const LINE = "M20.56 75 A34 34 0 1 1 79.44 75";
 
 export function Arc({ mood = "idle", size = 28, tick = 0, label = null, colour = null, className = "" }) {
   return (

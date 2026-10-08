@@ -2,7 +2,7 @@
  * given. Layers, each with one job:
  *
  *   .arc-shake  side to side -- error's shake
- *   .arc-body   from the middle of its open floor -- breathing, growing, bouncing
+ *   .arc-body   from the middle of its open bottom -- breathing, growing, bouncing
  *   .arc-give   the same pivot -- one keystroke's give, replayed per key
  *   .arc-light  a short bright dash along the line -- thinking
  *   .arc-ripple the line again, thin, growing out and fading
@@ -26,7 +26,7 @@
 }
 
 .arc-shake { transform-box: view-box; transform-origin: 50% 50%; }
-.arc-body, .arc-give, .arc-ripple { transform-box: view-box; transform-origin: 50% 86%; }
+.arc-body, .arc-give, .arc-ripple { transform-box: view-box; transform-origin: 50% 80%; }
 
 .arc-body, .arc .arc-fill {
   transition: transform 420ms var(--ease-out), opacity 300ms var(--ease-out);
@@ -47,7 +47,7 @@
   100% { transform: scale(1); }
 }
 
-/* thinking: a light runs up one leg, over the top and down the other, then
+/* thinking: a light runs up one side, over the top and down the other, then
    back -- easing at each end like a held breath. */
 .arc[data-mood="thinking"] .arc-light { opacity: 0.6; animation: arc-run 1.6s var(--ease-in-out) infinite alternate; }
 @keyframes arc-run {
@@ -76,7 +76,7 @@
   50% { opacity: 0.35; }
 }
 
-/* done: a squash onto its feet, then a small bounce up and home. */
+/* done: a squash down, then a small bounce up and home. */
 .arc[data-mood="done"] .arc-body { animation: arc-bounce 700ms var(--ease-out); }
 @keyframes arc-bounce {
   0% { transform: scale(1.1, 0.86); }
