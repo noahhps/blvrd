@@ -5,6 +5,7 @@ import { inDesktop } from "../lib/http.js";
 import { QUICK_OPEN, QUICK_SEND } from "../lib/quick.js";
 import { load } from "../lib/store.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { Arc } from "./Arc.jsx";
 import { useAttachments } from "./Attachments.jsx";
 import { Icon } from "./Icon.jsx";
 import { useMentions } from "./Mentions.jsx";
@@ -136,6 +137,8 @@ export function Quick() {
         {files.list}
         <div className="quick-row" data-tauri-drag-region>
         <span className="quick-grip" data-tauri-drag-region title="Drag to move" aria-hidden="true" />
+        {/* The Arc listens while you write: a little give with each key. */}
+        <Arc mood={text ? "listening" : "idle"} tick={text.length} size={22} />
         {agent ? (
           <span className="quick-chip">
             <AgentAvatar look={agent.look} name={agent.name} size={20} />

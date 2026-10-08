@@ -1,0 +1,109 @@
+/* The Arc (components/Arc.jsx): blvrd's arch, moving with the mood it's
+ * given. Layers, each with one job:
+ *
+ *   .arc-shake  side to side -- error's shake
+ *   .arc-body   from the middle of its open bottom -- breathing, growing, bouncing
+ *   .arc-give   the same pivot -- one keystroke's give, replayed per key
+ *   .arc-light  a short bright dash along the line -- thinking
+ *   .arc-ripple the line again, thin, growing out and fading
+ *
+ * Only transforms, opacity and a dash offset, so it keeps moving while an
+ * answer streams. Constant motion is linear; a shape changing eases. */
+
+/* The tile is white in both themes, as the logo's is, so an agent in Ink is
+   drawn in the light theme's ink whatever the theme. */
+.arc { overflow: hidden; flex: none; --ink: #141414; }
+.arc path { fill: none; stroke-linecap: butt; }
+/* The band, filled and stroked in one colour: the round joins soften its
+   corners and nothing else, so the feet stay flat (Arc.jsx). */
+.arc .arc-fill { fill: var(--arc, var(--red)); stroke: var(--arc, var(--red)); stroke-width: 6; stroke-linejoin: round; }
+.arc .arc-ripple { stroke: var(--arc, var(--red)); stroke-width: 4; opacity: 0; }
+.arc .arc-light {
+  stroke: #fff;
+  stroke-linecap: round;
+  stroke-width: 7;
+  stroke-dasharray: 16 84;
+  stroke-dashoffset: 16;
+  opacity: 0;
+}
+
+.arc-shake { transform-box: view-box; transform-origin: 50% 50%; }
+.arc-body, .arc-give, .arc-ripple { transform-box: view-box; transform-origin: 50% 80%; }
+
+.arc-body, .arc .arc-fill {
+  transition: transform 420ms var(--ease-out), opacity 300ms var(--ease-out);
+}
+
+/* idle: a slow breath. */
+.arc[data-mood="idle"] .arc-body { animation: arc-breathe 4s var(--ease-in-out) infinite; }
+@keyframes arc-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04, 1.07); }
+}
+
+/* listening: standing a little taller, giving with each key. */
+.arc[data-mood="listening"] .arc-body { transform: scale(1.06, 1.1); }
+.arc[data-mood="listening"] .arc-give { animation: arc-give 220ms var(--ease-out); }
+@keyframes arc-give {
+  0% { transform: scale(1.02, 0.93); }
+  100% { transform: scale(1); }
+}
+
+/* thinking: a light runs up one side, over the top and down the other, then
+   back -- easing at each end like a held breath. */
+.arc[data-mood="thinking"] .arc-light { opacity: 0.6; animation: arc-run 1.6s var(--ease-in-out) infinite alternate; }
+@keyframes arc-run {
+  from { stroke-dashoffset: 16; }
+  to { stroke-dashoffset: -100; }
+}
+
+/* speaking: a quick pulse, and the curve rippling outward behind it. */
+.arc[data-mood="speaking"] .arc-body { animation: arc-pulse 0.9s var(--ease-in-out) infinite; }
+.arc[data-mood="speaking"] .arc-ripple { animation: arc-ripple 1.4s var(--ease-out) infinite; }
+.arc[data-mood="speaking"] .arc-ripple-late { animation-delay: 0.7s; }
+@keyframes arc-pulse {
+  0%, 100% { transform: scale(1); }
+  45% { transform: scale(1.06, 1.1); }
+}
+@keyframes arc-ripple {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+/* asking: grown to fill the square, holding, blinking slowly. */
+.arc[data-mood="asking"] .arc-body { transform: scale(1.16); }
+.arc[data-mood="asking"] .arc-fill { animation: arc-blink 1.6s var(--ease-in-out) infinite; }
+@keyframes arc-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+/* done: a squash down, then a small bounce up and home. */
+.arc[data-mood="done"] .arc-body { animation: arc-bounce 700ms var(--ease-out); }
+@keyframes arc-bounce {
+  0% { transform: scale(1.1, 0.86); }
+  45% { transform: scale(0.97, 1.08); }
+  75% { transform: scale(1.01, 0.98); }
+  100% { transform: scale(1); }
+}
+
+/* error: a short shake, then dimmed. */
+.arc[data-mood="error"] .arc-shake { animation: arc-shake 420ms var(--ease-out); }
+.arc[data-mood="error"] .arc-fill { opacity: 0.45; }
+@keyframes arc-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(2px); }
+}
+
+/* Motion unwanted: each mood is a still pose instead. */
+@media (prefers-reduced-motion: reduce) {
+  .arc *, .arc .arc-fill { animation: none !important; transition: none; }
+  .arc[data-mood="thinking"] .arc-light { stroke-dashoffset: -42; }
+  .arc[data-mood="speaking"] .arc-body { transform: scale(1.06, 1.1); }
+}
+
+/* Where it sits. */
+.gallery-head .arc { display: block; margin-bottom: 22px; }

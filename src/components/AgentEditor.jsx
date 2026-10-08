@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { COLOURS, DOTS_MAX, DOTS_MIN, colourIdOf, dotsOf } from "../lib/agents.js";
+import { COLOURS, colourIdOf } from "../lib/agents.js";
 import { avatarFrom } from "../lib/attach.js";
 import { TOOLS } from "../lib/tools.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
@@ -15,7 +15,6 @@ function draftFrom(agent) {
     all: agent?.tools == null,
     chosen: new Set(agent?.tools || TOOLS.filter((t) => !t.network).map((t) => t.name)),
     colour: colourIdOf(agent) || "red",
-    dots: dotsOf(agent?.look),
     image: agent?.look?.image || null,
     model: agent?.model || null,
   };
@@ -41,10 +40,9 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
   const look = useMemo(
     () => ({
       colour: draft.colour,
-      dots: draft.dots,
       ...(draft.image ? { image: draft.image } : {}),
     }),
-    [draft.colour, draft.dots, draft.image],
+    [draft.colour, draft.image],
   );
   const picker = useRef(null);
 
@@ -96,7 +94,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
         <div className="sheet-head">
           {/* The picture is chosen on the avatar itself: a camera at its
               bottom-right, and -- once there is a picture -- a cross at its
-              top-right that goes back to the dots. */}
+              top-right that goes back to the Arc. */}
           <div className="avatar-edit">
             <AgentAvatar look={look} name={draft.name} size={80} />
             <button
@@ -112,7 +110,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
               <button
                 type="button"
                 className="avatar-badge avatar-remove"
-                aria-label="Remove the picture and go back to dots"
+                aria-label="Remove the picture and go back to the Arc"
                 title="Remove picture"
                 onClick={() => set({ image: null })}
               >
@@ -145,22 +143,9 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
           <section className="field">
             <span className="label">Avatar</span>
             {draft.image ? (
-              <p className="hint">A picture of your own. Remove it (the × on the picture) to go back to dots.</p>
+              <p className="hint">A picture of your own. Remove it (the × on the picture) to go back to the Arc.</p>
             ) : (
               <>
-                <label className="dots-range">
-                  <span>Dots</span>
-                  <input
-                    type="range"
-                    min={DOTS_MIN}
-                    max={DOTS_MAX}
-                    step={1}
-                    value={draft.dots}
-                    aria-valuetext={`${draft.dots} dots`}
-                    onChange={(e) => set({ dots: Number(e.target.value) })}
-                  />
-                  <output>{draft.dots}</output>
-                </label>
                 <div className="wear-row" role="radiogroup" aria-label="Colour">
                   {COLOURS.map((colour) => (
                     <button
@@ -172,7 +157,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
                       title={colour.label}
                       onClick={() => set({ colour: colour.id })}
                     >
-                      <AgentAvatar look={{ colour: colour.id, dots: draft.dots }} size={30} />
+                      <AgentAvatar look={{ colour: colour.id }} size={30} />
                     </button>
                   ))}
                 </div>
