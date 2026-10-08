@@ -12,6 +12,7 @@ import { listen } from "./lib/desktop.js";
 import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
 import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
+import { CalendarView } from "./components/CalendarView.jsx";
 import { Chat } from "./components/Chat.jsx";
 import { Connectors } from "./components/Connectors.jsx";
 import { Gallery } from "./components/Gallery.jsx";
@@ -23,6 +24,7 @@ import { Notice } from "./components/Notice.jsx";
 import { RowMenu } from "./components/RowMenu.jsx";
 import { AgentRow, GroupRow } from "./components/SidebarRows.jsx";
 import { Settings } from "./components/Settings.jsx";
+import { Widgets } from "./components/widgets/index.jsx";
 
 /* What goes back to the model: the chat since its last summary (lib/compact.js),
  * minus turns that failed -- an error is for the reader, not part of the
@@ -643,6 +645,16 @@ export default function App() {
           <span className="wordmark">blvrd</span>
         </div>
 
+        {/* Widgets (components/widgets): glanceable panes above the lists,
+            each a way into its own screen. */}
+        <Widgets
+          ids={state.widgets}
+          view={view}
+          connectors={state.connectors}
+          patchConnectors={patchConnectors}
+          open={setView}
+        />
+
         {/* Only the lists scroll: the title bar stays under the window
             controls, and Connectors and Models stay at the foot. */}
         <div className="side-scroll">
@@ -738,7 +750,13 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {view.kind === "connectors" ? (
+        {view.kind === "calendar" ? (
+          <CalendarView
+            connectors={state.connectors}
+            patchConnectors={patchConnectors}
+            onConnect={() => setView({ kind: "connectors" })}
+          />
+        ) : view.kind === "connectors" ? (
           <Connectors connectors={state.connectors} patchConnectors={patchConnectors} getConnectors={getConnectors} />
         ) : view.kind === "settings" ? (
           <Settings

@@ -11,6 +11,8 @@
  *   custom     [{ id, kind, name, base, key }] -- servers the reader added
  *   defaultModel  { provider, model } | null
  *   connectors    accounts and servers agents can use (lib/connectors/index.js)
+ *   widgets       [widgetId] -- the sidebar's widgets, top to bottom
+ *                 (components/widgets)
  *
  * Nothing here leaves the machine. API keys are stored in the same place, in
  * plain text, which is the trade a single-user desktop app makes; the Settings
@@ -32,6 +34,7 @@ export const EMPTY = {
   custom: [],
   defaultModel: null,
   connectors: EMPTY_CONNECTORS,
+  widgets: ["calendar"],
 };
 
 export function load() {
