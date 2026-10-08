@@ -3,8 +3,13 @@
 <plist version="1.0">
 <dict>
   <!-- Merged into the app's Info.plist by Tauri. Shown by macOS the first
-       time blvrd asks Calendar or Reminders for something an agent needs. -->
+       time blvrd asks Calendar, Reminders, Music or Spotify for something. -->
   <key>NSAppleEventsUsageDescription</key>
-  <string>blvrd reads and adds events in Calendar and reminders in Reminders when one of your agents asks to -- and asks you first before adding anything.</string>
+  <string>blvrd reads and adds events in Calendar and reminders in Reminders when one of your agents asks to -- and asks you first before adding anything. It also shows what Music or Spotify is playing, and plays, pauses or skips when you ask.</string>
+  <!-- Asked for the first time blvrd reaches a model server on another
+       machine on your network (a PC running Unsloth, LM Studio, Ollama...).
+       Without it macOS blocks those addresses silently; localhost is exempt. -->
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>blvrd talks to model servers you add that run on other computers on your network.</string>
 </dict>
 </plist>

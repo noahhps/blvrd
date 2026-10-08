@@ -6,12 +6,16 @@ import { MAX_HANDOFFS, groupBrief, mentionsIn, respondersFor, viewFor } from "./
 import { PRESETS } from "./lib/presets.js";
 import { runTurn } from "./lib/run.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
+import { loadFiles, withFiles } from "./lib/fileStore.js";
 import { TOOLS } from "./lib/tools.js";
 import { inDesktop } from "./lib/http.js";
 import { listen } from "./lib/desktop.js";
+import { searchOf } from "./lib/search.js";
+import { hostOf, isLocalUrl } from "./lib/catalog.js";
 import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
 import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
+import { CalendarView } from "./components/CalendarView.jsx";
 import { Chat } from "./components/Chat.jsx";
 import { Connectors } from "./components/Connectors.jsx";
 import { Gallery } from "./components/Gallery.jsx";
@@ -21,8 +25,8 @@ import { Icon } from "./components/Icon.jsx";
 import { Logo } from "./components/Logo.jsx";
 import { Notice } from "./components/Notice.jsx";
 import { RowMenu } from "./components/RowMenu.jsx";
-import { AgentRow, GroupRow } from "./components/SidebarRows.jsx";
 import { Settings } from "./components/Settings.jsx";
+import { Widgets } from "./components/widgets/index.jsx";
 
 /* What goes back to the model: the chat since its last summary (lib/compact.js),
  * minus turns that failed -- an error is for the reader, not part of the
@@ -94,11 +98,30 @@ export default function App() {
   // An agent waiting for the reader's yes before acting (lib/run.js).
   const [approval, setApproval] = useState(null); // { chatId, agentName, summary, args, toolName, toolLabel, resolve }
 
-  // Saved a moment after each change rather than on every streamed word.
+  // Saved a moment after each change rather than on every streamed word. A
+  // save that fails is said, once until one works again: everything since
+  // would otherwise be quietly lost on the next launch.
+  const saveFailed = useRef(false);
+  const notifyRef = useRef(null);
   useEffect(() => {
-    const timer = setTimeout(() => save(state), 300);
+    const timer = setTimeout(() => {
+      const failed = () => {
+        if (saveFailed.current) return;
+        saveFailed.current = true;
+        notifyRef.current?.("Couldn't save your latest changes: this computer's storage for the app is full or blocked. They'll be lost when the app closes.");
+      };
+      if (save(state, failed)) saveFailed.current = false;
+    }, 300);
     return () => clearTimeout(timer);
   }, [state]);
+
+  // The files in messages (pictures, text files) are kept apart from the rest
+  // (lib/fileStore.js) and put back once read. Sending waits for them, so a
+  // turn never goes out with a picture missing.
+  const filesIn = useRef(null);
+  filesIn.current ||= loadFiles(state.chats).then((found) => {
+    if (found.size) setState((s) => ({ ...s, chats: withFiles(s.chats, found) }));
+  });
 
   const providers = useMemo(() => providersOf(state), [state.providers, state.custom]);
   const agents = useMemo(() => byRecent(state.agents, state.chats), [state.agents, state.chats]);
@@ -115,6 +138,7 @@ export default function App() {
    * slip without making every deliberate delete answer a question. */
   const [notice, setNotice] = useState(null); // { id, text, undo }
   const notify = useCallback((text, undo = null) => setNotice({ id: Date.now() + Math.random(), text, undo }), []);
+  notifyRef.current = notify;
   const rail = useRail();
   // Picking something from a brought-out sidebar puts it away again.
   useEffect(() => {
@@ -229,6 +253,7 @@ export default function App() {
     notes: () => stateRef.current.notes[agentId] || [],
     addNote: (note) =>
       update((s) => ({ notes: { ...s.notes, [agentId]: [...(s.notes[agentId] || []), { text: note, at: Date.now() }] } })),
+    search: () => searchOf(stateRef.current),
   });
 
   /* One agent's turn, in whichever chat. Everything it says is appended to
@@ -323,6 +348,8 @@ export default function App() {
   // From the header, the sidebar's menu, or a swipe: all but the last exchange.
   const compactNow = async (chatId, agent) => {
     if (running.current || !agent) return;
+    await filesIn.current;
+    if (running.current) return;
     const chat = stateRef.current.chats[chatId] || [];
     if (!canFold(chat)) {
       notify("Nothing to compact yet: it needs more than one message from you since the last summary.");
@@ -341,6 +368,8 @@ export default function App() {
   };
 
   const sendTo = async (agent, text, files = [], thinking = null) => {
+    if (running.current) return;
+    await filesIn.current;
     if (running.current) return;
     const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}) };
     const before = stateRef.current.chats[agent.id] || [];
@@ -365,6 +394,8 @@ export default function App() {
   const sendGroup = async (text, files = [], _thinking = null, picked = []) => {
     const group = selectedGroup;
     if (!group || running.current) return;
+    await filesIn.current;
+    if (running.current) return;
     const members = membersOf(group);
     if (!members.length) return;
     const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}) };
@@ -643,102 +674,44 @@ export default function App() {
           <span className="wordmark">blvrd</span>
         </div>
 
-        {/* Only the lists scroll: the title bar stays under the window
-            controls, and Connectors and Models stay at the foot. */}
+        {/* Every part of the sidebar is a widget (components/widgets), in the
+            order the reader dragged them into; they scroll as one column
+            under the title bar. */}
         <div className="side-scroll">
-        <div className="side-head">
-          <span className="label">Agents</span>
-          <button
-            type="button"
-            className="btn icon-only"
-            title="Add an agent"
-            aria-label="Add an agent"
-            aria-pressed={view.kind === "gallery"}
-            onClick={() => setView({ kind: "gallery" })}
-          >
-            <Icon name="plus" />
-          </button>
+          <Widgets
+            ids={state.widgets}
+            onOrder={(widgets) => update(() => ({ widgets }))}
+            ctx={{
+              view,
+              setView,
+              connectors: state.connectors,
+              patchConnectors,
+              agents,
+              groups,
+              chats: state.chats,
+              agentsById,
+              busyChat,
+              live,
+              busy: Boolean(live),
+              rowMenu,
+              removing,
+              act,
+              newGroup: () => setGroupEditor({}),
+              hasDefaultModel: Boolean(state.defaultModel?.model),
+            }}
+          />
         </div>
-
-        {agents.length === 0 ? (
-          <p className="side-empty">No agents yet — add one to start.</p>
-        ) : (
-          <ul className="contacts">
-            {agents.map((agent) => (
-              <AgentRow
-                key={agent.id}
-                agent={agent}
-                chat={state.chats[agent.id]}
-                selected={selected?.id === agent.id}
-                answering={busyChat === agent.id}
-                menuOpen={rowMenu?.id === agent.id}
-                removing={removing === agent.id}
-                busy={Boolean(live)}
-                act={act}
-              />
-            ))}
-          </ul>
-        )}
-
-        <div className="side-head side-head-groups">
-          <span className="label">Groups</span>
-          <button
-            type="button"
-            className="btn icon-only"
-            title={agents.length < 2 ? "Add at least two agents to make a group" : "New group"}
-            aria-label="New group"
-            disabled={agents.length < 2}
-            onClick={() => setGroupEditor({})}
-          >
-            <Icon name="plus" />
-          </button>
-        </div>
-        {groups.length === 0 ? (
-          <p className="side-empty">{agents.length < 2 ? "Add two agents to put them in a group." : "Put agents together to talk to all of them at once."}</p>
-        ) : (
-          <ul className="contacts contacts-groups">
-            {groups.map((group) => (
-              <GroupRow
-                key={group.id}
-                group={group}
-                chat={state.chats[group.id]}
-                agentsById={agentsById}
-                selected={selectedGroup?.id === group.id}
-                answeringId={busyChat === group.id ? live.agentId : null}
-                menuOpen={rowMenu?.id === group.id}
-                removing={removing === group.id}
-                busy={Boolean(live)}
-                act={act}
-              />
-            ))}
-          </ul>
-        )}
-
-        </div>
-
-        <button
-          type="button"
-          className="side-settings"
-          aria-current={view.kind === "connectors" ? "true" : undefined}
-          onClick={() => setView({ kind: "connectors" })}
-        >
-          <Icon name="plug" />
-          Connectors
-        </button>
-        <button
-          type="button"
-          className="side-settings side-settings-last"
-          aria-current={view.kind === "settings" ? "true" : undefined}
-          onClick={() => setView({ kind: "settings" })}
-        >
-          <Icon name="gear" />
-          Models
-          {!state.defaultModel?.model ? <span className="dot" title="No default model yet" /> : null}
-        </button>
       </aside>
 
       <main className="main">
-        {view.kind === "connectors" ? (
+        {view.kind === "calendar" ? (
+          <CalendarView
+            focus={view}
+            connectors={state.connectors}
+            patchConnectors={patchConnectors}
+            onConnect={() => setView({ kind: "connectors" })}
+          />
+        ) : view.kind === "connectors" ? (
           <Connectors connectors={state.connectors} patchConnectors={patchConnectors} getConnectors={getConnectors} />
         ) : view.kind === "settings" ? (
           <Settings
@@ -753,6 +726,8 @@ export default function App() {
             onShortcut={(quickShortcut) => update(() => ({ quickShortcut }))}
             compactAt={compactAtOf(state)}
             onCompactAt={(compactAt) => update(() => ({ compactAt }))}
+            search={searchOf(state)}
+            onSearch={(patch) => update((s) => ({ search: { ...searchOf(s), ...patch } }))}
           />
         ) : selected ? (
           <Chat
@@ -835,12 +810,19 @@ export default function App() {
 /* An error as a sentence the reader can act on. */
 function explain(problem, { provider, model }) {
   const text = problem?.message || String(problem);
-  if (/Failed to fetch|NetworkError|ECONNREFUSED|error sending request|Connection refused|Load failed/i.test(text)) {
+  if (/Failed to fetch|NetworkError|ECONNREFUSED|error sending request|Connection refused|Load failed|No route to host|EHOSTUNREACH/i.test(text)) {
+    // Another machine on the network: on a Mac the likeliest block is the
+    // Local Network permission, which fails just like a server that's down.
+    const host = hostOf(provider.base).split(":")[0];
+    if (isLocalUrl(provider.base) && !/^(localhost|127\.|\[?::1)/.test(host) && /Mac/i.test(navigator.platform || navigator.userAgent)) {
+      return `${provider.name} isn't answering at ${provider.base}. Check it's running on that computer, and that blvrd may use your network: System Settings → Privacy & Security → Local Network.`;
+    }
     return provider.keys
       ? `Could not reach ${provider.name}. Check your connection.`
       : `${provider.name} isn't answering at ${provider.base}. Is it running? (Settings → Find local servers.)`;
   }
   if (/\b401\b|\b403\b|authentication|api key|x-api-key/i.test(text)) {
+    if (!provider.key) return `${provider.name} wants a key. Add one in Settings. (${text})`;
     return `${provider.name} turned the key down. Check it in Settings. (${text})`;
   }
   if (/\b404\b|not found|model .* (does not exist|not found)/i.test(text)) {

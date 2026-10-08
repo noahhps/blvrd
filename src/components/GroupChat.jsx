@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { agentCount } from "../lib/preview.js";
+import { launchFrom, useLaunch } from "../lib/launch.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Approval } from "./Approval.jsx";
@@ -33,6 +34,8 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
     const el = thread.current;
     if (el && stuck.current) el.scrollTop = el.scrollHeight;
   }, [messages.length, live?.text, live?.parts?.length, live?.agentId]);
+  // After the scroll above, so the sent bubble is measured where it rests.
+  useLaunch(thread, messages.length);
 
   useEffect(() => {
     stuck.current = true;
@@ -43,6 +46,7 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
 
   const send = (text, files, thinking) => {
     stuck.current = true;
+    launchFrom(area.current?.querySelector(".composer textarea"));
     onSend(text, files, thinking, picked);
     setPicked([]); // the pick is for one message
   };

@@ -11,6 +11,10 @@
  *   custom     [{ id, kind, name, base, key }] -- servers the reader added
  *   defaultModel  { provider, model } | null
  *   connectors    accounts and servers agents can use (lib/connectors/index.js)
+ *   search        { provider, keys, searxng, fallback } -- the web_search
+ *                 tool's provider (lib/search.js); absent means the free tier
+ *   widgets       [widgetId] -- the sidebar's widgets, top to bottom
+ *                 (components/widgets)
  *
  * Nothing here leaves the machine. API keys are stored in the same place, in
  * plain text, which is the trade a single-user desktop app makes; the Settings
@@ -19,6 +23,7 @@
 
 import { CATALOG } from "./catalog.js";
 import { EMPTY_CONNECTORS } from "./connectors/index.js";
+import { isKept, keepFiles, payloadOf } from "./fileStore.js";
 
 const KEY = "blvrd.v1";
 
@@ -32,6 +37,7 @@ export const EMPTY = {
   custom: [],
   defaultModel: null,
   connectors: EMPTY_CONNECTORS,
+  widgets: ["calendar", "music", "agents", "groups", "settings"],
 };
 
 export function load() {
@@ -39,19 +45,56 @@ export function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { ...EMPTY };
     const data = JSON.parse(raw);
-    return { ...EMPTY, ...data, connectors: { ...EMPTY_CONNECTORS, ...(data.connectors || {}) } };
+    return { ...EMPTY, ...data, chats: withRefs(data.chats), connectors: { ...EMPTY_CONNECTORS, ...(data.connectors || {}) } };
   } catch {
     return { ...EMPTY };
   }
 }
 
-export function save(state) {
+/* A message's files are kept by reference: their contents live in the file
+ * database (lib/fileStore.js), and this entry holds only { ref, name, kind }
+ * -- so pictures can't fill the webview's small allowance for it. A file's
+ * contents stay here until the database confirms it has them. */
+
+// Files saved before they had a ref get one, so they move to the database.
+function withRefs(chats = {}) {
+  const out = {};
+  for (const [id, messages] of Object.entries(chats)) {
+    out[id] = (messages || []).map((m, at) =>
+      m.files?.length ? { ...m, files: m.files.map((f, i) => (f.ref || !payloadOf(f) ? f : { ...f, ref: `${m.id || `${id}:${at}`}:${i}` })) } : m,
+    );
+  }
+  return out;
+}
+
+function stripped(chats = {}) {
+  const out = {};
+  for (const [id, messages] of Object.entries(chats)) {
+    out[id] = (messages || []).map((m) =>
+      m.files?.length ? { ...m, files: m.files.map(({ dataUrl, text, ...rest }) => (rest.ref && isKept(rest.ref) ? rest : { ...rest, dataUrl, text })) } : m,
+    );
+  }
+  return out;
+}
+
+function write(state) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    localStorage.setItem(KEY, JSON.stringify({ ...state, chats: stripped(state.chats) }));
     return true;
   } catch {
     return false;
   }
+}
+
+/** Saves `state`. `onFail` hears about a save that didn't fit or failed. */
+export function save(state, onFail) {
+  const ok = write(state);
+  // New files: once the database has them, write again without them inline.
+  keepFiles(state.chats).then((kept) => {
+    if (kept && !write(state) && ok) onFail?.();
+  });
+  if (!ok) onFail?.();
+  return ok;
 }
 
 export const newId = (prefix) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;

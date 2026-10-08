@@ -8,6 +8,7 @@
  * tomorrow with the same history.
  */
 
+import { checkStopped, isStop, stoppedError, untilStopped } from "./abort.js";
 import { callsInText, fitArgs, parseArgs, resolveName, usageOf } from "./heal.js";
 import { adapterFor } from "./providers.js";
 import { thinkingFields } from "./thinking.js";
@@ -65,6 +66,7 @@ export async function runTurn({
   const extra = thinkingFields(provider.kind, thinking?.control, thinking?.value);
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
+    checkStopped(signal);
     const result = await adapter.turn({
       provider,
       model,
@@ -109,6 +111,7 @@ export async function runTurn({
     if (!prepared.length) return;
 
     for (const call of prepared) {
+      checkStopped(signal);
       const message = { role: "tool", callId: call.id, name: call.name, content: "", error: false };
       if (call.problem) {
         message.content = call.problem;
@@ -120,9 +123,9 @@ export async function runTurn({
           // reader. No answer, or no way to ask, is a no.
           if (tool.confirm) {
             const yes = approve
-              ? await approve({ tool, args: call.args, summary: tool.summary ? tool.summary(call.args) : `${tool.label || tool.name}` })
+              ? await untilStopped(approve({ tool, args: call.args, summary: tool.summary ? tool.summary(call.args) : `${tool.label || tool.name}` }), signal)
               : false;
-            if (signal?.aborted) throw new DOMException("Stopped", "AbortError");
+            checkStopped(signal);
             if (!yes) {
               message.content = `The user declined: ${tool.label || tool.name} did not run. Don't try it again unless they ask; say what you would have done instead.`;
               message.declined = true;
@@ -131,12 +134,15 @@ export async function runTurn({
               continue;
             }
           }
-          const output = await tool.run(call.args, { signal, ...notebook });
+          // Not every tool listens for the signal (a connector's, an
+          // AppleScript), so the turn stops waiting for it the moment the
+          // reader stops -- whatever it was doing is left to finish unheard.
+          const output = await untilStopped(tool.run(call.args, { signal, ...notebook }), signal);
           message.content = call.notes.length
             ? `${output}\n\n(Your call was repaired: ${call.notes.join("; ")}. Spell it that way next time.)`
             : String(output);
         } catch (problem) {
-          if (signal?.aborted) throw problem;
+          if (isStop(problem, signal)) throw signal?.aborted ? stoppedError() : problem;
           message.content = `${call.name} failed: ${problem.message || problem}`;
           message.error = true;
         }

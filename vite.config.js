@@ -9,6 +9,11 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5180,
     strictPort: true,
+    // Cargo's build output under src-tauri/target holds files Windows keeps
+    // locked while they run, and watching them crashes Vite with EBUSY.
+    watch: {
+      ignored: ["**/src-tauri/**"],
+    },
   },
   envPrefix: ["VITE_", "TAURI_ENV_"],
   build: {

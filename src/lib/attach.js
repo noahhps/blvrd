@@ -31,12 +31,15 @@ async function shrink(file) {
   return canvas.toDataURL("image/jpeg", 0.85);
 }
 
-/** A staged file made ready to send: { name, kind, dataUrl? , text? } or { error }. */
+// Where the file's contents are kept (lib/fileStore.js).
+const refOf = () => `file_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 9)}`;
+
+/** A staged file made ready to send: { ref, name, kind, dataUrl? , text? } or { error }. */
 export async function prepare(file) {
   const kind = kindOf(file);
   if (kind === "image") {
     try {
-      return { name: file.name, kind, dataUrl: await shrink(file) };
+      return { ref: refOf(), name: file.name, kind, dataUrl: await shrink(file) };
     } catch {
       return { name: file.name, error: "couldn't be read as a picture" };
     }
@@ -44,8 +47,8 @@ export async function prepare(file) {
   if (kind === "text") {
     const text = await file.text();
     return text.length > TEXT_LIMIT
-      ? { name: file.name, kind, text: `${text.slice(0, TEXT_LIMIT)}\n[...cut at ${TEXT_LIMIT} characters]` }
-      : { name: file.name, kind, text };
+      ? { ref: refOf(), name: file.name, kind, text: `${text.slice(0, TEXT_LIMIT)}\n[...cut at ${TEXT_LIMIT} characters]` }
+      : { ref: refOf(), name: file.name, kind, text };
   }
   return { name: file.name, error: "isn't a picture or a text file" };
 }
@@ -54,7 +57,13 @@ export async function prepare(file) {
 export function textWithFiles(content, files = []) {
   const parts = [content || ""];
   for (const f of files) {
+    // A text file whose contents never came back from the file store is
+    // named rather than dropped silently.
     if (f.kind !== "text") continue;
+    if (typeof f.text !== "string") {
+      parts.push(`(Attached file ${f.name} is no longer available.)`);
+      continue;
+    }
     const fence = f.text.includes("```") ? "````" : "```";
     parts.push(`Attached file ${f.name}:\n${fence}\n${f.text}\n${fence}`);
   }

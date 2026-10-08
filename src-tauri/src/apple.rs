@@ -1,10 +1,11 @@
-// Calendar and Reminders on macOS, through their scripting interfaces.
+// Calendar, Reminders, Music and Spotify on macOS, through their scripting
+// interfaces.
 //
 // The scripts are fixed and compiled into the app (src-tauri/scripts); the
 // webview can only name one and hand it arguments as a JSON string, which
 // arrives in the script as argv[0] -- data, never code -- so nothing a model
 // writes can become a script. macOS asks the reader once, per app, before
-// blvrd may control Calendar or Reminders (NSAppleEventsUsageDescription).
+// blvrd may control each app (NSAppleEventsUsageDescription).
 
 #[cfg(target_os = "macos")]
 fn script_for(action: &str) -> Option<&'static str> {
@@ -15,6 +16,8 @@ fn script_for(action: &str) -> Option<&'static str> {
         "reminders_list" => include_str!("../scripts/reminders_list.js"),
         "reminders_add" => include_str!("../scripts/reminders_add.js"),
         "reminders_complete" => include_str!("../scripts/reminders_complete.js"),
+        "music_now" => include_str!("../scripts/music_now.js"),
+        "music_control" => include_str!("../scripts/music_control.js"),
         _ => return None,
     })
 }

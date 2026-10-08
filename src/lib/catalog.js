@@ -40,6 +40,17 @@ export const LOCAL = [
     site: "https://github.com/ggml-org/llama.cpp",
   },
   {
+    id: "unsloth",
+    kind: "openai",
+    name: "Unsloth",
+    base: "http://127.0.0.1:8888/v1",
+    note: "Load a model in Unsloth Studio, then make a key under Settings → API and paste it here.",
+    site: "https://unsloth.ai",
+    // Unsloth won't answer without one of its own `sk-unsloth-…` keys,
+    // even on this machine.
+    localKey: true,
+  },
+  {
     id: "jan",
     kind: "openai",
     name: "Jan",

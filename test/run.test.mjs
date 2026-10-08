@@ -110,3 +110,70 @@ test("a model that will not take tools still answers, with a note", async (t) =>
   assert.equal(messages[0].content, "Hello.");
   assert.match(messages[0].note, /does not take tools/);
 });
+
+/* Stopping. A tool that never listens for the signal -- a connector's, an
+ * AppleScript -- must not hold the turn: Stop ends it at once, and the model
+ * is not asked again. */
+test("stopping ends the turn even while a tool that ignores the signal is running", async (t) => {
+  let requests = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    requests += 1;
+    return ndjsonResponse([{ message: { role: "assistant", content: "", tool_calls: [{ function: { name: "slow_lookup", arguments: {} } }] }, done: true }]);
+  });
+  const controller = new AbortController();
+  let started;
+  const running = new Promise((r) => (started = r));
+  const slow = {
+    name: "slow_lookup",
+    description: "Looks something up, slowly.",
+    parameters: { type: "object", properties: {} },
+    // Never settles, and never looks at ctx.signal.
+    run: () => {
+      started();
+      return new Promise(() => {});
+    },
+  };
+  const turn = runTurn({
+    agent: { name: "Helper", instructions: "", tools: null },
+    provider: { id: "ollama", kind: "ollama", name: "Ollama", base: "http://127.0.0.1:11434" },
+    model: "qwen3",
+    history: [{ role: "user", content: "look it up" }],
+    signal: controller.signal,
+    emit: () => {},
+    notebook: { notes: () => [], addNote: () => {} },
+    available: [slow],
+  });
+  await running;
+  controller.abort();
+  await assert.rejects(turn, (e) => e.name === "AbortError");
+  assert.equal(requests, 1);
+});
+
+test("stopping while a confirm-first tool waits for the reader ends the turn", async (t) => {
+  t.mock.method(globalThis, "fetch", async () =>
+    ndjsonResponse([{ message: { role: "assistant", content: "", tool_calls: [{ function: { name: "send_it", arguments: {} } }] }, done: true }]),
+  );
+  const controller = new AbortController();
+  let ran = false;
+  let asked;
+  const asking = new Promise((r) => (asked = r));
+  const turn = runTurn({
+    agent: { name: "Helper", instructions: "", tools: null },
+    provider: { id: "ollama", kind: "ollama", name: "Ollama", base: "http://127.0.0.1:11434" },
+    model: "qwen3",
+    history: [{ role: "user", content: "send it" }],
+    signal: controller.signal,
+    emit: () => {},
+    notebook: { notes: () => [], addNote: () => {} },
+    available: [{ name: "send_it", description: "Sends.", parameters: { type: "object", properties: {} }, confirm: true, run: () => (ran = true) }],
+    // A question nobody answers.
+    approve: () => {
+      asked();
+      return new Promise(() => {});
+    },
+  });
+  await asking;
+  controller.abort();
+  await assert.rejects(turn, (e) => e.name === "AbortError");
+  assert.equal(ran, false);
+});

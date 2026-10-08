@@ -6,6 +6,7 @@ import { getToolsOpen, setToolsOpen } from "../lib/prefs.js";
 import { renderMarkdown } from "../lib/markdown.js";
 import { timeline } from "../lib/timeline.js";
 import { TOOLS, toolsFor } from "../lib/tools.js";
+import { launchFrom, useLaunch } from "../lib/launch.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Approval } from "./Approval.jsx";
@@ -52,6 +53,8 @@ export function Chat({
     const el = thread.current;
     if (el && stuck.current) el.scrollTop = el.scrollHeight;
   }, [messages.length, live?.text, live?.parts?.length]);
+  // After the scroll above, so the sent bubble is measured where it rests.
+  useLaunch(thread, messages.length);
 
   useEffect(() => {
     stuck.current = true;
@@ -59,6 +62,7 @@ export function Chat({
 
   const send = (text, files, thinking) => {
     stuck.current = true;
+    launchFrom(area.current?.querySelector(".composer textarea"));
     onSend(text, files, thinking);
   };
 
@@ -225,10 +229,13 @@ export function LiveTurn({ live, agent, speaker = false, after = null }) {
 /* One message. `speaker` labels an agent's turn with its name -- in a group,
    where more than one agent answers in the same thread. */
 export function Turn({ message, agent, speaker = false }) {
+  // Only a message sent just now rises in from the composer; opening a chat
+  // shows what was already said as it stands.
+  const [fresh] = useState(() => message.role === "user" && Date.now() - (message.at || 0) < 1000);
   if (message.role === "user") {
     const files = message.files || [];
     return (
-      <div className="turn user">
+      <div className="turn user" data-sent={fresh ? "" : undefined}>
         {files.length ? (
           <div className="sent-files">
             {files.map((f, i) =>

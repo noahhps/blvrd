@@ -155,6 +155,22 @@ const TASKS = "https://tasks.googleapis.com/tasks/v1";
 
 const obj = (properties, required = []) => ({ type: "object", properties, required });
 
+/** The primary calendar's events overlapping [from, to), as Google sends them
+ *  -- for the calendar widget, which counts them rather than reads them. */
+export async function googleCalendarEvents(config, saveTokens, from, to) {
+  const { api } = googleClient(config, saveTokens);
+  const items = [];
+  let pageToken;
+  do {
+    const params = new URLSearchParams({ timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: "true", orderBy: "startTime", maxResults: "250" });
+    if (pageToken) params.set("pageToken", pageToken);
+    const data = await api(`${CAL}/calendars/primary/events?${params}`);
+    items.push(...(data.items || []));
+    pageToken = data.nextPageToken;
+  } while (pageToken && items.length < 1000);
+  return items;
+}
+
 export function googleTools(config, saveTokens) {
   const services = config.services || [];
   const g = () => googleClient(config, saveTokens);
