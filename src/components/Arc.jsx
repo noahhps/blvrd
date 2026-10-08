@@ -21,10 +21,13 @@
 export const ARC_MOODS = ["idle", "listening", "thinking", "speaking", "asking", "done", "error"];
 
 // The arch: two-thirds of a circle, open at the bottom -- a rising sun's
-// outline with the horizon left out. The arc runs 240 degrees, from the
-// lower left over the top to the lower right, drawn as one stroke with
-// square-cut ends. The same
-// line carries thinking's light, and its ripples.
+// outline with the horizon left out. The band runs 240 degrees, from the
+// lower left over the top to the lower right, and its ends are cut flat.
+// BODY is that band drawn 3 units in all round and filled; arc.css strokes
+// it 6 wide with round joins, which grows it back to full size and softens
+// just its corners -- the feet stay flat.
+const BODY = "M15.09 74.24 A38.5 38.5 0 1 1 84.91 74.24 L76.75 70.44 A29.5 29.5 0 1 0 23.25 70.44 Z";
+// The middle of the band, for thinking's light and the ripples.
 const LINE = "M20.56 75 A34 34 0 1 1 79.44 75";
 
 export function Arc({ mood = "idle", size = 28, tick = 0, label = null, colour = null, className = "" }) {
@@ -44,7 +47,7 @@ export function Arc({ mood = "idle", size = 28, tick = 0, label = null, colour =
       <g className="arc-shake">
         <g className="arc-body">
           <g className="arc-give" key={mood === "listening" ? tick : 0}>
-            <path className="arc-fill" d={LINE} />
+            <path className="arc-fill" d={BODY} />
             <path className="arc-light" d={LINE} pathLength="100" />
           </g>
         </g>

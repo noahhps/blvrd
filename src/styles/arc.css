@@ -13,9 +13,10 @@
 /* The tile is white in both themes, as the logo's is, so an agent in Ink is
    drawn in the light theme's ink whatever the theme. */
 .arc { overflow: hidden; flex: none; --ink: #141414; }
-/* The line ends square-cut, crisp at the bottom; only thinking's light is round. */
 .arc path { fill: none; stroke-linecap: butt; }
-.arc .arc-fill { stroke: var(--arc, var(--red)); stroke-width: 15; }
+/* The band, filled and stroked in one colour: the round joins soften its
+   corners and nothing else, so the feet stay flat (Arc.jsx). */
+.arc .arc-fill { fill: var(--arc, var(--red)); stroke: var(--arc, var(--red)); stroke-width: 6; stroke-linejoin: round; }
 .arc .arc-ripple { stroke: var(--arc, var(--red)); stroke-width: 4; opacity: 0; }
 .arc .arc-light {
   stroke: #fff;
