@@ -13,13 +13,14 @@
 /* The tile is white in both themes, as the logo's is, so an agent in Ink is
    drawn in the light theme's ink whatever the theme. */
 .arc { overflow: hidden; flex: none; --ink: #141414; }
-.arc path { fill: none; stroke-linecap: round; }
+/* The line ends square-cut, crisp at the bottom; only thinking's light is round. */
+.arc path { fill: none; stroke-linecap: butt; }
 .arc .arc-fill { stroke: var(--arc, var(--red)); stroke-width: 15; }
 .arc .arc-ripple { stroke: var(--arc, var(--red)); stroke-width: 4; opacity: 0; }
 .arc .arc-light {
   stroke: #fff;
-  stroke-width: 7;
   stroke-linecap: round;
+  stroke-width: 7;
   stroke-dasharray: 16 84;
   stroke-dashoffset: 16;
   opacity: 0;

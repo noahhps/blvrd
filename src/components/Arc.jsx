@@ -22,7 +22,8 @@ export const ARC_MOODS = ["idle", "listening", "thinking", "speaking", "asking",
 
 // The arch: two-thirds of a circle, open at the bottom -- a rising sun's
 // outline with the horizon left out. The arc runs 240 degrees, from the
-// lower left over the top to the lower right, drawn as one stroke. The same
+// lower left over the top to the lower right, drawn as one stroke with
+// square-cut ends. The same
 // line carries thinking's light, and its ripples.
 const LINE = "M20.56 75 A34 34 0 1 1 79.44 75";
 
