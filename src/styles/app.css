@@ -744,6 +744,65 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   .approval { transition: opacity 200ms ease; }
 }
 
+/* -- scheduled tasks (lib/schedule.js) --------------------------------------------- */
+
+/* The Allow card for a task: what the app read the words as, then what it
+   may do unattended. */
+.schedule-preview { margin: 8px 0 0 22px; display: flex; flex-direction: column; gap: 4px; }
+.schedule-preview p { margin: 0; }
+.schedule-task { color: var(--ink); white-space: pre-wrap; }
+.schedule-allow { margin: 8px 0 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px; }
+.schedule-allow legend { padding: 0; margin-bottom: 6px; color: var(--dim); font-size: 13px; }
+
+/* A run's message in the chat: the task's name and time above the answer. */
+.scheduled-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 4px;
+  color: var(--dim);
+  font-size: 12.5px;
+}
+.turn.scheduled .step { margin-top: 6px; }
+
+/* The Scheduled screen. */
+.side-settings .count {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--well);
+  color: var(--dim);
+  font-size: 11px;
+  text-align: center;
+}
+.scheduled-page > header .check { margin-top: 14px; }
+.scheduled-task.dim h2, .scheduled-task.dim .scheduled-text { color: var(--dim); }
+.scheduled-task h2 { display: flex; align-items: center; gap: 8px; }
+.scheduled-when { margin: 6px 0 0; color: var(--dim); font-size: 13px; }
+.scheduled-text { margin: 10px 0 0; white-space: pre-wrap; }
+.scheduled-last, .scheduled-runs { margin-top: 10px; font-size: 13px; color: var(--dim); }
+.scheduled-last summary, .scheduled-runs summary { cursor: pointer; }
+.scheduled-last .md { margin-top: 6px; color: var(--ink); }
+.scheduled-runs ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.scheduled-runs li { display: flex; gap: 10px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.scheduled-runs li.failed > span:nth-child(2) { color: var(--danger); }
+.scheduled-runs li .hint { margin: 0; flex-basis: 100%; }
+.scheduled-task .schedule-allow { margin-top: 12px; }
+.scheduled-edit { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.scheduled-edit textarea { resize: vertical; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+button.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
 /* -- groups ------------------------------------------------------------------ */
 
 /* A group's face: its first members, overlapping, each ringed in the ground

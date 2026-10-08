@@ -93,6 +93,22 @@ Customize, where you can edit it, undo, or open the file.
 
 See `docs/notebook-sync.md`.
 
+## Tasks
+
+Ask an agent to do something later -- "every weekday at 8, summarize my unread
+email", "in 20 minutes, remind me to call Sam", "every hour, tell me if the
+build page changes" -- and it asks you first, showing when the app read that
+as ("every weekday at 08:00, next tomorrow at 08:00"). The time is read by the
+app from your own words (`src/lib/when.js`), not worked out by the model. At
+the time, the agent does the task in a small turn of its own and posts what it
+found in the chat it was asked in, with a notification if blvrd isn't in
+front; a task can be told to stay quiet unless there's something worth saying.
+
+Everything is on the **Tasks** screen: run now, pause, edit, delete, and what a
+task may do without asking -- sending or changing anything is off for a task
+until you tick it there or on the card. While tasks are waiting, closing the
+window leaves blvrd in the menu bar so they still run. See `docs/tasks.md`.
+
 ## Connectors
 
 Under **Connectors**, agents can be given your accounts and apps. Each is off
@@ -120,6 +136,8 @@ src/lib/providers.js   Ollama, OpenAI-compatible and Anthropic, behind one shape
 src/lib/run.js         an agent's turn: ask, repair calls, run tools, repeat
 src/lib/heal.js        tool-call repair
 src/lib/tools.js       the built-in abilities
+src/lib/when.js        "every weekday at 8" -> a rule, and when it next comes round
+src/lib/schedule.js    tasks: the tools, a run, retries, what the chat is told
 src/lib/connectors/    Google, Apple, Home Assistant, MCP -- tools from your accounts
 src/lib/oauth.js       browser sign-in: PKCE, loopback redirect, MCP discovery
 src/lib/group.js       group chats: who answers, what each agent sees

@@ -259,6 +259,7 @@ export function Turn({ message, agent, speaker = false }) {
     );
   }
   if (message.role === "summary") return <SummaryMark message={message} />;
+  if (message.role === "scheduled") return <ScheduledTurn message={message} agent={agent} speaker={speaker} />;
   if (message.role === "chain") return <ToolChain steps={message.steps} who={speaker ? agent?.name : null} />;
   if (message.role === "tool" && message.unfinished) return <PendingStep name={message.name} who={speaker ? agent?.name : null} />;
   if (message.role === "tool") return <ToolStep message={message} who={speaker ? agent.name : null} />;
@@ -282,6 +283,47 @@ export function Turn({ message, agent, speaker = false }) {
       <div className="answer">
         {label}
         {hasText ? <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} /> : null}
+        {message.note ? <p className="note">{message.note}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+/* What a task posted (lib/schedule.js): the agent's answer under
+   the task's name and the time it ran, and the calls it made on the way,
+   folded. A missed or paused task is only its note. */
+function ScheduledTurn({ message, agent, speaker = false }) {
+  const s = message.scheduled || {};
+  const at = s.at ? new Date(s.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  const steps = message.steps || [];
+  return (
+    <div className="turn assistant scheduled" style={tint(agent)}>
+      <AgentAvatar look={agent?.look} name={agent?.name} size={39} alive={false} />
+      <div className="answer">
+        <span className="scheduled-mark">
+          <Icon name="clock" size={13} />
+          {speaker && agent ? `${agent.name} · ` : ""}
+          {s.title || "Task"}
+          {at ? ` · ${at}` : ""}
+        </span>
+        {message.content?.trim() ? <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} /> : null}
+        {steps.length ? (
+          <details className="step chain">
+            <summary>
+              <Icon name="tool" size={14} />
+              <span>
+                Used {[...new Set(steps.map((m) => m.name))].join(", ")}
+                {steps.length > 1 ? ` · ${steps.length} calls` : ""}
+              </span>
+              <Icon name="chevron" size={12} />
+            </summary>
+            <div className="chain-steps">
+              {steps.map((m, i) => (
+                <ToolStep key={i} message={m} remember={false} />
+              ))}
+            </div>
+          </details>
+        ) : null}
         {message.note ? <p className="note">{message.note}</p> : null}
       </div>
     </div>

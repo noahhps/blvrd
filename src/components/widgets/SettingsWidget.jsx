@@ -1,10 +1,11 @@
 import { Icon } from "../Icon.jsx";
 import { WidgetHead } from "./WidgetHead.jsx";
 
-/* The way to what agents know about the user (the Notebook), what they can
- * reach, and which models they run on. */
+/* The way to what agents know about the user (the Notebook), what they were
+ * asked to do later (Tasks), what they can reach, and which models they
+ * run on. */
 export function SettingsWidget({ ctx, handle }) {
-  const { view, setView, hasDefaultModel } = ctx;
+  const { view, setView, hasDefaultModel, scheduledCount = 0 } = ctx;
   return (
     <>
       <WidgetHead label="Settings" handle={handle} />
@@ -16,6 +17,16 @@ export function SettingsWidget({ ctx, handle }) {
       >
         <Icon name="book" />
         Notebook
+      </button>
+      <button
+        type="button"
+        className="side-settings"
+        aria-current={view.kind === "tasks" ? "true" : undefined}
+        onClick={() => setView({ kind: "tasks" })}
+      >
+        <Icon name="clock" />
+        Tasks
+        {scheduledCount ? <span className="count" title={`${scheduledCount} waiting`}>{scheduledCount}</span> : null}
       </button>
       <button
         type="button"

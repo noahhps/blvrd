@@ -52,6 +52,9 @@ export function viewFor(agentId, messages, nameOf) {
   for (const m of messages) {
     if (m.failure) continue;
     if (m.role === "user") {
+      // What scheduled tasks posted since (lib/schedule.js withReports), said
+      // before the user's own words rather than as theirs.
+      if (m.before) toUser(m.before);
       toUser(m.content ? `[User]: ${m.content}` : "[User] sent files.", m.files);
     } else if (m.agentId === agentId) {
       // Its own turn, calls and results included, exactly as it happened.

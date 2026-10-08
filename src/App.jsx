@@ -7,9 +7,10 @@ import { PRESETS } from "./lib/presets.js";
 import { runTurn } from "./lib/run.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
 import { loadFiles, withFiles } from "./lib/fileStore.js";
-import { TOOLS } from "./lib/tools.js";
+import { TOOLS, toolsFor } from "./lib/tools.js";
 import { inDesktop } from "./lib/http.js";
-import { listen } from "./lib/desktop.js";
+import { invoke, listen } from "./lib/desktop.js";
+import { tellOS } from "./lib/notify.js";
 import { searchOf } from "./lib/search.js";
 import { NOTEBOOK_TOOLS, notebookBrief } from "./lib/notebookTools.js";
 import { behindNote } from "./lib/notebookSync.js";
@@ -20,6 +21,23 @@ import { eventsAhead } from "./lib/useMonthEvents.js";
 import { readNowPlaying } from "./lib/music.js";
 import { hostOf, isLocalUrl } from "./lib/catalog.js";
 import { useArcMood } from "./lib/useArcMood.js";
+import {
+  PAUSE_AFTER_FAILURES,
+  RUN_LIMIT_MS,
+  SCHEDULE_GROUP,
+  afterRun,
+  dueTasks,
+  isActive,
+  isMissed,
+  isNothingNew,
+  missedOf,
+  reportOf,
+  runPrompt,
+  scheduleTools,
+  soonest,
+  withPause,
+  withReports,
+} from "./lib/schedule.js";
 import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
 import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
@@ -35,13 +53,16 @@ import { Icon } from "./components/Icon.jsx";
 import { Mascot } from "./components/Mascot.jsx";
 import { Notice } from "./components/Notice.jsx";
 import { RowMenu } from "./components/RowMenu.jsx";
+import { Tasks } from "./components/Tasks.jsx";
 import { Settings } from "./components/Settings.jsx";
 import { Widgets } from "./components/widgets/index.jsx";
 
 /* What goes back to the model: the chat since its last summary (lib/compact.js),
  * minus turns that failed -- an error is for the reader, not part of the
- * conversation. */
-const historyOf = (messages) => sinceSummary(messages).rest.filter((m) => !m.failure);
+ * conversation -- with what scheduled tasks posted folded into the reader's
+ * next message (lib/schedule.js). */
+const historyOf = (messages, reports = {}) => withReports(sinceSummary(messages).rest.filter((m) => !m.failure), reports);
+const clipText = (text, limit) => (String(text || "").length > limit ? `${String(text).slice(0, limit - 1)}…` : String(text || ""));
 // The answer arriving, as text and tool calls in the order they come.
 const withText = (parts, delta) => {
   const last = parts[parts.length - 1];
@@ -208,27 +229,74 @@ export default function App() {
     [update],
   );
   const getConnectors = () => stateRef.current.connectors;
+
+  /* Tasks (lib/schedule.js). `schedulesNow` is the list as it is
+   * this moment: a tool that adds a task and then lists them in the same turn
+   * sees its own change before React has drawn it. */
+  const schedulesNow = useRef(state.schedules || []);
+  schedulesNow.current = state.schedules || [];
+  const setSchedules = useCallback(
+    (fn) => {
+      const next = fn(schedulesNow.current);
+      schedulesNow.current = next;
+      update(() => ({ schedules: next }));
+    },
+    [update],
+  );
+  const scheduleOps = useRef(null);
+  scheduleOps.current ||= {
+    list: () => schedulesNow.current,
+    add: (task) => setSchedules((list) => [...list, task]),
+    patch: (id, fn) => setSchedules((list) => list.map((x) => (x.id === id ? fn(x) : x))),
+    remove: (id) => setSchedules((list) => list.filter((x) => x.id !== id)),
+    // What the agent could do that acts: offered on the Allow card for runs
+    // nobody is there to approve.
+    acting: (ctx) => {
+      const agent = stateRef.current.agents.find((a) => a.id === ctx.agentId);
+      return toolsFor(agent, availableRef.current)
+        .filter((t) => t.confirm && t.group !== SCHEDULE_GROUP)
+        .map((t) => ({ name: t.name, label: t.label || t.name }));
+    },
+  };
+  const scheduleToolList = useMemo(() => scheduleTools(scheduleOps.current), []);
+
   // Every tool an agent could be given: the built-in ones and every connected
   // account's and server's.
   const available = useMemo(
-    () => [...TOOLS, ...NOTEBOOK_TOOLS, ...MEMORY_TOOLS, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
+    () => [...TOOLS, ...NOTEBOOK_TOOLS, ...MEMORY_TOOLS, ...scheduleToolList, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.connectors],
   );
+  const availableRef = useRef(available);
+  availableRef.current = available;
 
-  const askFirst = (chatId, agent) => ({ tool, args, summary }) => {
-    if (stateRef.current.connectors.allow?.[tool.name]) return Promise.resolve(true);
+  // A tool marked `noAlways` (scheduling) asks every time, whatever was
+  // allowed before: its card is the reader's check of what will happen.
+  const askFirst = (chatId, agent) => ({ tool, args, summary, preview }) => {
+    if (!tool.noAlways && stateRef.current.connectors.allow?.[tool.name]) return Promise.resolve(true);
     return new Promise((resolve) =>
-      setApproval({ chatId, agentName: agent.name, summary, args, toolName: tool.name, toolLabel: tool.label || tool.name, resolve }),
+      setApproval({
+        chatId,
+        agentName: agent.name,
+        summary,
+        args,
+        preview,
+        noAlways: Boolean(tool.noAlways),
+        toolName: tool.name,
+        toolLabel: tool.label || tool.name,
+        resolve,
+      }),
     );
   };
 
-  const answerApproval = (choice) => {
+  // `extra`: choices made on the card itself (a schedule's unattended ticks),
+  // handed to the tool with the yes.
+  const answerApproval = (choice, extra = null) => {
     const pending = approval;
     if (!pending) return;
-    if (choice === "always") patchConnectors((c) => ({ allow: { ...c.allow, [pending.toolName]: true } }));
+    if (choice === "always" && !pending.noAlways) patchConnectors((c) => ({ allow: { ...c.allow, [pending.toolName]: true } }));
     setApproval(null);
-    pending.resolve(choice !== "deny");
+    pending.resolve(choice === "deny" ? false : extra || true);
   };
 
   /* -- agents ------------------------------------------------------------------ */
@@ -260,6 +328,7 @@ export default function App() {
     const notes = before.notes[agent.id];
     const seats = Object.fromEntries((before.groups || []).map((g) => [g.id, g.members.indexOf(agent.id)]).filter(([, at]) => at !== -1));
     const memoryBack = removeMemory(agent.id);
+    const tasks = (before.schedules || []).filter((x) => x.agentId === agent.id);
     update((s) => {
       const chats = { ...s.chats };
       const notes = { ...s.notes };
@@ -267,7 +336,8 @@ export default function App() {
       delete notes[agent.id];
       // It leaves its groups too; what it said in them stays, under its name.
       const groups = (s.groups || []).map((g) => ({ ...g, members: g.members.filter((id) => id !== agent.id) }));
-      return { agents: s.agents.filter((a) => a.id !== agent.id), chats, notes, groups };
+      const schedules = (s.schedules || []).filter((x) => x.agentId !== agent.id);
+      return { agents: s.agents.filter((a) => a.id !== agent.id), chats, notes, groups, schedules };
     });
     setEditor(null);
     if (view.kind === "agent" && view.id === agent.id) setView({ kind: "gallery" });
@@ -277,6 +347,7 @@ export default function App() {
         agents: s.agents.some((a) => a.id === agent.id) ? s.agents : [...s.agents, agent],
         chats: chat ? { ...s.chats, [agent.id]: chat } : s.chats,
         notes: notes ? { ...s.notes, [agent.id]: notes } : s.notes,
+        schedules: [...(s.schedules || []), ...tasks.filter((t) => !(s.schedules || []).some((x) => x.id === t.id))],
         // Back in its groups, in the seat it had.
         groups: (s.groups || []).map((g) => {
           if (!(g.id in seats) || g.members.includes(agent.id)) return g;
@@ -479,7 +550,7 @@ export default function App() {
       // Too long: summarized by whoever answers first.
       const first = members.find((m) => m.id === queue[0]) || members[0];
       const chat = await foldIfLong({ chatId: group.id, chat: [...before, user], agent: first, controller });
-      const transcript = historyOf(chat);
+      const transcript = historyOf(chat, { keep: true, nameOf });
       const summary = summaryContext(chat);
       while (queue.length && !controller.signal.aborted) {
         const id = queue.shift();
@@ -533,6 +604,189 @@ export default function App() {
     notify(`Cleared the chat with ${name}`, () => update((s) => ({ chats: { ...s.chats, [chatId]: [...chat, ...(s.chats[chatId] || [])] } })));
   };
 
+  /* -- tasks: running them (lib/schedule.js) --------------------------------
+   *
+   * One at a time, and never ahead of the reader: a due task starts only when
+   * nothing else is answering, and what it says is put in its chat once that
+   * chat is free -- never between the reader's message and its answer. A run
+   * is a small turn of its own: the task and the last result, not the chat. */
+
+  const [schedRun, setSchedRun] = useState(null); // { id, controller }
+  const schedRunRef = useRef(null);
+  const viewRef = useRef(view);
+  viewRef.current = view;
+
+  const appendWhenFree = async (chatId, message) => {
+    while (running.current?.chatId === chatId) await new Promise((done) => setTimeout(done, 500));
+    append(chatId, message);
+  };
+
+  const runTask = async (task, agent, signal) => {
+    const target = modelFor(agent);
+    if (!target) throw new Error(`No model chosen for ${agent.name}.`);
+    if (!target.provider.enabled) throw new Error(`${target.provider.name} is switched off in Settings.`);
+    const always = stateRef.current.connectors.allow || {};
+    const allowed = new Set([...(task.allow || []), ...Object.keys(always).filter((k) => always[k])]);
+    const tools = toolsFor(agent, availableRef.current);
+    const { context, message } = runPrompt(task, { allowed: tools.filter((t) => t.confirm && allowed.has(t.name)).map((t) => t.label || t.name) });
+    notebook.save();
+    const memory = await readMemory(agent.id, agent.name).catch(() => "");
+    const said = [];
+    const wanted = [];
+    try {
+      await runTurn({
+        agent,
+        provider: target.provider,
+        model: target.model,
+        history: [{ role: "user", content: message }],
+        signal,
+        // Its own place in the notebook's versions, apart from the chat's; a
+        // task it schedules is posted in the chat this one belongs to.
+        notebook: { ...notebookOf(agent.id, `${task.chatId}#${task.id}`), postTo: task.chatId },
+        context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
+        memory,
+        available: availableRef.current,
+        // Nobody is there to ask: what was ticked for this task runs, and
+        // anything else is turned down with a reason the model can pass on.
+        approve: async ({ tool }) => {
+          if (allowed.has(tool.name)) return true;
+          wanted.push(tool.label || tool.name);
+          return { declined: `${tool.label || tool.name} didn't run: the user hasn't allowed it for this scheduled task. Don't try it again; say what you would have done.` };
+        },
+        emit: (event) => {
+          if (event.type === "message") said.push(event.message);
+        },
+      });
+    } catch (problem) {
+      if (signal.aborted) throw problem;
+      throw new Error(explain(problem, target));
+    }
+    const answer = said.filter((m) => m.role === "assistant" && m.content?.trim()).at(-1)?.content.trim() || "";
+    if (task.quiet && isNothingNew(answer)) return { ok: true, text: answer, posted: false };
+    const steps = said
+      .filter((m) => m.role === "tool")
+      .map((m) => ({ name: m.name, content: clipText(m.content, 2000), error: Boolean(m.error), declined: Boolean(m.declined) }));
+    const text = answer || "(The task ran, but the model gave no answer.)";
+    const inGroup = task.chatId !== task.agentId;
+    return { ok: true, text, posted: true, message: reportOf(task, { text, steps, wanted, agentId: inGroup ? task.agentId : null }) };
+  };
+
+  // Said where the reader will see it: the system's notification when blvrd
+  // isn't in front, a notice at the foot of the window when another chat is.
+  const tellAbout = (task, agent, text) => {
+    if (document.hidden || !document.hasFocus()) {
+      tellOS(`${agent.name} · ${task.title}`, clipText(text, 200));
+      return;
+    }
+    const here = viewRef.current;
+    if (!((here.kind === "agent" || here.kind === "group") && here.id === task.chatId)) notify(`${agent.name} posted “${task.title}”`);
+  };
+
+  const runScheduled = async (task) => {
+    const agent = stateRef.current.agents.find((a) => a.id === task.agentId);
+    if (!agent) {
+      setSchedules((list) => list.filter((x) => x.id !== task.id));
+      return;
+    }
+    const now = Date.now();
+    if (isMissed(task, now)) {
+      setSchedules((list) => list.map((x) => (x.id === task.id ? afterRun(x, { ok: false, missed: true, error: "Missed" }, now) : x)));
+      appendWhenFree(task.chatId, missedOf(task, now));
+      return;
+    }
+    const controller = new AbortController();
+    const current = { id: task.id, controller };
+    schedRunRef.current = current;
+    setSchedRun(current);
+    let timedOut = false;
+    const limit = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, RUN_LIMIT_MS);
+    let outcome;
+    try {
+      outcome = await runTask(task, agent, controller.signal);
+    } catch (problem) {
+      outcome = timedOut
+        ? { ok: false, error: `It took longer than ${RUN_LIMIT_MS / 60_000} minutes and was stopped.` }
+        : controller.signal.aborted
+          ? { skipped: true }
+          : { ok: false, error: problem?.message || String(problem) };
+    } finally {
+      clearTimeout(limit);
+      schedRunRef.current = null;
+      setSchedRun(null);
+    }
+    outcome.ms = Date.now() - now;
+    const kept = schedulesNow.current.find((x) => x.id === task.id);
+    if (!kept) return; // deleted while it ran
+    const after = afterRun(kept, outcome, Date.now());
+    setSchedules((list) => list.map((x) => (x.id === task.id ? after : x)));
+    if (outcome.ok && outcome.message) {
+      await appendWhenFree(task.chatId, outcome.message);
+      tellAbout(task, agent, outcome.text);
+    } else if (!outcome.ok && !outcome.skipped && after.paused && !kept.paused) {
+      appendWhenFree(task.chatId, {
+        role: "scheduled",
+        scheduled: { id: task.id, title: task.title, words: task.words, at: Date.now() },
+        content: "",
+        note: `Paused “${task.title}”: it failed ${PAUSE_AFTER_FAILURES} times in a row. The last time: ${outcome.error} Resume it on the Tasks screen.`,
+        ...(task.chatId !== task.agentId ? { agentId: task.agentId } : {}),
+      });
+    }
+  };
+
+  // Every 20 seconds, when the window comes back, and when the desktop shell
+  // says a time has come: run what's due, if nothing else is running.
+  const tickRef = useRef(null);
+  tickRef.current = () => {
+    if (schedRunRef.current || running.current) return;
+    const due = dueTasks(schedulesNow.current, Date.now())[0];
+    if (due) runScheduled(due);
+  };
+  useEffect(() => {
+    const tick = () => tickRef.current();
+    const first = setTimeout(tick, 4000); // once files and the notebook are in
+    const every = setInterval(tick, 20_000);
+    const off = listen("schedule-due", tick);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      clearTimeout(first);
+      clearInterval(every);
+      off.then((un) => un());
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, []);
+
+  // The desktop shell keeps the time as well, so a hidden window is woken
+  // for it -- and keeps blvrd in the menu bar while anything is waiting.
+  const nextDue = soonest(state.schedules);
+  const waiting = (state.schedules || []).filter(isActive).length;
+  const background = state.background !== false;
+  useEffect(() => {
+    invoke("schedule_set", { next: nextDue, waiting, background }, "Tasks").catch(() => {});
+  }, [nextDue, waiting, background]);
+
+  const scheduleActs = {
+    runNow: (id) => {
+      const task = schedulesNow.current.find((x) => x.id === id);
+      if (!task || schedRunRef.current) return;
+      runScheduled({ ...task, retryAt: Date.now() });
+    },
+    stop: () => schedRunRef.current?.controller.abort(),
+    pause: (id, paused) => setSchedules((list) => list.map((x) => (x.id === id ? withPause(x, paused) : x))),
+    patch: (id, fn) => setSchedules((list) => list.map((x) => (x.id === id ? fn(x) : x))),
+    remove: (id) => {
+      const task = schedulesNow.current.find((x) => x.id === id);
+      if (!task) return;
+      if (schedRunRef.current?.id === id) schedRunRef.current.controller.abort();
+      setSchedules((list) => list.filter((x) => x.id !== id));
+      notify(`Removed “${task.title}”`, () => setSchedules((list) => (list.some((x) => x.id === id) ? list : [...list, task])));
+    },
+    open: (chatId) => setView({ kind: stateRef.current.agents.some((a) => a.id === chatId) ? "agent" : "group", id: chatId }),
+    setBackground: (on) => update(() => ({ background: on })),
+  };
+
   /* -- groups --------------------------------------------------------------------- */
 
   const saveGroup = ({ name, members }) => {
@@ -551,10 +805,11 @@ export default function App() {
   const deleteGroup = (group) => {
     if (running.current?.chatId === group.id) running.current.controller.abort();
     const chat = stateRef.current.chats[group.id];
+    const tasks = (stateRef.current.schedules || []).filter((x) => x.chatId === group.id);
     update((s) => {
       const chats = { ...s.chats };
       delete chats[group.id];
-      return { groups: s.groups.filter((g) => g.id !== group.id), chats };
+      return { groups: s.groups.filter((g) => g.id !== group.id), chats, schedules: (s.schedules || []).filter((x) => x.chatId !== group.id) };
     });
     setGroupEditor(null);
     if (view.kind === "group" && view.id === group.id) {
@@ -564,6 +819,7 @@ export default function App() {
       update((s) => ({
         groups: (s.groups || []).some((g) => g.id === group.id) ? s.groups : [...(s.groups || []), group],
         chats: chat ? { ...s.chats, [group.id]: chat } : s.chats,
+        schedules: [...(s.schedules || []), ...tasks.filter((t) => !(s.schedules || []).some((x) => x.id === t.id))],
       })),
     );
   };
@@ -676,6 +932,12 @@ export default function App() {
     return () => off.then((un) => un());
   }, []);
 
+  // The menu bar icon's "Tasks…" (src-tauri/src/schedule.rs).
+  useEffect(() => {
+    const off = listen("open-tasks", () => setView({ kind: "tasks" }));
+    return () => off.then((un) => un());
+  }, []);
+
   // Links in answers and in Settings open in the reader's browser, not in the app.
   useEffect(() => {
     const onClick = async (event) => {
@@ -712,6 +974,7 @@ export default function App() {
     act,
     newGroup: () => setGroupEditor({}),
     hasDefaultModel: Boolean(state.defaultModel?.model),
+    scheduledCount: waiting,
   };
 
   return (
@@ -782,6 +1045,16 @@ export default function App() {
           />
         ) : view.kind === "notebook" ? (
           <NotebookView focus={view} notify={notify} widgetCtx={widgetCtx} nameOf={(id) => agents.find((a) => a.id === id)?.name || "an agent no longer here"} />
+        ) : view.kind === "tasks" ? (
+          <Tasks
+            schedules={state.schedules || []}
+            agents={state.agents}
+            groups={state.groups || []}
+            available={available}
+            running={schedRun?.id || null}
+            background={background}
+            acts={scheduleActs}
+          />
         ) : view.kind === "connectors" ? (
           <Connectors connectors={state.connectors} patchConnectors={patchConnectors} getConnectors={getConnectors} />
         ) : view.kind === "settings" ? (

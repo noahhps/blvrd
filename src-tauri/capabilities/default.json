@@ -16,6 +16,7 @@
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-is-registered",
     "opener:default",
+    "notification:default",
     {
       "identifier": "http:default",
       "allow": [

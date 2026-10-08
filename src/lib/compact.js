@@ -76,6 +76,8 @@ export function transcriptOf(messages, nameOf) {
     } else if (m.role === "assistant") {
       const calls = (m.calls || []).map((c) => c.name).join(", ");
       if (m.content?.trim() || calls) lines.push(`[${nameOf(m.agentId)}]: ${m.content?.trim() || ""}${calls ? ` (used ${calls})` : ""}`);
+    } else if (m.role === "scheduled") {
+      if (m.content?.trim()) lines.push(`[${nameOf(m.agentId)}, scheduled task “${m.scheduled?.title || "a task"}”]: ${m.content.trim()}`);
     } else if (m.role === "tool") {
       const result = String(m.content || "");
       lines.push(`[${m.name} result]: ${result.length > 600 ? `${result.slice(0, 600)}…` : result}`);

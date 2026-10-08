@@ -1,15 +1,22 @@
-# Scheduled tasks -- plan
+# Tasks
 
 An agent can be asked to do something later: once ("remind me at 3 to call
 Sam", "tomorrow at 9, check whether the order shipped") or again and again
 ("every weekday at 8, summarize my unread email", "every hour, tell me if the
-build page changes"). Elsewhere these are called cron jobs, routines or
-automations; in blvrd they are **scheduled tasks**, because "Reminders" already
-means the Apple connector.
+build page changes"). Elsewhere these are called cron jobs, routines,
+automations or scheduled tasks; in blvrd they are **Tasks**.
 
-Nothing here is built yet. It is written for the same models as the rest of
-blvrd: mostly local, on OpenAI-compatible servers, small windows, imperfect
-tool calls.
+It is written for the same models as the rest of blvrd: mostly local, on
+OpenAI-compatible servers, small windows, imperfect tool calls.
+
+**Built:** the words parser (`src/lib/when.js`), the four tools, the Allow
+card with its preview and unattended ticks, runs in their own small context,
+results posted into the chat and folded into the next message, the queue,
+retries and auto-pause, missed runs, the Tasks screen, the Rust timer, the
+menu bar icon and closing to it, notifications. **Not yet:** upcoming runs on
+the calendar (§1), an App Nap assertion (§5), the LaunchAgent (§5), and an
+Allow button on a run's message for a call it wasn't allowed to make (§6) --
+for now the reader ticks it on the Tasks screen for next time.
 
 ---
 
@@ -28,7 +35,7 @@ At the time, the result arrives in that same chat as a message marked with a
 clock and the task's name, and as a macOS notification. A task told to stay
 quiet unless something is worth saying posts nothing on a dull run.
 
-**Scheduled screen** (sidebar, next to Connectors). Every task: name, agent,
+**Tasks screen** (sidebar, under Settings). Every task: name, agent,
 schedule in words, next run, last result, and Pause, Run now, Edit, Delete.
 Each run's record (when, how long, ok or failed, what it said) is a click away.
 
@@ -40,7 +47,7 @@ reader sees 8:00 "Morning brief" next to their meetings.
 
 ## 2. The tools
 
-One ability, **Schedule**, tickable per agent like the others (Customize →
+One ability, **Tasks**, tickable per agent like the others (Customize →
 Abilities). Four tools, about 350 tokens of schema, all with the plain schema
 subset from `docs/computer-providers.md` §6.
 
@@ -164,7 +171,7 @@ a *local* server, the run is let finish -- it is short by construction.
 
 **The app has to be running.** Closing the main window quits today
 (`lib.rs`). With any active task, closing the window instead leaves blvrd in
-the menu bar (a tray icon: Open, Scheduled…, Pause all, Quit), and says so
+the menu bar (a tray icon: Open blvrd, Tasks…, Quit), and says so
 once. A setting turns this off.
 
 **Missed runs** -- the Mac was asleep or blvrd was quit:
@@ -204,7 +211,7 @@ chat. A run at 3 a.m. has no one to ask.
 - Computer on **This Mac**: `shell` and outside-workspace writes never run
   unattended unless ticked the same way; the sandbox needs nothing.
 - The model can't widen this: `change_schedule` can change `when` and `task`,
-  never the ticks. Only the reader, on the Scheduled screen.
+  never the ticks. Only the reader, on the Tasks screen.
 
 ---
 
@@ -261,7 +268,7 @@ is posted in the group as that agent.
 | `src/lib/store.js` | `schedules` |
 | `src/App.jsx` | the run queue beside `running.current`; posting results; notifications |
 | `src/components/Chat.jsx` | the Allow card's schedule preview and unattended ticks; the clock mark on results |
-| `src/components/Scheduled.jsx` (new) | the Scheduled screen |
+| `src/components/Tasks.jsx` (new) | the Tasks screen |
 | `src/lib/useMonthEvents.js`, calendar | upcoming runs as a layer |
 | `test/when.test.mjs`, `test/schedule.test.mjs` (new) | below |
 
@@ -290,7 +297,7 @@ is posted in the group as that agent.
    changed, nothing runs yet.
 3. The Rust timer, the queue, runs posting into the chat, notifications.
 4. Unattended approvals.
-5. Scheduled screen, tray, missed runs.
+5. Tasks screen, tray, missed runs.
 6. Calendar layer; LaunchAgent (optional).
 
 Steps 1-3 are a usable feature on their own for anything that doesn't act

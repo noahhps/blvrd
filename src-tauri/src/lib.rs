@@ -9,7 +9,9 @@
 //   * run local MCP servers (`mcp_spawn` / `mcp_send` / `mcp_stop`) -- a
 //     command the reader configured, spoken to over stdin and stdout;
 //   * keep each agent's own memory as a file, MEMORY.md, the reader can open
-//     (`agent_memory_*`).
+//     (`agent_memory_*`);
+//   * keep time for scheduled tasks while the window is hidden, and stay in
+//     the menu bar for them when it is closed (`schedule_set`).
 //
 // It also carries the global-shortcut plugin, which the main window uses to
 // open the quickview (the "quick" window) from any app.
@@ -18,6 +20,7 @@ mod apple;
 mod mcp;
 mod memory;
 mod oauth;
+mod schedule;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,7 +29,14 @@ pub fn run() {
         // Links in answers and "Get a key" open in the reader's own browser.
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // A scheduled task that posted while blvrd wasn't in front says so.
+        .plugin(tauri_plugin_notification::init())
         .manage(mcp::Servers::default())
+        .manage(schedule::Clock::default())
+        .setup(|app| {
+            schedule::start(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             oauth::oauth_listen,
             apple::apple_script,
@@ -37,10 +47,22 @@ pub fn run() {
             memory::agent_memory_write,
             memory::agent_memory_reveal,
             memory::agent_memory_remove,
+            schedule::schedule_set,
         ])
         .build(tauri::generate_context!())
         .expect("error while building blvrd")
         .run(|app, event| match event {
+            // With scheduled tasks waiting, closing the window leaves blvrd in
+            // the menu bar so they still run (lib/schedule.js).
+            tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::CloseRequested { api, .. }, .. }
+                if label == "main" && schedule::keep_running(app) =>
+            {
+                api.prevent_close();
+                schedule::hide_main(app);
+            }
+            // Its Dock icon brings the window back.
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen { .. } => schedule::show_main(app),
             // Closing the main window quits, as it did before the quickview:
             // its hidden window would otherwise keep the app running with no
             // way back to the main one.

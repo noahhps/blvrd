@@ -125,27 +125,43 @@ export async function runTurn({
       } else {
         try {
           const tool = tools.find((t) => t.name === call.name);
+          // Not every tool listens for the signal (a connector's, an
+          // AppleScript), so the turn stops waiting for it the moment the
+          // reader stops -- whatever it was doing is left to finish unheard.
+          // `callId` and `messages`: what the model can see, so the notebook
+          // knows what an agent has already been told (lib/notebookSync.js).
+          const ctx = { signal, ...notebook, callId: call.id, messages };
+          // A call that can't work goes back to the model before anyone is
+          // asked about it (a time lib/when.js can't read, say).
+          if (tool.check) tool.check(call.args, ctx);
           // A tool that acts -- sends, adds, changes, switches -- waits for the
-          // reader. No answer, or no way to ask, is a no.
+          // reader. No answer, or no way to ask, is a no. The answer reaches
+          // the tool (`ctx.approval`): Allow can carry choices made on the card.
+          let approval = true;
           if (tool.confirm) {
-            const yes = approve
-              ? await untilStopped(approve({ tool, args: call.args, summary: tool.summary ? tool.summary(call.args) : `${tool.label || tool.name}` }), signal)
+            approval = approve
+              ? await untilStopped(
+                  approve({
+                    tool,
+                    args: call.args,
+                    summary: tool.summary ? tool.summary(call.args) : `${tool.label || tool.name}`,
+                    preview: tool.preview ? tool.preview(call.args, ctx) : null,
+                  }),
+                  signal,
+                )
               : false;
             checkStopped(signal);
-            if (!yes) {
-              message.content = `The user declined: ${tool.label || tool.name} did not run. Don't try it again unless they ask; say what you would have done instead.`;
+            if (!approval || approval.declined) {
+              message.content =
+                approval?.declined ||
+                `The user declined: ${tool.label || tool.name} did not run. Don't try it again unless they ask; say what you would have done instead.`;
               message.declined = true;
               messages.push(message);
               emit({ type: "message", message });
               continue;
             }
           }
-          // Not every tool listens for the signal (a connector's, an
-          // AppleScript), so the turn stops waiting for it the moment the
-          // reader stops -- whatever it was doing is left to finish unheard.
-          // `callId` and `messages`: what the model can see, so the notebook
-          // knows what an agent has already been told (lib/notebookSync.js).
-          const output = await untilStopped(tool.run(call.args, { signal, ...notebook, callId: call.id, messages }), signal);
+          const output = await untilStopped(tool.run(call.args, { ...ctx, approval }), signal);
           message.content = call.notes.length
             ? `${output}\n\n(Your call was repaired: ${call.notes.join("; ")}. Spell it that way next time.)`
             : String(output);
