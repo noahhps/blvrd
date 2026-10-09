@@ -112,14 +112,26 @@ export function fitArgs(input, schema) {
   return { args: fitted, notes };
 }
 
-/* Calls written into the reply instead of made: <tool_call>{...}</tool_call>,
- * or a fenced JSON object with a name and arguments. Returns the calls and the
- * text with them taken out. Only names that resolve to a real tool count, so
- * an answer that merely shows some JSON is left alone. */
+/* Calls written into the reply instead of made -- by a model whose server
+ * has no tool format for it, or that was told its tools in the prompt
+ * (lib/prompted.js). The forms models use:
+ *
+ *   <tool_call>{"name": …, "arguments": …}</tool_call>   (left open at the end
+ *                                     too: prompted mode stops on the close)
+ *   [TOOL_CALLS][{…}]  or  [TOOL_CALLS]name[ARGS]{…}     (Mistral)
+ *   <|python_tag|>{"name": …, "parameters": …}           (Llama 3)
+ *   <function=name>{…}</function>                        (Llama 3, the other way)
+ *   a fenced JSON object with a name and arguments
+ *   a reply that is nothing but {"name": …, "arguments": …}
+ *
+ * Returns the calls and the text with them taken out. Only names that resolve
+ * to a real tool count, so an answer that merely shows some JSON is left
+ * alone. Thinking (`splitThink`) should be taken out first: a call a model
+ * only considered is not a call. */
 export function callsInText(text, names) {
   const calls = [];
   let rest = String(text || "");
-  const take = (raw) => {
+  const take = (raw, { bare = false } = {}) => {
     let data;
     try {
       data = parseArgs(raw);
@@ -132,16 +144,59 @@ export function callsInText(text, names) {
       const fn = item?.function || item;
       const name = fn && resolveName(fn.name, names);
       if (!name) return false;
+      if (bare && !("arguments" in fn || "parameters" in fn)) return false;
       found.push({ name, args: fn.arguments ?? fn.parameters ?? {} });
     }
     calls.push(...found);
     return found.length > 0;
   };
-  rest = rest.replace(/<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g, (all, inner) => (take(inner) ? "" : all));
+  const takeNamed = (wanted, raw) => {
+    const name = resolveName(wanted, names);
+    if (!name) return false;
+    let args;
+    try {
+      args = parseArgs(raw);
+    } catch {
+      return false;
+    }
+    calls.push({ name, args });
+    return true;
+  };
+  rest = rest.replace(/<tool_call>\s*([\s\S]*?)\s*(?:<\/tool_call>|$)/g, (all, inner) => (take(inner) ? "" : all));
+  rest = rest.replace(/\[TOOL_CALLS\]\s*(\[[\s\S]*\])/g, (all, inner) => (take(inner) ? "" : all));
+  rest = rest.replace(/\[TOOL_CALLS\]\s*([\w.:-]+)\s*\[ARGS\]\s*(\{[\s\S]*?\})(?=\s*(?:\[TOOL_CALLS\]|$))/g, (all, name, args) => (takeNamed(name, args) ? "" : all));
+  rest = rest.replace(/<\|python_tag\|>\s*([\s\S]*?)\s*(?:<\|eom_id\|>|<\|eot_id\|>|$)/g, (all, inner) => {
+    // Several calls are separated by semicolons.
+    const parts = inner.split(/;\s*(?=\{)/);
+    return parts.every((part) => take(part)) ? "" : all;
+  });
+  rest = rest.replace(/<function=([\w.:-]+)>\s*([\s\S]*?)\s*<\/function>/g, (all, name, args) => (takeNamed(name, args) ? "" : all));
   if (!calls.length) {
     rest = rest.replace(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/g, (all, inner) => (take(inner) ? "" : all));
   }
+  if (!calls.length && /^\s*[[{][\s\S]*[\]}]\s*$/.test(rest) && take(rest.trim(), { bare: true })) rest = "";
   return { calls, text: calls.length ? rest.trim() : String(text || "") };
+}
+
+/** A reply's thinking, written into it as <think>…</think> (Qwen, DeepSeek
+ *  and others on servers that don't take it out), apart from the answer. The
+ *  thinking isn't sent back to the model, and isn't searched for calls. A
+ *  reply whose opening <think> was in the template starts with the thinking
+ *  and has only the closing tag. */
+export function splitThink(text) {
+  const s = String(text || "");
+  const thoughts = [];
+  let rest = s.replace(/<think>([\s\S]*?)(?:<\/think>|$)/g, (_, inner) => {
+    thoughts.push(inner.trim());
+    return "";
+  });
+  if (!thoughts.length && rest.includes("</think>")) {
+    const at = rest.indexOf("</think>");
+    thoughts.push(rest.slice(0, at).trim());
+    rest = rest.slice(at + "</think>".length);
+  }
+  if (!thoughts.length) return { text: s, thought: "" };
+  return { text: rest.trim(), thought: thoughts.filter(Boolean).join("\n\n") };
 }
 
 /** What a model is told when a call could not be repaired. */

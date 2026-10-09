@@ -69,8 +69,21 @@ An agent can be limited to any subset. Small local models often call tools
 slightly wrong; a call is repaired when there is only one thing the model
 could have meant (a prefixed or misspelled name, wrong-case or wrapped
 arguments, a number sent as text, nearly-JSON, a call written into the reply
-as text), and the model is told what was fixed. A model that won't take tools
-at all still works as a chat. See `src/lib/heal.js` and `src/lib/run.js`.
+as text -- in any of the forms Qwen, Mistral and Llama models use), and the
+model is told what was fixed. A model whose server can't carry tool calls
+(GPT4All, KoboldCpp, llama.cpp without `--jinja`, vLLM without a tool parser,
+an Ollama model whose template has none) is given its tools in its
+instructions instead and writes its calls out; the app learns which models
+need that, and what else their servers refuse, and remembers. Thinking a model
+writes into its reply (`<think>`) is folded away and never sent back. See
+`src/lib/heal.js`, `src/lib/prompted.js` and `src/lib/run.js`.
+
+Each model's real context is asked of its server (`src/lib/profile.js`):
+Ollama is told how much to load a model with, rather than left at its small
+default, and a chat is compacted before it outgrows what its model can take.
+Under **Models → Computer access**, *Test computer access* checks that a model
+calls a tool, reads what came back, and acts on it -- the server's own way or
+written into its instructions -- and says which works (`src/lib/probe.js`).
 
 ## Memory
 
@@ -134,7 +147,10 @@ your login shell, so `npx` and `uvx` are found as in Terminal.
 src/lib/catalog.js     every server the app knows
 src/lib/providers.js   Ollama, OpenAI-compatible and Anthropic, behind one shape
 src/lib/run.js         an agent's turn: ask, repair calls, run tools, repeat
-src/lib/heal.js        tool-call repair
+src/lib/heal.js        tool-call repair, calls written as text, <think>
+src/lib/prompted.js    tools in the instructions, for models without tool calls
+src/lib/profile.js     what each model can take and do, and its server's quirks
+src/lib/probe.js       "Test computer access"
 src/lib/tools.js       the built-in abilities
 src/lib/when.js        "every weekday at 8" -> a rule, and when it next comes round
 src/lib/schedule.js    tasks: the tools, a run, retries, what the chat is told

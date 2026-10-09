@@ -21,6 +21,45 @@ export async function httpFetch(input, init) {
   return fetch(input, init);
 }
 
+const BUSY = new Set([429, 503]);
+
+function sleep(ms, signal) {
+  return new Promise((done, fail) => {
+    if (signal?.aborted) return fail(signal.reason || new DOMException("Aborted", "AbortError"));
+    const timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", () => (clearTimeout(timer), fail(signal.reason || new DOMException("Aborted", "AbortError"))), { once: true });
+  });
+}
+
+/** How long a busy server asked to be left: Retry-After in seconds or as a
+ *  date, or a wait that doubles with each try. */
+export function waitFor(response, attempt) {
+  const after = response.headers?.get?.("retry-after");
+  let ms = after == null ? NaN : /^\d+(\.\d+)?$/.test(after.trim()) ? Number(after) * 1000 : Date.parse(after) - Date.now();
+  if (!Number.isFinite(ms) || ms < 0) ms = 2000 * 2 ** attempt;
+  return ms;
+}
+
+/** A request sent again when the server says it is busy (429, 503) -- a free
+ *  tier's per-minute limit, a local server still loading -- after the wait it
+ *  asks for, up to `tries` more times. A wait longer than `maxWait` isn't
+ *  sat through: the busy answer is returned and reported. */
+export async function fetchPatiently(url, init = {}, { tries = 3, maxWait = 60_000, onWait = null } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    const response = await httpFetch(url, init);
+    if (!BUSY.has(response.status) || attempt >= tries) return response;
+    const ms = waitFor(response, attempt);
+    if (ms > maxWait) return response;
+    try {
+      await response.body?.cancel?.();
+    } catch {
+      // Nothing to let go of.
+    }
+    onWait?.(ms);
+    await sleep(ms, init.signal);
+  }
+}
+
 /** The body of a failed response, as one readable line. */
 export async function failure(response, label) {
   let detail = "";

@@ -765,6 +765,11 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 }
 .turn.scheduled .step { margin-top: 6px; }
 
+/* What a model thought before it answered, folded above the answer. */
+.thought { margin-bottom: 6px; color: var(--dim); font-size: 13px; }
+.thought summary { cursor: pointer; width: fit-content; }
+.thought p { margin: 6px 0 0; white-space: pre-wrap; }
+
 /* The Scheduled screen. */
 .side-settings .count {
   margin-left: auto;
@@ -1416,6 +1421,13 @@ a.server-note { width: fit-content; }
 .server-fields { display: flex; flex-direction: column; gap: 6px; flex: none; }
 .server-url { width: 260px !important; flex: none; font: 12.5px var(--mono) !important; }
 .status { font-size: 12px; color: var(--faint); }
+.model-access { align-items: flex-start; }
+.status.cant { color: var(--warn); }
+.model-access-set { margin-top: 6px; font-size: 12.5px; color: var(--dim); }
+.model-access-set summary { cursor: pointer; width: fit-content; }
+.model-access-set .check-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.model-access-set .check-row > span { width: 120px; }
+.model-access-set input { width: 120px; }
 .status.on { color: var(--ok); }
 .status.off { color: var(--faint); }
 .add-server { display: grid; grid-template-columns: 1fr 1.6fr 1.2fr auto; gap: 8px; margin-top: 12px; }

@@ -276,12 +276,20 @@ export function Turn({ message, agent, speaker = false }) {
     );
   }
   const hasText = Boolean(message.content?.trim());
-  if (!hasText && !message.note) return null;
+  if (!hasText && !message.note && !message.thought) return null;
   return (
     <div className="turn assistant" style={tint(agent)}>
       <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} />
       <div className="answer">
         {label}
+        {/* Thinking the model wrote into its reply (lib/heal.js splitThink):
+            kept apart, folded, and never sent back to it. */}
+        {message.thought ? (
+          <details className="thought">
+            <summary>Thinking</summary>
+            <p>{message.thought}</p>
+          </details>
+        ) : null}
         {hasText ? <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }} /> : null}
         {message.note ? <p className="note">{message.note}</p> : null}
       </div>

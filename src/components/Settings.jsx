@@ -7,6 +7,7 @@ import { COMPACT_CHOICES, DEFAULT_COMPACT_AT } from "../lib/compact.js";
 import { FREE, PAID } from "../lib/search.js";
 import { DEFAULT_SHORTCUT, shortcutFromKey, shortcutLabel } from "../lib/quick.js";
 import { Icon } from "./Icon.jsx";
+import { ModelAccess } from "./ModelAccess.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 
 /* Where the models come from.
@@ -29,6 +30,7 @@ export function Settings({
   onCompactAt,
   search,
   onSearch,
+  inUse = [],
 }) {
   const [probe, setProbe] = useState({}); // id -> { state, count, error }
   const [probing, setProbing] = useState(false);
@@ -75,6 +77,8 @@ export function Settings({
         <p className="hint">What an agent runs on unless you give it a model of its own.</p>
         <ModelPicker providers={providers} value={defaultModel} onChange={onDefaultModel} />
       </section>
+
+      <ModelAccess inUse={inUse} />
 
       <section className="card">
         <div className="card-head">
@@ -175,8 +179,8 @@ export function Settings({
       <section className="card">
         <h2>Long chats</h2>
         <p className="hint">
-          When a chat grows past this, its older messages are summarized by the agent’s model and only the summary
-          and the recent part are sent. The chat still shows everything. You can also compact one any time:
+          When a chat grows past this — or nears what the agent’s model can take, if that comes first — its older
+          messages are summarized by the agent’s model and only the summary and the recent part are sent. The chat still shows everything. You can also compact one any time:
           right-click it in the sidebar.
         </p>
         <select

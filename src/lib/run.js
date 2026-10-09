@@ -9,8 +9,10 @@
  */
 
 import { checkStopped, isStop, stoppedError, untilStopped } from "./abort.js";
-import { callsInText, fitArgs, parseArgs, resolveName, usageOf } from "./heal.js";
-import { adapterFor } from "./providers.js";
+import { callsInText, fitArgs, parseArgs, resolveName, splitThink, usageOf } from "./heal.js";
+import { getProfile, learn } from "./profile.js";
+import { STOP, asPrompted, toolsBlock } from "./prompted.js";
+import { Refused, adapterFor } from "./providers.js";
 import { thinkingFields } from "./thinking.js";
 import { memoryBrief } from "./agentMemory.js";
 import { toolsFor } from "./tools.js";
@@ -48,6 +50,12 @@ export function systemFor(agent, tools, context = "", memory = "") {
  * tool call begins (when the provider says), and with { type: "message",
  * message } for every assistant or tool message as it is completed -- the
  * caller appends those to the chat. Resolves when the agent has answered.
+ *
+ * `profile` is what the model can do (lib/profile.js); without one, what is
+ * already known of it. A model that calls tools only by writing them out
+ * (`tools: "prompted"`) is told them in its instructions (lib/prompted.js),
+ * and one whose server turns its tools down part-way is switched to that,
+ * and remembered. The same for the other things a server can refuse.
  */
 export async function runTurn({
   agent,
@@ -63,6 +71,9 @@ export async function runTurn({
   approve = null,
   note = "",
   memory = "",
+  profile: given = null,
+  maxRounds = MAX_ROUNDS,
+  onWait = null,
 }) {
   const adapter = adapterFor(provider);
   const tools = toolsFor(agent, available);
@@ -70,25 +81,58 @@ export async function runTurn({
   const system = systemFor(agent, tools, context, memory);
   const messages = withNote(history, note);
   const extra = thinkingFields(provider.kind, thinking?.control, thinking?.value);
+  let profile = given || getProfile(provider, model);
+  let mode = tools.length && profile.tools === "prompted" ? "prompted" : "native";
+  let switched = "";
+  const tried = new Set();
 
-  for (let round = 0; round < MAX_ROUNDS; round++) {
+  for (let round = 0; round < maxRounds; round++) {
     checkStopped(signal);
-    const result = await adapter.turn({
-      provider,
-      model,
-      system,
-      messages,
-      tools,
-      signal,
-      extra,
-      onText: (delta) => emit({ type: "text", delta }),
-      onCall: (name) => emit({ type: "call", name }),
-    });
+    const prompted = mode === "prompted";
+    let result;
+    try {
+      result = await adapter.turn({
+        provider,
+        model,
+        system: prompted ? `${system}\n\n${toolsBlock(tools)}` : system,
+        messages: prompted ? asPrompted(messages) : messages,
+        tools: prompted ? [] : tools,
+        stop: prompted ? [STOP] : null,
+        profile,
+        signal,
+        extra,
+        onWait,
+        onText: (delta) => emit({ type: "text", delta }),
+        onCall: (name) => emit({ type: "call", name }),
+      });
+    } catch (problem) {
+      if (!(problem instanceof Refused) || tried.has(problem.kind)) throw problem;
+      tried.add(problem.kind);
+      // Plain schemas turned down as well: the tools themselves are the trouble.
+      const kind = problem.kind === "schema" && profile.plainSchemas ? "tools" : problem.kind;
+      const fix = { tools: { tools: "prompted" }, schema: { plainSchemas: true }, content: { emptyContent: true }, ids: { ids: "alnum9" } }[kind];
+      learn(provider, model, fix);
+      profile = { ...profile, ...fix };
+      if (kind === "tools") {
+        mode = "prompted";
+        switched = `${model} doesn't take tools the usual way, so they're described in its instructions instead.`;
+      }
+      round -= 1;
+      continue;
+    }
 
     let { text, calls } = result;
+    // Thinking written into the reply is kept apart: shown, not sent back,
+    // and not searched for calls.
+    const { text: said, thought } = splitThink(text);
+    if (thought) {
+      text = said;
+      emit({ type: "retext", text });
+    }
     // A call written into the reply as text is still a call -- small models do
-    // this when their template has no tool format of its own.
-    if (!calls.length && tools.length && provider.kind !== "anthropic") {
+    // this when their template has no tool format of its own, and a prompted
+    // model only ever does.
+    if (!calls.length && tools.length && (prompted || provider.kind !== "anthropic")) {
       const found = callsInText(text, names);
       if (found.calls.length) {
         calls = found.calls;
@@ -97,7 +141,26 @@ export async function runTurn({
       }
     }
 
+    // A call written as text and cut off by the output limit doesn't parse,
+    // so it isn't found above -- but it was a call, and the model should hear
+    // why it went nowhere.
+    if (!calls.length && tools.length && result.stop === "length") {
+      const at = text.search(/<tool_call>|\[TOOL_CALLS\]|<\|python_tag\|>|<function=/);
+      if (at !== -1) {
+        const name = /"name"\s*:\s*"([\w.:-]+)"|<function=([\w.:-]+)>|\[TOOL_CALLS\]\s*([\w.:-]+)\s*\[ARGS\]/.exec(text.slice(at));
+        calls = [{ name: name?.[1] || name?.[2] || name?.[3] || "a tool", args: "{" }];
+        text = text.slice(0, at).trim();
+        emit({ type: "retext", text });
+      }
+    }
+
     const prepared = calls.map((call) => prepare(call, tools, names));
+    // A call cut off by the output limit can't be mended; say why it broke.
+    if (result.stop === "length") {
+      for (const call of prepared) {
+        if (call.problem) call.problem += " The call was cut off at the model's output limit: send less in one call (a long text in parts).";
+      }
+    }
     const assistant = {
       role: "assistant",
       content: text,
@@ -106,12 +169,14 @@ export async function runTurn({
       // says (Anthropic); otherwise the text came first, then the calls.
       ...(result.parts && calls === result.calls ? { parts: orderOf(result.parts, prepared) } : {}),
       ...(result.raw ? { raw: result.raw } : {}),
-      ...(result.note ? { note: result.note } : {}),
+      ...(thought ? { thought } : {}),
+      ...(result.note || switched ? { note: [switched, result.note].filter(Boolean).join(" ") } : {}),
       ...(result.stop === "refusal" ? { note: "The model declined to answer this." } : {}),
       ...(result.stop === "length" && !calls.length ? { note: "The answer was cut off at the model's length limit." } : {}),
       model,
       provider: provider.id,
     };
+    switched = "";
     messages.push(assistant);
     emit({ type: "message", message: assistant });
     if (!prepared.length) return;
@@ -180,7 +245,7 @@ export async function runTurn({
     role: "assistant",
     content: "",
     calls: [],
-    note: `Stopped after ${MAX_ROUNDS} rounds of tool calls without an answer.`,
+    note: `Stopped after ${maxRounds} rounds of tool calls without an answer.`,
     model,
     provider: provider.id,
   };

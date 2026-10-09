@@ -5,6 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { getProfile, resetProfiles } from "../src/lib/profile.js";
 import { runTurn } from "../src/lib/run.js";
 
 function ndjsonResponse(objects) {
@@ -87,28 +88,34 @@ test("a tool the agent is not allowed is not offered, and a call to it is refuse
   assert.match(messages[1].content, /no tool called "read_page"/);
 });
 
-test("a model that will not take tools still answers, with a note", async (t) => {
-  let calls = 0;
+test("a model that will not take tools is told them in its instructions instead, and still answers", async (t) => {
+  resetProfiles();
+  const bodies = [];
   t.mock.method(globalThis, "fetch", async (url, init) => {
-    calls++;
     const body = JSON.parse(init.body);
+    bodies.push(body);
     if (body.tools) {
       return new Response(JSON.stringify({ error: "registry.ollama.ai/library/gemma:2b does not support tools" }), { status: 400 });
     }
     return ndjsonResponse([{ message: { content: "Hello." }, done: true }]);
   });
+  const provider = { id: "ollama", kind: "ollama", name: "Ollama", base: "http://127.0.0.1:11434" };
   const messages = [];
   await runTurn({
     agent: { name: "Companion", tools: null },
-    provider: { id: "ollama", kind: "ollama", name: "Ollama", base: "http://127.0.0.1:11434" },
+    provider,
     model: "gemma:2b",
     history: [{ role: "user", content: "hi" }],
     emit: (e) => e.type === "message" && messages.push(e.message),
     notebook: {},
   });
-  assert.equal(calls, 2);
+  assert.equal(bodies.length, 2);
+  assert.match(bodies[1].messages[0].content, /To use a tool, reply with only the call[\s\S]*- calculate\(expression\)/);
+  assert.deepEqual(bodies[1].options.stop, ["</tool_call>"]);
   assert.equal(messages[0].content, "Hello.");
-  assert.match(messages[0].note, /does not take tools/);
+  assert.match(messages[0].note, /described in its instructions/);
+  // And remembered: the next turn goes straight to the prompt.
+  assert.equal(getProfile(provider, "gemma:2b").tools, "prompted");
 });
 
 /* Stopping. A tool that never listens for the signal -- a connector's, an

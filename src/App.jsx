@@ -5,6 +5,8 @@ import { connectorTools, groupsOf } from "./lib/connectors/index.js";
 import { MAX_HANDOFFS, groupBrief, mentionsIn, respondersFor, viewFor } from "./lib/group.js";
 import { PRESETS } from "./lib/presets.js";
 import { runTurn } from "./lib/run.js";
+import { ADAPTERS } from "./lib/providers.js";
+import { discover, getProfile, usableWindow } from "./lib/profile.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
 import { loadFiles, withFiles } from "./lib/fileStore.js";
 import { TOOLS, toolsFor } from "./lib/tools.js";
@@ -388,6 +390,23 @@ export default function App() {
     search: () => searchOf(stateRef.current),
   });
 
+  /* The models agents run on -- the default and each agent's own -- and who
+   * uses each, for the Models screen's computer access. */
+  const modelsInUse = () => {
+    const found = new Map();
+    const add = (choice, who) => {
+      const provider = choice?.model && providers.find((p) => p.id === choice.provider);
+      if (!provider) return;
+      const key = `${provider.id}|${choice.model}`;
+      const entry = found.get(key) || { provider, model: choice.model, users: [] };
+      entry.users.push(who);
+      found.set(key, entry);
+    };
+    add(state.defaultModel, "the default");
+    for (const agent of state.agents) if (agent.model?.model) add(agent.model, agent.name);
+    return [...found.values()].map(({ users, ...rest }) => ({ ...rest, who: `Used by ${users.join(", ")}` }));
+  };
+
   /* One agent's turn, in whichever chat. Everything it says is appended to
    * `chatId` with `tag` added (a group tags each message with its agent), and
    * returned. Throws STOPPED when the reader stops it. */
@@ -408,11 +427,16 @@ export default function App() {
     // it was edited in another editor.
     notebook.save();
     const memory = await readMemory(agent.id, agent.name).catch(() => "");
+    // What the model can take and do, asked of its server once a launch
+    // (lib/profile.js): its context, whether it calls tools natively.
+    const profile = await discover(target.provider, target.model, { adapters: ADAPTERS });
     try {
       await runTurn({
         agent,
         provider: target.provider,
         model: target.model,
+        profile,
+        onWait: (ms) => setLive((l) => l && { ...l, status: `${target.provider.name} is busy; trying again in ${Math.ceil(ms / 1000)}s…` }),
         history,
         signal: controller.signal,
         notebook: notebookOf(agent.id, chatId),
@@ -475,7 +499,16 @@ export default function App() {
   // Before a turn: a chat past the limit set in Settings keeps about a
   // quarter of it, the rest summarized.
   const foldIfLong = async ({ chatId, chat, agent, controller }) => {
-    const limit = compactAtOf(stateRef.current);
+    // The reader's setting, or less: three quarters of what the model can
+    // really take, leaving room for its instructions, tools and answer.
+    const set = compactAtOf(stateRef.current);
+    if (set === null) return chat; // "Never"
+    const target = modelFor(agent);
+    const known = target ? (await discover(target.provider, target.model, { adapters: ADAPTERS }).catch(() => null)) || getProfile(target.provider, target.model) : null;
+    // Only a window that is known (lib/profile.js usableWindow): a guessed
+    // one would fold a big hosted model's chats far too early.
+    const room = known ? usableWindow(target.provider, known) : null;
+    const limit = room ? Math.min(set, Math.floor(room * 0.75)) : set;
     if (!tooLong(chat, null, limit)) return chat;
     return (await fold({ chatId, chat, agent, keep: Math.round(limit / 4), controller })) || chat;
   };
@@ -631,6 +664,7 @@ export default function App() {
     const { context, message } = runPrompt(task, { allowed: tools.filter((t) => t.confirm && allowed.has(t.name)).map((t) => t.label || t.name) });
     notebook.save();
     const memory = await readMemory(agent.id, agent.name).catch(() => "");
+    const profile = await discover(target.provider, target.model, { adapters: ADAPTERS });
     const said = [];
     const wanted = [];
     try {
@@ -638,6 +672,7 @@ export default function App() {
         agent,
         provider: target.provider,
         model: target.model,
+        profile,
         history: [{ role: "user", content: message }],
         signal,
         // Its own place in the notebook's versions, apart from the chat's; a
@@ -1072,6 +1107,7 @@ export default function App() {
             onCompactAt={(compactAt) => update(() => ({ compactAt }))}
             search={searchOf(state)}
             onSearch={(patch) => update((s) => ({ search: { ...searchOf(s), ...patch } }))}
+            inUse={modelsInUse()}
           />
         ) : selected ? (
           <Chat

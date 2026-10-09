@@ -1,10 +1,24 @@
-# Every provider's models on the computer -- plan
+# Every provider's models on the computer
 
 Companion to `docs/computer.md`. This is **phase 0**: before any computer
 tool is built, make sure every model server in `src/lib/catalog.js` can
 drive it, and that the app knows, for each model, *how* it can.
 
-Nothing here is built yet.
+**Built** (problems below by number): the profile and window discovery for
+Ollama, llama.cpp, LM Studio, vLLM, OpenRouter, Groq, Together, Mistral and
+Anthropic, with `num_ctx` sent to Ollama and compaction kept inside the
+loaded window (3); refusals classified and learned from -- tools, schemas,
+null content, ids -- with prompted mode in place of talk-only (1, 2, 5, 6);
+`<think>` kept apart (7); the wider `callsInText`, and cut-off calls named
+(8, 9); pictures in tool results for all three wires (4); waiting out
+429/503 (10); the probe and Models → Computer access. In `src/lib/profile.js`,
+`prompted.js`, `probe.js`, `providers.js`, `run.js`, `heal.js`, `http.js`;
+tests in `test/dialects.test.mjs` and `test/probe.test.mjs`.
+
+**Still to do:** the live run of the probe against real servers (§7, by hand,
+on a machine running them -- the "verify" cells in §5 stay until then), the
+vision step of the probe (with `look`, phase 3), and fresh-conversation
+checkpoints (11), which belong to the worker in phase 1.
 
 ---
 
