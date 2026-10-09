@@ -7,6 +7,8 @@ import { PRESETS } from "./lib/presets.js";
 import { runTurn } from "./lib/run.js";
 import { ADAPTERS } from "./lib/providers.js";
 import { discover, getProfile, usableWindow } from "./lib/profile.js";
+import { computerTaskTool } from "./lib/computer/task.js";
+import { openComputer, stopComputer, whereOf } from "./lib/computer/connection.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
 import { loadFiles, withFiles } from "./lib/fileStore.js";
 import { TOOLS, toolsFor } from "./lib/tools.js";
@@ -272,10 +274,30 @@ export default function App() {
   const availableRef = useRef(available);
   availableRef.current = available;
 
+  /* The computer (lib/computer): offered as one tool, computer_task, in a
+   * chat whose computer is on -- This Mac or the Sandbox, set in the chat. */
+  const computerTool = useMemo(
+    () =>
+      computerTaskTool({
+        open: (chatId) => openComputer(chatId, whereOf(stateRef.current.computers, chatId)),
+        stop: stopComputer,
+        modelOf: (agentId) => {
+          const agent = stateRef.current.agents.find((a) => a.id === agentId);
+          const target = agent && modelFor(agent);
+          return target ? { agent, provider: target.provider, model: target.model, profile: getProfile(target.provider, target.model) } : null;
+        },
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const availableIn = (chatId) => (whereOf(stateRef.current.computers, chatId) === "off" ? availableRef.current : [...availableRef.current, computerTool]);
+
   // A tool marked `noAlways` (scheduling) asks every time, whatever was
   // allowed before: its card is the reader's check of what will happen.
-  const askFirst = (chatId, agent) => ({ tool, args, summary, preview }) => {
-    if (!tool.noAlways && stateRef.current.connectors.allow?.[tool.name]) return Promise.resolve(true);
+  // "Always allow" covers the tool, or less when it says (`alwaysKey`: one
+  // command on this Mac).
+  const askFirst = (chatId, agent) => ({ tool, args, summary, preview, alwaysKey = tool.name }) => {
+    if (!tool.noAlways && stateRef.current.connectors.allow?.[alwaysKey]) return Promise.resolve(true);
     return new Promise((resolve) =>
       setApproval({
         chatId,
@@ -284,6 +306,7 @@ export default function App() {
         args,
         preview,
         noAlways: Boolean(tool.noAlways),
+        alwaysKey,
         toolName: tool.name,
         toolLabel: tool.label || tool.name,
         resolve,
@@ -296,7 +319,7 @@ export default function App() {
   const answerApproval = (choice, extra = null) => {
     const pending = approval;
     if (!pending) return;
-    if (choice === "always" && !pending.noAlways) patchConnectors((c) => ({ allow: { ...c.allow, [pending.toolName]: true } }));
+    if (choice === "always" && !pending.noAlways) patchConnectors((c) => ({ allow: { ...c.allow, [pending.alwaysKey || pending.toolName]: true } }));
     setApproval(null);
     pending.resolve(choice === "deny" ? false : extra || true);
   };
@@ -444,12 +467,14 @@ export default function App() {
         context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
         note: behindNote(agent.id, chatId, history, agentName),
         memory,
-        available,
+        available: availableIn(chatId),
         approve: askFirst(chatId, agent),
         emit: (event) => {
           if (event.type === "text") setLive((l) => l && { ...l, text: l.text + event.delta, parts: withText(l.parts, event.delta), status: "" });
           else if (event.type === "retext") setLive((l) => l && { ...l, text: event.text, parts: event.text ? [{ type: "text", text: event.text }] : [] });
           else if (event.type === "call") setLive((l) => l && { ...l, parts: [...l.parts, { type: "call", name: event.name }] });
+          // A tool saying what it's doing (the computer's worker, step by step).
+          else if (event.type === "status") setLive((l) => l && { ...l, status: event.status });
           else if (event.type === "message") {
             const message = { ...event.message, ...tag };
             append(chatId, message);
@@ -680,7 +705,7 @@ export default function App() {
         notebook: { ...notebookOf(agent.id, `${task.chatId}#${task.id}`), postTo: task.chatId },
         context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
         memory,
-        available: availableRef.current,
+        available: availableIn(task.chatId),
         // Nobody is there to ask: what was ticked for this task runs, and
         // anything else is turned down with a reason the model can pass on.
         approve: async ({ tool }) => {
@@ -1130,6 +1155,12 @@ export default function App() {
             onStop={stop}
             onCompact={() => compactNow(selected.id, selected)}
             canCompact={canCompact(selected.id)}
+            computer={whereOf(state.computers, selected.id)}
+            onComputer={(where) => {
+              const id = selected.id;
+              if (where === "off") stopComputer(id);
+              update((s) => ({ computers: { ...(s.computers || {}), [id]: { where } } }));
+            }}
             onCustomize={() => setEditor({ agent: selected })}
           />
         ) : selectedGroup ? (

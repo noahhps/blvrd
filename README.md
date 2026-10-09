@@ -122,6 +122,25 @@ task may do without asking -- sending or changing anything is off for a task
 until you tick it there or on the card. While tasks are waiting, closing the
 window leaves blvrd in the menu bar so they still run. See `docs/tasks.md`.
 
+## The computer
+
+Each chat can give its agent a computer: a shell, files and a web browser,
+switched on in the chat (**Computer: Off · This Mac · Sandbox**, next to the
+model). The agent gets one tool, `computer_task`; a worker does the task on
+the computer in a context of its own and hands back a short report, so a
+long session doesn't fill the chat -- its steps are under the report, to
+open. Answers are cut to what the model's window can afford, with the rest
+kept in a file it can grep (`docs/computer.md`).
+
+**This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, the browser is a
+profile of its own (`~/blvrd/Browser`), and every command -- and anything
+that reaches outside the folder, or sends a form -- waits for your Allow;
+"Always allow" covers that one command. It needs Node.js on the Mac.
+**Sandbox**: a Linux VM of its own, where nothing asks (see below).
+
+The computer itself is `computer/` -- an MCP server on stdio, the same program
+on the Mac and in the VM -- and `src/lib/computer/` is the app's side of it.
+
 ## Connectors
 
 Under **Connectors**, agents can be given your accounts and apps. Each is off
@@ -151,6 +170,9 @@ src/lib/heal.js        tool-call repair, calls written as text, <think>
 src/lib/prompted.js    tools in the instructions, for models without tool calls
 src/lib/profile.js     what each model can take and do, and its server's quirks
 src/lib/probe.js       "Test computer access"
+src/lib/computer/      the computer from the app: computer_task, the worker,
+                       budgets, the tools and their approvals
+computer/              the computer itself: shell, files, browser (MCP, stdio)
 src/lib/tools.js       the built-in abilities
 src/lib/when.js        "every weekday at 8" -> a rule, and when it next comes round
 src/lib/schedule.js    tasks: the tools, a run, retries, what the chat is told

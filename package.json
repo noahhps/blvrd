@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "postinstall": "npm --prefix computer install --no-audit --no-fund"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

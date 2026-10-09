@@ -340,6 +340,13 @@ browser context; **Reset machine** restores the clean snapshot.
 
 ## 10. Building it
 
+**Status:** phase 0 and phase 1 are built -- `computer/` (the server, with
+its tests in `test/computer.test.mjs`) and `src/lib/computer/` (the worker,
+budgets, tools, `computer_task`; `test/worker.test.mjs`). Differences from
+the plan below: on this Mac the server runs under the Mac's own Node rather
+than a compiled sidecar, and a browser step asks first when it would send a
+form (`enter`/`submit`) rather than on any form.
+
 **Phase 0 -- every provider's models can drive it** (`docs/computer-providers.md`)
 - Know each model's window and tool support; a prompted-tools mode for
   models without native calls; a probe per model; fixtures for every wire

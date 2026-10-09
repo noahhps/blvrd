@@ -195,7 +195,10 @@ export async function runTurn({
           // reader stops -- whatever it was doing is left to finish unheard.
           // `callId` and `messages`: what the model can see, so the notebook
           // knows what an agent has already been told (lib/notebookSync.js).
-          const ctx = { signal, ...notebook, callId: call.id, messages };
+          // `approve` and `progress`: for a tool that runs a turn of its own
+          // (the computer's worker) and asks, or says what it's doing, through
+          // this one.
+          const ctx = { signal, ...notebook, callId: call.id, messages, approve, progress: (status) => emit({ type: "status", status }) };
           // A call that can't work goes back to the model before anyone is
           // asked about it (a time lib/when.js can't read, say).
           if (tool.check) tool.check(call.args, ctx);
@@ -203,7 +206,9 @@ export async function runTurn({
           // reader. No answer, or no way to ask, is a no. The answer reaches
           // the tool (`ctx.approval`): Allow can carry choices made on the card.
           let approval = true;
-          if (tool.confirm) {
+          // `confirm` may depend on the call: a command on this Mac, but not
+          // in the sandbox.
+          if (typeof tool.confirm === "function" ? tool.confirm(call.args, ctx) : tool.confirm) {
             approval = approve
               ? await untilStopped(
                   approve({
@@ -211,6 +216,8 @@ export async function runTurn({
                     args: call.args,
                     summary: tool.summary ? tool.summary(call.args) : `${tool.label || tool.name}`,
                     preview: tool.preview ? tool.preview(call.args, ctx) : null,
+                    // What "Always allow" covers: the tool, or less (one command).
+                    alwaysKey: tool.alwaysKey ? tool.alwaysKey(call.args) : tool.name,
                   }),
                   signal,
                 )
@@ -226,7 +233,11 @@ export async function runTurn({
               continue;
             }
           }
-          const output = await untilStopped(tool.run(call.args, { ...ctx, approval }), signal);
+          const raw = await untilStopped(tool.run(call.args, { ...ctx, approval }), signal);
+          // A tool may answer { text, detail }: the text for the model, the
+          // detail kept on the message for the reader (the worker's steps).
+          const output = raw && typeof raw === "object" && "text" in raw ? raw.text : raw;
+          if (raw && typeof raw === "object" && raw.detail) message.detail = raw.detail;
           message.content = call.notes.length
             ? `${output}\n\n(Your call was repaired: ${call.notes.join("; ")}. Spell it that way next time.)`
             : String(output);

@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5180",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build && npm --prefix computer ci --omit=dev --no-audit --no-fund"
   },
   "app": {
     "windows": [
@@ -64,6 +64,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../computer/": "computer/"
+    }
   }
 }

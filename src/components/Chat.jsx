@@ -13,6 +13,7 @@ import { Approval } from "./Approval.jsx";
 import { Composer } from "./Composer.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
+import { WHERE } from "../lib/computer/connection.js";
 
 /* One agent's ongoing chat. `live` is the answer still arriving: its text so
  * far, shown under the messages already kept.
@@ -37,6 +38,8 @@ export function Chat({
   canCompact = false,
   approval = null,
   onApprove,
+  computer = "off",
+  onComputer = null,
 }) {
   const thread = useRef(null);
   const area = useRef(null);
@@ -177,6 +180,24 @@ export function Chat({
                 defaultLabel={defaultLabel}
                 compact
               />
+              {onComputer ? (
+                <>
+                  <span className="tray-label">Computer</span>
+                  <select
+                    className="computer-where"
+                    value={computer}
+                    onChange={(e) => onComputer(e.target.value)}
+                    title={computer === "host" ? "Works on this Mac, in its own folder; commands ask you first" : computer === "sandbox" ? "Works in a sandbox Linux machine; nothing asks" : "No computer in this chat"}
+                    aria-label="This chat's computer"
+                  >
+                    {WHERE.map((w) => (
+                      <option key={w.id} value={w.id} disabled={w.soon}>
+                        {w.label}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : null}
               <span className="spacer" />
               <span className="tray-note" title={abilitiesLine}>{abilitiesLine}</span>
             </>
@@ -221,7 +242,7 @@ export function LiveTurn({ live, agent, speaker = false, after = null }) {
         <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} spinning />
         <div className="answer">
           {speaker && !seenText ? <span className="speaker">{agent.name}</span> : null}
-          <p className="thinking">{parts.length ? "Working…" : live.status || "Thinking…"}</p>
+          <p className="thinking">{live.status || (parts.length ? "Working…" : "Thinking…")}</p>
           {after}
         </div>
       </div>,
@@ -420,7 +441,37 @@ function ToolStep({ message, who = null, remember = true }) {
         </span>
         <Icon name="chevron" size={12} />
       </summary>
+      {message.detail?.kind === "computer" ? <ComputerSteps detail={message.detail} /> : null}
       <pre>{message.content}</pre>
     </details>
+  );
+}
+
+/* What the computer's worker did (lib/computer/worker.js): each step, open
+   for its result. Kept for the reader; never sent to a model again. */
+function ComputerSteps({ detail }) {
+  const where = detail.where === "host" ? `on this Mac, in ${detail.root}` : "in the sandbox";
+  const seconds = Math.round((detail.ms || 0) / 1000);
+  return (
+    <div className="computer-steps">
+      <p className="hint">
+        {detail.steps.length} step{detail.steps.length === 1 ? "" : "s"} {where} · {seconds < 60 ? `${seconds}s` : `${Math.round(seconds / 60)} min`}
+        {detail.checkpoints ? ` · folded up ${detail.checkpoints} time${detail.checkpoints === 1 ? "" : "s"}` : ""}
+      </p>
+      <ol>
+        {detail.steps.map((step, i) => (
+          <li key={i} className={step.error || step.declined ? "failed" : ""}>
+            <details>
+              <summary>
+                {step.line}
+                {step.declined ? " — not allowed" : step.error ? " — didn’t work" : ""}
+              </summary>
+              <pre>{step.result}</pre>
+            </details>
+          </li>
+        ))}
+      </ol>
+      <p className="hint">Its report:</p>
+    </div>
   );
 }

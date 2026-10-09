@@ -1,0 +1,11 @@
+{
+  "name": "blvrd-computer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The computer blvrd's agents work on: a shell, files and a browser, spoken to over MCP on stdio.",
+  "bin": { "blvrd-computer": "server.mjs" },
+  "dependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

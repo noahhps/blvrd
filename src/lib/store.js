@@ -20,6 +20,8 @@
  *                 again and again (lib/schedule.js)
  *   background    false to quit when the window closes even with scheduled
  *                 tasks waiting; otherwise blvrd stays in the menu bar
+ *   computers     { [chatId]: { where: "off" | "host" | "sandbox" } } -- each
+ *                 chat's computer (lib/computer/connection.js)
  *
  * Nothing here leaves the machine. API keys are stored in the same place, in
  * plain text, which is the trade a single-user desktop app makes; the Settings
@@ -44,6 +46,7 @@ export const EMPTY = {
   connectors: EMPTY_CONNECTORS,
   widgets: ["calendar", "music", "agents", "groups", "settings"],
   schedules: [],
+  computers: {},
 };
 
 export function load() {
