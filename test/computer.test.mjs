@@ -80,10 +80,11 @@ test("the shell: a script that runs too long is stopped, and the shell starts ag
   const root = mkdtempSync(join(tmpdir(), "blvrd-c-"));
   const c = computer(root, t);
   await c.call("shell", { script: "mkdir -p here && cd here" });
-  const r = await c.call("shell", { script: "echo started; sleep 30", timeout: 1 });
-  assert.match(r.text, /^stopped after 1s -- it was still running\. The shell was restarted in .*\/here/);
+  const r = await c.call("shell", { script: "echo started; sleep 30", timeout: 2 });
+  assert.match(r.text, /^stopped after 2s -- it was still running\. The shell was restarted in .*\/here/);
   assert.match(r.text, /started/);
-  const after = await c.call("shell", { script: "pwd" });
+  // The stopped shell's end, heard late, doesn't end this one.
+  const after = await c.call("shell", { script: "sleep 0.5; pwd" });
   assert.match(after.text, /^exit 0 .*\n.*\/here$/);
   c.close();
 });

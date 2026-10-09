@@ -279,7 +279,7 @@ export default function App() {
   const computerTool = useMemo(
     () =>
       computerTaskTool({
-        open: (chatId) => openComputer(chatId, whereOf(stateRef.current.computers, chatId)),
+        open: (chatId, options) => openComputer(chatId, whereOf(stateRef.current.computers, chatId), options),
         stop: stopComputer,
         modelOf: (agentId) => {
           const agent = stateRef.current.agents.find((a) => a.id === agentId);

@@ -8,6 +8,7 @@ import { FREE, PAID } from "../lib/search.js";
 import { DEFAULT_SHORTCUT, shortcutFromKey, shortcutLabel } from "../lib/quick.js";
 import { Icon } from "./Icon.jsx";
 import { ModelAccess } from "./ModelAccess.jsx";
+import { SandboxCard } from "./SandboxCard.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 
 /* Where the models come from.
@@ -79,6 +80,7 @@ export function Settings({
       </section>
 
       <ModelAccess inUse={inUse} />
+      <SandboxCard />
 
       <section className="card">
         <div className="card-head">

@@ -136,7 +136,11 @@ kept in a file it can grep (`docs/computer.md`).
 profile of its own (`~/blvrd/Browser`), and every command -- and anything
 that reaches outside the folder, or sends a form -- waits for your Allow;
 "Always allow" covers that one command. It needs Node.js on the Mac.
-**Sandbox**: a Linux VM of its own, where nothing asks (see below).
+**Sandbox**: a Linux VM of its own (Lima on Apple's Virtualization
+framework, made the first time a chat uses it), where nothing asks. It holds
+none of your files or keys and sees one folder of yours, `~/blvrd/Shared`;
+each chat works in `/work/<chat>` in it. Stop or reset it under **Models →
+Sandbox**.
 
 The computer itself is `computer/` -- an MCP server on stdio, the same program
 on the Mac and in the VM -- and `src/lib/computer/` is the app's side of it.

@@ -4,7 +4,7 @@
  * with a short report; the steps ride along on the message for the reader.
  *
  * `ops` is the app's:
- *   open(chatId, signal)  -> { client, where, root }  the chat's computer
+ *   open(chatId, { progress }) -> { client, where, root }  the chat's computer
  *   stop(chatId)          the computer's session ended (Stop)
  *   modelOf(agentId)      -> { agent, provider, model, profile } */
 
@@ -34,7 +34,7 @@ export function computerTaskTool(ops) {
       const who = ops.modelOf(ctx.agentId);
       if (!who) throw new Error("no model to work the computer with");
       ctx.progress?.("Starting the computer…");
-      const computer = await ops.open(ctx.chatId, ctx.signal);
+      const computer = await ops.open(ctx.chatId, { progress: ctx.progress });
       // Stop ends the computer's session too: whatever it was running goes.
       const onStop = () => ops.stop(ctx.chatId);
       ctx.signal?.addEventListener("abort", onStop, { once: true });

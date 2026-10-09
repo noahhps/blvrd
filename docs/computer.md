@@ -340,7 +340,12 @@ browser context; **Reset machine** restores the clean snapshot.
 
 ## 10. Building it
 
-**Status:** phase 0 and phase 1 are built -- `computer/` (the server, with
+**Status:** phases 0, 1 and 2 are built. The sandbox (phase 2) is
+`src-tauri/src/machine.rs` -- Lima from the reader's PATH or a pinned release
+(1.0.7) fetched into the app's folder, a Debian 12 VM provisioned with Node
+and Chromium, the app's `computer/` mounted read-only, stopped after 15 idle
+minutes, Reset from the Models screen -- compile-checked, but not yet run on a
+Mac: the first run there is its test. Phase 1 is `computer/` (the server, with
 its tests in `test/computer.test.mjs`) and `src/lib/computer/` (the worker,
 budgets, tools, `computer_task`; `test/worker.test.mjs`). Differences from
 the plan below: on this Mac the server runs under the Mac's own Node rather

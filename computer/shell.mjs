@@ -46,14 +46,19 @@ export class Shell {
   start() {
     this.marker = `__blvrd_${Math.random().toString(36).slice(2)}__`;
     // Its own process group, so stopping it stops what it started.
-    this.proc = spawn("bash", ["--noprofile", "--norc"], { cwd: this.cwd, env: this.env, stdio: ["pipe", "pipe", "pipe"], detached: true });
-    this.proc.stdin.write("exec 2>&1\n");
+    const proc = spawn("bash", ["--noprofile", "--norc"], { cwd: this.cwd, env: this.env, stdio: ["pipe", "pipe", "pipe"], detached: true });
+    this.proc = proc;
+    proc.stdin.write("exec 2>&1\n");
     this.out = "";
-    this.proc.stdout.on("data", (chunk) => {
+    // Only this shell's own output and end count: a shell stopped for running
+    // too long can still be heard from after the next one has started.
+    proc.stdout.on("data", (chunk) => {
+      if (this.proc !== proc) return;
       this.out += chunk.toString("utf8");
       this.check?.();
     });
-    this.proc.on("exit", () => {
+    proc.on("exit", () => {
+      if (this.proc !== proc) return;
       this.proc = null;
       this.check?.(true);
     });

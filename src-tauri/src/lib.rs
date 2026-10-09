@@ -12,13 +12,15 @@
 //     (`agent_memory_*`);
 //   * keep time for scheduled tasks while the window is hidden, and stay in
 //     the menu bar for them when it is closed (`schedule_set`);
-//   * say where an agent's computer is and what starts it (`computer_*`).
+//   * say where an agent's computer is and what starts it (`computer_*`),
+//     and run the sandbox VM it can live in (`machine_*`).
 //
 // It also carries the global-shortcut plugin, which the main window uses to
 // open the quickview (the "quick" window) from any app.
 
 mod apple;
 mod computer;
+mod machine;
 mod mcp;
 mod memory;
 mod oauth;
@@ -51,6 +53,10 @@ pub fn run() {
             memory::agent_memory_remove,
             schedule::schedule_set,
             computer::computer_host,
+            machine::computer_sandbox,
+            machine::machine_status,
+            machine::machine_stop,
+            machine::machine_reset,
         ])
         .build(tauri::generate_context!())
         .expect("error while building blvrd")
