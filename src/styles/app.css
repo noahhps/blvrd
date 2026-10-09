@@ -51,10 +51,8 @@
   /* The window controls' corner on a Mac with the title bar hidden. */
   --titlebar-h: 0px;
   --controls-w: 0px;
-  /* The composer's proximity motion (Bom's): a spring, and one duration for
-     everything that moves with it, so box, border and halo arrive together. */
+  /* A spring, for the few things that still pop into place. */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --composer-motion: 300ms var(--spring);
   --glow: 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent),
     0 10px 34px -10px color-mix(in srgb, var(--ink) 30%, transparent);
   color-scheme: light;
@@ -1142,12 +1140,8 @@ button.link {
    what is set once and left: which model this agent runs on, what it may use.
    The column it sits in is the conversation's width (--read-w). */
 /* Floats over the foot of the thread, which keeps --composer-reserve clear
-   under its last turn, so the box can slide away without the conversation
-   moving. `--near` (Composer.jsx) is 0 tucked, 1 present; 1 is also the
-   fallback, so a script that never runs leaves a composer you can see. */
+   under its last turn. It stays put: no tuck, no spring. */
 .composer {
-  --near: 1;
-  --tuck: 80%;
   position: absolute;
   left: 0;
   right: 0;
@@ -1157,50 +1151,16 @@ button.link {
   margin: 0 auto;
   padding: 6px 0 16px;
 }
-.composer-stack {
-  transform: translateY(calc(var(--tuck) * (1 - var(--near))));
-  transition: transform var(--composer-motion);
-}
-/* Focus gets a quicker, plainer settle than the spring. */
-.composer-stack:focus-within { transition: transform 300ms var(--ease-out); }
-/* The halo, as its own layer so proximity drives one opacity. Behind the
-   box's own background, so only what spreads past the edge is seen. */
+/* The halo, behind the box's own background, so only what spreads past the
+   edge is seen. */
 .composer-box::before {
   content: "";
   position: absolute;
   inset: -1px;
   z-index: -1;
   border-radius: inherit;
-  opacity: var(--near);
   box-shadow: var(--glow);
   pointer-events: none;
-  transition: opacity var(--composer-motion);
-}
-/* The flourish on a click that found the box tucked: once, then --near is
-   back in charge (it never holds the last frame -- a filling animation would
-   outrank the proximity transform and pin the box up). */
-.composer[data-popping] .composer-stack {
-  animation: composer-pop 800ms var(--spring) 1;
-  transition: none;
-}
-@keyframes composer-pop {
-  0% { transform: translateY(calc(var(--tuck) * 0.8)) scale(0.95); }
-  50% { transform: translateY(-12px) scale(1.03); }
-  100% { transform: translateY(0) scale(1); }
-}
-/* An empty chat: the composer is the subject, not an interruption, so it is
-   simply present -- no tuck, no spring. Named with [data-popping] too so it
-   outranks the pop. */
-.chat-body[data-empty] .composer-stack,
-.chat-body[data-empty] .composer[data-popping] .composer-stack {
-  transform: none;
-  animation: none;
-  transition: none;
-}
-/* No cursor to approach with, or motion turned down: the box stays. */
-@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
-  .composer-stack { transform: none; }
-  .composer-box::before { opacity: 0; }
 }
 .composer-box {
   position: relative;

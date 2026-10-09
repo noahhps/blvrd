@@ -18,21 +18,10 @@ import { useMentions } from "./Mentions.jsx";
  * Files can be picked or dropped anywhere on the window; the box lights up
  * while something is held over the app.
  *
- * And Bom's motion: the box and its tray sit mostly below the window's edge
- * and rise to meet the cursor as it comes near (`--near`, 0 tucked to 1
- * present), with a halo that grows as it does. Focus holds it up while you
- * type; scrolling back to read tucks it away until the pointer moves again;
- * an empty chat keeps it present, since there is nothing for it to get out
- * of the way of. Off on touch screens and with reduced motion, where there is
- * no cursor to approach with -- the box simply stays.
+ * It stays where it is, at the foot of the conversation: no tucking away,
+ * no rising to meet the cursor.
  */
 
-/* How far away the cursor starts to matter, and how sharply the box responds
-   inside that range. At ONSET 2, halfway through REACH it has risen only a
-   quarter of the way, so it doesn't stir just because the cursor is on the
-   same screen -- and the curve keeps the late start from being abrupt. */
-const REACH = 130;
-const ONSET = 2;
 const STICK_PX = 80; // a thread scrolled this close to its end counts as "at the end"
 // `disabled`: an answer is under way (Send becomes Stop). `blocked`: why this
 // chat can't take a message at all, said in the box; what's typed is kept.
@@ -40,8 +29,6 @@ const STICK_PX = 80; // a thread scrolled this close to its end counts as "at th
 // (App.jsx `queue`); sending while `disabled` adds to them.
 export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop, queued = [], onUnqueue = null }) {
   const form = useRef(null);
-  const stack = useRef(null);
-  const [popping, setPopping] = useState(false);
   const [value, setValue] = useState("");
   const [control, setControl] = useState({ mode: "none" });
   const [thinking, setThinking] = useState(null);
@@ -91,93 +78,7 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
     return () => observer.disconnect();
   }, []);
 
-  /* Proximity: where the box sits, from where the cursor is. Written as one
-     custom property on the form, at most once a frame, quantised to a
-     hundredth -- a hand resting on a mouse never stops twitching. Set before
-     first paint, so it never flashes up and slides away. */
-  useLayoutEffect(() => {
-    const node = form.current;
-    const box = stack.current;
-    if (!node || !box) return undefined;
-    const fine = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const calm = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const enabled = () => fine.matches && !calm.matches;
-
-    let frame = 0;
-    let latest = null;
-    let reading = false;
-    let wrote = null;
-    const set = (near) => {
-      const step = Math.round(near * 100) / 100;
-      if (step === wrote) return;
-      wrote = step;
-      node.style.setProperty("--near", step.toFixed(2));
-    };
-    const measure = () => {
-      frame = 0;
-      if (!enabled()) return set(1);
-      // Typing outranks everything, streaming autoscroll included.
-      if (node.contains(document.activeElement)) return set(1);
-      if (reading || !latest) return set(0);
-      // Distance to the nearest edge of box-and-tray; 0 anywhere inside.
-      const rect = box.getBoundingClientRect();
-      const dx = Math.max(rect.left - latest.x, 0, latest.x - rect.right);
-      const dy = Math.max(rect.top - latest.y, 0, latest.y - rect.bottom);
-      const closeness = Math.max(0, Math.min(1, 1 - Math.hypot(dx, dy) / REACH));
-      set(closeness ** ONSET);
-    };
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(measure);
-    };
-    const onMove = (e) => {
-      latest = { x: e.clientX, y: e.clientY };
-      reading = false; // moving the pointer is how you ask for it back
-      schedule();
-    };
-    // The reader scrolling the thread wants to read, and the box is in the way.
-    const onScroll = (e) => {
-      if (!e.target?.classList?.contains("thread") || reading) return;
-      reading = true;
-      schedule();
-    };
-    const onLeave = () => {
-      latest = null;
-      schedule();
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    document.documentElement.addEventListener("pointerleave", onLeave);
-    node.addEventListener("focusin", schedule);
-    node.addEventListener("focusout", schedule);
-    fine.addEventListener("change", schedule);
-    calm.addEventListener("change", schedule);
-    measure();
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("pointermove", onMove);
-      document.removeEventListener("scroll", onScroll, { capture: true });
-      document.documentElement.removeEventListener("pointerleave", onLeave);
-      node.removeEventListener("focusin", schedule);
-      node.removeEventListener("focusout", schedule);
-      fine.removeEventListener("change", schedule);
-      calm.removeEventListener("change", schedule);
-      node.style.removeProperty("--near");
-    };
-  }, []);
-
-  /* The flourish, for a box that was actually tucked away when clicked: one
-     springy rise, then `--near` is back in sole charge. Never on a click in a
-     control, and never on a box that is already up -- that would only jerk
-     something sitting still. */
-  const pop = (event) => {
-    if (popping || event.target.closest("button, select, label, input, a")) return;
-    const near = parseFloat(form.current?.style.getPropertyValue("--near"));
-    if (!(near < 0.9)) return;
-    setPopping(true);
-    setTimeout(() => setPopping(false), 800);
-  };
-
-  // A different agent starts with an empty box. The caret goes in only when
+    // A different agent starts with an empty box. The caret goes in only when
   // its chat is empty -- focus holds the composer up, so focusing a chat that
   // has a conversation to read would park the box over the end of it.
   useEffect(() => {
@@ -210,11 +111,9 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
       className="composer"
       ref={form}
       onSubmit={submit}
-      onClick={pop}
       data-dropping={dropping ? "" : undefined}
-      data-popping={popping ? "" : undefined}
     >
-      <div className="composer-stack" ref={stack}>
+      <div className="composer-stack">
       {mentions ? at.list : null}
       {queued.length ? (
         <ul className="queued" aria-label="Queued messages">
