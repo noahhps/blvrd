@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "blvrd",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lets your blvrd agents use this browser, in a window of their own, when a chat's computer is This Mac.",
   "background": {
     "service_worker": "background.js",

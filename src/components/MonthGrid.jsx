@@ -30,7 +30,7 @@ export function MonthGrid({ month, days, today, selected = null, onPick = null, 
                 data-out={cell.inMonth ? undefined : ""}
                 data-today={cell.key === today ? "" : undefined}
                 data-selected={cell.key === selected ? "" : undefined}
-                data-strong={heat >= 0.6 ? "" : undefined}
+                data-strong={heat >= 0.45 ? "" : undefined}
                 style={heat ? { "--heat": `${Math.round(heat * 100)}%` } : undefined}
                 aria-label={`${cell.date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}${events.length ? `, ${events.length} event${events.length === 1 ? "" : "s"}` : ""}`}
                 aria-selected={onPick ? cell.key === selected : undefined}

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { groupBrief, mentionsIn, respondersFor, viewFor } from "../src/lib/group.js";
+import { EVERYONE, groupBrief, mentionSpans, mentionsEveryone, mentionsIn, respondersFor, viewFor } from "../src/lib/group.js";
 
 const members = [
   { id: "r", name: "Researcher" },
@@ -54,4 +54,28 @@ test("the brief names the other members and how to hand off", () => {
   assert.match(brief, /- Researcher: does things/);
   assert.ok(!brief.includes("- Coder:"));
   assert.match(brief, /@Researcher/);
+});
+
+test("every @Name is found where it is, the longer name winning", () => {
+  const people = [
+    { id: "a", name: "Ann" },
+    { id: "al", name: "Ann Lee" },
+    { id: "w", name: "Writer" },
+  ];
+  assert.deepEqual(mentionSpans("@writer, then @Ann Lee and @Ann", people), [
+    { start: 0, end: 7, id: "w" },
+    { start: 14, end: 22, id: "al" },
+    { start: 27, end: 31, id: "a" },
+  ]);
+  assert.deepEqual(mentionSpans("me@writer.dev @Writers", people), []);
+});
+
+test("@everyone asks the whole group, whoever else was picked or named", () => {
+  const members = [{ id: "w", name: "Writer" }, { id: "c", name: "Coder" }];
+  assert.ok(mentionsEveryone("@everyone, thoughts?"));
+  assert.ok(!mentionsEveryone("tell everyone@home.dev"));
+  assert.deepEqual(respondersFor({ members, picked: ["c"], text: "@Writer and @Everyone" }), ["w", "c"]);
+  assert.deepEqual(mentionSpans("hi @everyone", [EVERYONE]), [{ start: 3, end: 12, id: "everyone" }]);
+  // Not a handoff: an agent's @everyone names nobody.
+  assert.deepEqual(mentionsIn("@everyone look", members), []);
 });

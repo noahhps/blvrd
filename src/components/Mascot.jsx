@@ -67,8 +67,9 @@ const SHAPES = {
         <path className="m-wood" d="M34 70L50 90L66 70Z" />
         <path className="m-lead" d="M45 84L50 90L55 84Z" />
         <rect className="m-body" x="34" y="34" width="32" height="37" />
-        <rect className="m-metal" x="34" y="30" width="32" height="6" />
+        {/* The band over the eraser's foot, holding it on. */}
         <rect className="m-eraser" x="34" y="16" width="32" height="16" rx="6" />
+        <rect className="m-metal" x="34" y="30" width="32" height="6" />
       </>
     ),
   },
@@ -95,7 +96,7 @@ const SHAPES = {
   },
   envelope: {
     wink: true,
-    eyes: [[40, 64], [60, 64]],
+    eyes: [[40, 54], [60, 54]], // either side of the fold's point
     art: (
       <>
         <rect className="m-body" x="17" y="30" width="66" height="48" rx="7" />
@@ -188,7 +189,7 @@ export function Mascot({ shape = "circle", colour = "var(--ink)", size = 28, moo
   // While a poke plays, the eyes' own life waits; `eyes` lets the poke steer them.
   const busy = useRef(0);
   const eyes = useRef(null);
-  useEyes(ref, mood, alive, follow, busy, eyes);
+  useEyes(ref, mood, alive, follow, busy, eyes, s.eyes);
   useGive(ref, tick);
   const onPoke = usePoke(ref, busy, eyes);
 
@@ -448,11 +449,37 @@ const inWhite = (x, y) => {
 };
 
 const between = (lo, hi) => lo + Math.random() * (hi - lo);
+
+// Eyes can't jump again at once: after one, the next waits at least this long
+// (a saccade's refractory pause). Without it, moods flipping as an answer
+// streams fire jump after jump, and the eyes buzz.
+const NEXT_JUMP_MS = 180;
+
+/* A group's transform as it is on screen now, mid-animation or not. */
+function transformOf(el) {
+  const t = getComputedStyle(el).transform;
+  return new DOMMatrixReadOnly(!t || t === "none" ? undefined : t);
+}
+
+/* Stop whatever is moving `el`, leaving it where it is now (WAAPI's
+   commitStyles) -- so the next move starts from what's on screen, never from
+   where the last one was headed. Starting from there snaps the eyes back and
+   forth whenever a move is cut short. */
+function hold(el) {
+  for (const a of el.getAnimations()) {
+    try {
+      a.commitStyles();
+    } catch {
+      // Not rendered: nothing on screen to keep.
+    }
+    a.cancel();
+  }
+}
 const reduced = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* The eyes' life: where they look and when they blink, chosen afresh each
  * time from the current mood. One set of timers per character, gone with it. */
-function useEyes(ref, mood, alive, follow, busy, control) {
+function useEyes(ref, mood, alive, follow, busy, control, sockets = [[50, 50]]) {
   const moodRef = useRef(mood);
   const kick = useRef(null);
   moodRef.current = mood;
@@ -469,32 +496,47 @@ function useEyes(ref, mood, alive, follow, busy, control) {
       }, ms);
       timers.add(t);
     };
-    const me = { x: 0, y: 0, lean: 0, col: 0, line: 0, gazeAt: 0 };
+    const me = { x: 0, y: 0, lean: 0, col: 0, line: 0, jumpedAt: -Infinity };
 
-    // Jump both pupils to (x, y): fast, decelerating, then held.
+    // Where the pupils and the lean are now, with whatever moved them stopped.
+    const pupilsNow = () => {
+      const looks = [...svg.querySelectorAll(".m-look")];
+      looks.forEach(hold);
+      const m = transformOf(looks[0]);
+      return [m.e, m.f];
+    };
+    const leanNow = () => {
+      const el = svg.querySelector(".m-lean");
+      hold(el);
+      const m = transformOf(el);
+      return (Math.atan2(m.b, m.a) * 180) / Math.PI;
+    };
+
+    // Jump both pupils to (x, y): fast, decelerating, then held -- from
+    // wherever they are, even mid-jump.
     const look = (tx, ty, ms) => {
       const [x, y] = inWhite(tx, ty);
+      const [fx, fy] = pupilsNow();
       for (const el of svg.querySelectorAll(".m-look")) {
-        for (const a of el.getAnimations()) a.cancel();
-        el.animate([{ transform: `translate(${me.x}px, ${me.y}px)` }, { transform: `translate(${x}px, ${y}px)` }], {
+        el.animate([{ transform: `translate(${fx}px, ${fy}px)` }, { transform: `translate(${x}px, ${y}px)` }], {
           duration: ms,
           easing: EO,
           fill: "forwards",
         });
       }
-      const big = Math.hypot(x - me.x, y - me.y) > 2.2;
       me.x = x;
       me.y = y;
-      return big;
+      me.jumpedAt = performance.now();
+      return Math.hypot(x - fx, y - fy) > 2.2;
     };
 
     // After a long look to one side, the body follows a beat later.
     const lean = (x) => {
       const to = Math.abs(x) > 1.1 ? +(x * 1.3).toFixed(2) : 0;
-      if (to === me.lean) return;
+      if (to === me.lean) return; // already there, or on its way
+      const from = leanNow();
       const el = svg.querySelector(".m-lean");
-      for (const a of el.getAnimations()) a.cancel();
-      el.animate([{ transform: `rotate(${me.lean}deg)` }, { transform: `rotate(${to}deg)` }], {
+      el.animate([{ transform: `rotate(${from}deg)` }, { transform: `rotate(${to}deg)` }], {
         duration: 520,
         delay: 90,
         easing: EIO,
@@ -534,6 +576,8 @@ function useEyes(ref, mood, alive, follow, busy, control) {
     // after it, more slowly. Only at rest, and only while the pointer is in
     // the window and has moved in the last few seconds.
     const pointer = { x: 0, y: 0, at: 0, inside: false };
+    const eyeX = sockets.reduce((sum, [x]) => sum + x, 0) / sockets.length;
+    const eyeY = sockets.reduce((sum, [, y]) => sum + y, 0) / sockets.length;
     let frame = 0;
     let last = 0;
     const following = () =>
@@ -550,16 +594,19 @@ function useEyes(ref, mood, alive, follow, busy, control) {
       }
       const dt = last ? Math.min(now - last, 64) : 16;
       last = now;
-      // Where the eyes are on screen: between the two whites.
-      const [a, b] = svg.querySelectorAll(".m-white");
-      const ra = a.getBoundingClientRect();
-      const rb = (b || a).getBoundingClientRect();
-      const dx = pointer.x - (ra.left + ra.right + rb.left + rb.right) / 4;
-      const dy = pointer.y - (ra.top + ra.bottom + rb.top + rb.bottom) / 4;
+      // Where the eyes are: between their sockets in the drawing, placed by
+      // the character's own box -- which the body's lean, bob and hop don't
+      // move. Measured from the whites instead, every lean the eyes cause
+      // moves their target, and they wobble.
+      const box = svg.getBoundingClientRect();
+      const dx = pointer.x - (box.left + (eyeX / 100) * box.width);
+      const dy = pointer.y - (box.top + (eyeY / 100) * box.height);
       // Near, the eyes turn a little; far, they reach the rim of the white,
-      // in whichever direction the pointer is -- up, down or round.
+      // in whichever direction the pointer is -- up, down or round. Right on
+      // the face they look ahead: there, a pixel's move swings the direction
+      // all the way round.
       const dist = Math.hypot(dx, dy) || 1;
-      const reach = Math.tanh(dist / 140);
+      const reach = Math.tanh(Math.max(0, dist - 6) / 140);
       const tx = REACH_X * reach * (dx / dist);
       const ty = REACH_Y * reach * (dy / dist) - REST;
       const k = 1 - Math.exp(-dt / 70);
@@ -573,8 +620,10 @@ function useEyes(ref, mood, alive, follow, busy, control) {
     };
     const pursueNow = () => {
       if (frame || !following()) return;
-      // Hand over from the looks and leans already playing, from where they are.
-      for (const el of svg.querySelectorAll(".m-look, .m-lean")) for (const an of el.getAnimations()) an.cancel();
+      // Hand over from the looks and leans already playing, from where they
+      // are on screen.
+      [me.x, me.y] = pupilsNow();
+      me.lean = leanNow();
       last = 0;
       frame = requestAnimationFrame(pursue);
     };
@@ -623,9 +672,10 @@ function useEyes(ref, mood, alive, follow, busy, control) {
           if (Math.random() < 0.3) blink();
           next = between(220, 340);
         } else {
-          look(+(-2.2 + me.col * 1.45).toFixed(2), +(-0.6 + me.line * 0.6 + between(-0.15, 0.15)).toFixed(2), 60);
+          look(+(-2.2 + me.col * 1.45).toFixed(2), +(-0.6 + me.line * 0.6 + between(-0.1, 0.1)).toFixed(2), 60);
           me.col += 1;
-          next = between(170, 340);
+          // A reader's fixation: about a quarter of a second, rarely less.
+          next = between(210, 380);
         }
         lean(0);
       } else if (m === "speaking") {
@@ -671,12 +721,13 @@ function useEyes(ref, mood, alive, follow, busy, control) {
       },
     };
 
-    // A new mood looks somewhere new at once, rather than at the next tick.
+    // A new mood looks somewhere new straight away, rather than at the next
+    // tick -- once the last jump's pause is over.
     kick.current = () => {
       for (const t of timers) clearTimeout(t);
       timers.clear();
       me.col = 0;
-      gaze();
+      later(Math.max(0, me.jumpedAt + NEXT_JUMP_MS - performance.now()), gaze);
       later(between(1500, 4000), blinks);
     };
 
@@ -692,7 +743,7 @@ function useEyes(ref, mood, alive, follow, busy, control) {
       window.removeEventListener("mouseout", onOut);
       window.removeEventListener("blur", onBlur);
     };
-  }, [ref, alive, follow, busy, control]);
+  }, [ref, alive, follow, busy, control, sockets]);
 
   // Not on the first render: characters that appear together shouldn't all
   // look up together.

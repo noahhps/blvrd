@@ -143,20 +143,28 @@ class HttpClient {
 
 /* -- stdio --------------------------------------------------------------------------- */
 
+/* A local server. Each start is a run of its own (`run`), and only that run's
+ * lines and exit are heard: a server started again under the same id stops
+ * the one before, whose exit is no news to this one. `onExit` hears when it
+ * really has gone, so the connection is opened afresh next time. */
 class StdioClient {
   constructor(server) {
     this.server = server;
+    this.run = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
     this.nextId = 1;
     this.pending = new Map();
     this.log = [];
     this.unlisten = [];
+    this.gone = null; // why it stopped, once it has
+    this.onExit = null;
   }
 
   async start() {
     const id = this.server.id;
+    const mine = (from, run) => from === id && run === this.run;
     this.unlisten.push(
-      await listen("mcp-stdio", ({ id: from, line }) => {
-        if (from !== id) return;
+      await listen("mcp-stdio", ({ id: from, run, line }) => {
+        if (!mine(from, run)) return;
         let msg;
         try {
           msg = JSON.parse(line);
@@ -172,19 +180,23 @@ class StdioClient {
           this.send({ jsonrpc: "2.0", id: msg.id, error: { code: -32601, message: "Not supported by blvrd" } });
         }
       }),
-      await listen("mcp-stdio-log", ({ id: from, line }) => {
-        if (from === id) this.log = [...this.log.slice(-20), line];
+      await listen("mcp-stdio-log", ({ id: from, run, line }) => {
+        if (mine(from, run)) this.log = [...this.log.slice(-20), line];
       }),
-      await listen("mcp-stdio-exit", ({ id: from }) => {
-        if (from !== id) return;
-        const why = this.log.slice(-3).join(" ").trim();
-        for (const w of this.pending.values()) w.reject(new Error(`${this.server.name} stopped${why ? `: ${why}` : "."}`));
+      await listen("mcp-stdio-exit", ({ id: from, run }) => {
+        if (!mine(from, run)) return;
+        // A Node crash ends "}", "", "Node.js v…": say its error line instead.
+        const why = (this.log.findLast((l) => /^\w*Error\b.*:/.test(l.trim())) || this.log.slice(-3).join(" ")).trim();
+        this.gone = new Error(`${this.server.name} stopped${why ? `: ${why}` : "."}`);
+        for (const w of this.pending.values()) w.reject(this.gone);
         this.pending.clear();
+        this.unlisten.forEach((u) => u());
+        this.onExit?.();
       }),
     );
     await invoke(
       "mcp_spawn",
-      { id, command: this.server.command, args: this.server.args || [], env: this.server.env || {} },
+      { id, run: this.run, command: this.server.command, args: this.server.args || [], env: this.server.env || {} },
       "A local MCP server",
     );
   }
@@ -194,6 +206,7 @@ class StdioClient {
   }
 
   request(method, params, timeoutMs = 60_000) {
+    if (this.gone) return Promise.reject(this.gone);
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -218,7 +231,8 @@ class StdioClient {
 
   close() {
     this.unlisten.forEach((u) => u());
-    invoke("mcp_stop", { id: this.server.id }).catch(() => {});
+    // Only this run: the same id may already be a newer one.
+    invoke("mcp_stop", { id: this.server.id, run: this.run }).catch(() => {});
   }
 }
 
@@ -226,7 +240,9 @@ class StdioClient {
 
 const open = new Map(); // server id -> Promise<client>
 
-async function connect(server, store) {
+/* `onExit`: a local server's process ended -- the connection is dead, and
+   the next use should start it again rather than talk to nothing. */
+async function connect(server, store, onExit = null) {
   const client =
     server.transport === "stdio"
       ? new StdioClient(server)
@@ -234,23 +250,35 @@ async function connect(server, store) {
           getTokens: () => store.get(server.id)?.oauth?.tokens,
           saveTokens: (tokens) => store.patch(server.id, (s) => ({ oauth: { ...s.oauth, tokens } })),
         });
-  if (client.start) await client.start();
+  client.onExit = onExit;
+  try {
+    if (client.start) await client.start();
+    client.info = await handshake(client);
+  } catch (problem) {
+    // Nothing left running that the next try would have to stop.
+    client.close?.();
+    throw problem;
+  }
+  return client;
+}
+
+async function handshake(client) {
   const info = await client.request("initialize", {
     protocolVersion: PROTOCOL,
     capabilities: {},
     clientInfo: { name: "blvrd", version: "0.1.0" },
   });
   await client.notify("notifications/initialized");
-  client.info = info;
-  return client;
+  return info;
 }
 
 /** A live connection to `server`, opened on first use and kept. */
 export function clientFor(server, store) {
   const key = `${server.id}|${server.url || server.command}|${server.token || ""}`;
   if (!open.has(key)) {
-    const job = connect(server, store).catch((e) => {
-      open.delete(key);
+    const forget = () => open.get(key) === job && open.delete(key);
+    const job = connect(server, store, forget).catch((e) => {
+      forget();
       throw e;
     });
     open.set(key, job);

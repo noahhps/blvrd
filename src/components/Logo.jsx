@@ -1,7 +1,7 @@
-/* blvrd's mark, still: the arch -- a red archway on two flat feet with a pair
- * of googly eyes on its crown -- on a white square. The same drawing as
- * public/logo.svg and the app icons (src-tauri/icons, generated from
- * logo-1024.png). The moving one is components/Mascot.jsx, shape "arc". */
+/* blvrd's mark, still: the arch -- an archway on two flat feet, in the app's
+ * blue, with a pair of googly eyes on its crown -- on a white square. The same
+ * drawing as public/logo.svg and the app icons (src-tauri/icons, drawn by
+ * icons/variants.mjs). The moving one is components/Mascot.jsx, shape "arc". */
 export function Logo({ size = 28 }) {
   return (
     <svg className="logo" width={size} height={size} viewBox="0 0 100 100" aria-hidden="true">
@@ -9,8 +9,8 @@ export function Logo({ size = 28 }) {
       <g transform="translate(50 51) scale(0.8) translate(-50 -51)">
         <path
           d="M15 85V52A35 35 0 0 1 85 52V85H64V52A14 14 0 0 0 36 52V85Z"
-          fill="var(--red)"
-          stroke="var(--red)"
+          fill="var(--accent)"
+          stroke="var(--accent)"
           strokeWidth="7"
           strokeLinejoin="round"
         />

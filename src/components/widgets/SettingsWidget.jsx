@@ -2,8 +2,8 @@ import { Icon } from "../Icon.jsx";
 import { WidgetHead } from "./WidgetHead.jsx";
 
 /* The way to what agents know about the user (the Notebook), what they were
- * asked to do later (Tasks), what they can reach, and which models they
- * run on. */
+ * asked to do later (Tasks), what they can reach, and the rest of Settings
+ * -- models, how blvrd looks, the computer (⌘, too, App.jsx). */
 export function SettingsWidget({ ctx, handle }) {
   const { view, setView, hasDefaultModel, scheduledCount = 0 } = ctx;
   return (
@@ -41,11 +41,14 @@ export function SettingsWidget({ ctx, handle }) {
         type="button"
         className="side-settings"
         aria-current={view.kind === "settings" ? "true" : undefined}
+        aria-keyshortcuts="Meta+Comma"
+        title="Settings (⌘,)"
         onClick={() => setView({ kind: "settings" })}
       >
         <Icon name="gear" />
-        Models
+        Settings
         {!hasDefaultModel ? <span className="dot" title="No default model yet" /> : null}
+        <kbd>⌘,</kbd>
       </button>
     </>
   );

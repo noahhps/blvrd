@@ -48,7 +48,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' data: https://i.scdn.co https://*.mzstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' data: https://i.scdn.co https://*.mzstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost; frame-src blvrd-widget: http://blvrd-widget.localhost"
     },
     "macOSPrivateApi": true
   },
@@ -67,6 +67,14 @@
     ],
     "resources": {
       "../computer/": "computer/"
+    },
+    "macOS": {
+      "dmg": {
+        "background": "dmg/background.tiff",
+        "windowSize": { "width": 660, "height": 400 },
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 }
+      }
     }
   }
 }

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "arc",
+    "label": "blvrd"
+  },
+  {
+    "id": "heart",
+    "label": "Heart"
+  },
+  {
+    "id": "star",
+    "label": "Star"
+  },
+  {
+    "id": "magnifier",
+    "label": "Magnifier"
+  },
+  {
+    "id": "pencil",
+    "label": "Pencil"
+  },
+  {
+    "id": "book",
+    "label": "Book"
+  },
+  {
+    "id": "palette",
+    "label": "Palette"
+  },
+  {
+    "id": "envelope",
+    "label": "Envelope"
+  }
+]

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { EVERYONE, mentionsEveryone, mentionsIn } from "../lib/group.js";
 import { agentCount } from "../lib/preview.js";
 import { launchFrom, useLaunch } from "../lib/launch.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
@@ -26,6 +27,15 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
   const stuck = useRef(true);
   const read = useReadWidth(area);
   const [picked, setPicked] = useState([]);
+  // Who the message being written @-names: lit in the tray with the picked,
+  // since they answer too (lib/group.js respondersFor).
+  const [draft, setDraft] = useState("");
+  const named = mentionsIn(draft, members);
+  const everyoneNamed = mentionsEveryone(draft);
+  // The @ list: the members, then @everyone, in blvrd's own colour.
+  const reachable = members.length
+    ? [...members, { ...EVERYONE, members, tagline: "The whole group answers", tint: "var(--accent)" }]
+    : members;
   const byId = new Map(members.map((m) => [m.id, m]));
   const agentOf = (id) => byId.get(id) || GONE;
 
@@ -148,22 +158,43 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
           model={null}
           focusKey={group.id}
           autoFocus={messages.length === 0}
-          mentions={members}
+          mentions={reachable}
           onSend={send}
           onStop={onStop}
+          onDraft={setDraft}
           tray={
             <>
               <span className="tray-label">Answers</span>
               <div className="who" role="group" aria-label="Who answers">
-                <button type="button" className="who-chip" aria-pressed={picked.length === 0} onClick={() => setPicked([])}>
+                <button
+                  type="button"
+                  className="who-chip"
+                  aria-pressed={everyoneNamed || (picked.length === 0 && named.length === 0)}
+                  data-named={everyoneNamed ? "" : undefined}
+                  title={everyoneNamed ? "@everyone is in your message" : undefined}
+                  onClick={() => setPicked([])}
+                >
                   Everyone
                 </button>
-                {members.map((m) => (
-                  <button key={m.id} type="button" className="who-chip" aria-pressed={picked.includes(m.id)} onClick={() => toggle(m.id)}>
-                    <AgentAvatar look={m.look} name={m.name} size={14} />
-                    {m.name}
-                  </button>
-                ))}
+                {members.map((m) => {
+                  // @-named in the message: on for as long as the name is
+                  // there, so a click here can't take it off.
+                  const atNamed = named.includes(m.id) && !picked.includes(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className="who-chip"
+                      aria-pressed={picked.includes(m.id) || atNamed}
+                      data-named={atNamed ? "" : undefined}
+                      title={atNamed ? `@${m.name} is in your message` : undefined}
+                      onClick={() => !atNamed && toggle(m.id)}
+                    >
+                      <AgentAvatar look={m.look} name={m.name} size={14} />
+                      {m.name}
+                    </button>
+                  );
+                })}
               </div>
               {onComputer ? <ComputerChoice value={computer} onChange={onComputer} /> : null}
             </>

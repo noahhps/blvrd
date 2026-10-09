@@ -51,7 +51,7 @@ export const NOTEBOOK_TOOLS = [
       // A live section is read as it stands right now.
       const body =
         section.type === "live"
-          ? `${section.title} (${kindOf(section)}, as of now):\n${rowsText(await liveRows(section.source), LIVE[section.source].empty || "(nothing)")}`
+          ? `${section.title} (${kindOf(section)}, as of now):\n${rowsText(await liveRows(section.source), LIVE[section.source]?.empty || "(nothing)")}`
           : `${section.title} (${kindOf(section)}):\n${asText(section)}`;
       // The whole notebook was just sent, this section with it.
       return full && section.type !== "live" && text.includes(`${section.title}:\n${asText(section)}`) ? text : `${text}\n\n${body}`;

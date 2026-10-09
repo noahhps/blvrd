@@ -22,15 +22,22 @@ fn script_for(action: &str) -> Option<&'static str> {
     })
 }
 
+// Each script first says it's a background process. Otherwise osascript checks
+// in as an app with a Dock icon the moment it talks to another app -- and
+// since blvrd started it, macOS shows that icon as a second blvrd, for as long
+// as Calendar takes to answer.
+#[cfg(target_os = "macos")]
+const IN_BACKGROUND: &str = "ObjC.import('AppKit');\n$.NSApplication.sharedApplication.setActivationPolicy($.NSApplicationActivationPolicyProhibited);\n";
+
 #[tauri::command]
 pub async fn apple_script(action: String, args: String) -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
-        let script = script_for(&action).ok_or_else(|| format!("unknown action {action}"))?;
+        let script = format!("{IN_BACKGROUND}{}", script_for(&action).ok_or_else(|| format!("unknown action {action}"))?);
         // Off the main thread: Calendar can take a few seconds on a big range.
         let output = tauri::async_runtime::spawn_blocking(move || {
             std::process::Command::new("/usr/bin/osascript")
-                .args(["-l", "JavaScript", "-e", script, &args])
+                .args(["-l", "JavaScript", "-e", &script, &args])
                 .output()
         })
         .await

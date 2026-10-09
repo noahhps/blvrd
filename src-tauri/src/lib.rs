@@ -24,7 +24,9 @@ mod computer;
 mod machine;
 mod mcp;
 mod memory;
+mod icon;
 mod oauth;
+mod widgets;
 mod schedule;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -37,6 +39,9 @@ pub fn run() {
         // A scheduled task that posted while blvrd wasn't in front says so.
         .plugin(tauri_plugin_notification::init())
         .manage(mcp::Servers::default())
+        // The reader's widgets, each from an address of its own (src/widgets.rs).
+        .manage(widgets::Pages::default())
+        .register_uri_scheme_protocol(widgets::SCHEME, widgets::serve)
         .manage(schedule::Clock::default())
         .setup(|app| {
             schedule::start(app.handle());
@@ -44,6 +49,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             oauth::oauth_listen,
+            icon::app_icon,
+            widgets::widget_serve,
+            widgets::widget_export,
             apple::apple_script,
             mcp::mcp_spawn,
             mcp::mcp_send,

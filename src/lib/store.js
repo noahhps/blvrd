@@ -24,6 +24,15 @@
  *                 chat's computer (lib/computer/connection.js)
  *   browser       { name, app, path, show } | null -- the browser the computer
  *                 uses on this Mac; null, the first Chromium one found
+ *   fonts         { app, text, sections, widgets } -- font ids (lib/fonts.js)
+ *   appIcon       { mascot, look } -- the Dock's icon (lib/appIcon.js)
+ *   customWidgets { [id]: { name, html, data, by, updatedAt } } -- the reader's
+ *                 own widgets (lib/widgets.js); each placed one is a live
+ *                 section of the Notebook, "custom:<id>"
+ *   toldConnectors { [chatId]: { [agentId]: { [group]: name } } } -- the
+ *                 connectors each agent had when it last answered in a chat,
+ *                 so it hears about new or gone ones in its next request
+ *                 (lib/connectors/index.js connectorNote), never in the chat
  *
  * Nothing here leaves the machine. API keys are stored in the same place, in
  * plain text, which is the trade a single-user desktop app makes; the Settings

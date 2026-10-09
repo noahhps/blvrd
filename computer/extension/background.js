@@ -70,7 +70,10 @@ chrome.tabs.onCreated.addListener((tab) => {
   }
 });
 
-async function tabOf(port, { create = false } = {}) {
+/* The computer's window and tab, made when the first page is opened -- at
+ * that page, so there's never a blank white window (with blvrd full screen,
+ * macOS goes to show it). */
+async function tabOf(port, { create = false, url = null } = {}) {
   const w = work.get(port);
   if (w) {
     try {
@@ -81,8 +84,8 @@ async function tabOf(port, { create = false } = {}) {
     }
   }
   if (!create) throw new Error("no page is open yet -- open one first");
-  const win = await chrome.windows.create({ url: "about:blank", focused: false, width: 1280, height: 900 });
-  const fresh = { windowId: win.id, tabId: win.tabs[0].id, opened: false };
+  const win = await chrome.windows.create({ url: url || "about:blank", focused: false, width: 1280, height: 900 });
+  const fresh = { windowId: win.id, tabId: win.tabs[0].id, opened: false, fresh: true };
   work.set(port, fresh);
   return fresh;
 }
@@ -127,8 +130,10 @@ async function handle(port, op, args) {
     case "ping":
       return null;
     case "open": {
-      const w = await tabOf(port, { create: true });
-      await chrome.tabs.update(w.tabId, { url: args.url });
+      const w = await tabOf(port, { create: true, url: args.url });
+      // A window just made is already on its way there.
+      if (w.fresh) w.fresh = false;
+      else await chrome.tabs.update(w.tabId, { url: args.url });
       await settled(w.tabId);
       return null;
     }

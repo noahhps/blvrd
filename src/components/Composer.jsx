@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { colourOf } from "../lib/agents.js";
+import { mentionSpans } from "../lib/group.js";
 import { controlFor } from "../lib/thinking.js";
 import { useAttachments } from "./Attachments.jsx";
 import { Icon } from "./Icon.jsx";
@@ -26,8 +28,9 @@ const STICK_PX = 80; // a thread scrolled this close to its end counts as "at th
 // `disabled`: an answer is under way (Send becomes Stop). `blocked`: why this
 // chat can't take a message at all, said in the box; what's typed is kept.
 // `queued`: messages written while it was answering, waiting their turn
-// (App.jsx `queue`); sending while `disabled` adds to them.
-export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop, queued = [], onUnqueue = null }) {
+// (App.jsx `queue`); sending while `disabled` adds to them. `onDraft`: told
+// what's in the box as it changes (a group's tray lights who's @-named).
+export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop, queued = [], onUnqueue = null, onDraft = null }) {
   const form = useRef(null);
   const [value, setValue] = useState("");
   const [control, setControl] = useState({ mode: "none" });
@@ -57,6 +60,7 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
     node.style.height = Math.min(node.scrollHeight, (window.innerHeight || 800) * 0.4) + "px";
   }, []);
   useLayoutEffect(autosize, [autosize, value]);
+  useEffect(() => onDraft?.(value), [value]);
 
   /* The room the thread keeps clear under its last turn: the whole composer,
      raised, whatever it is doing -- so the conversation never moves while the
@@ -88,6 +92,17 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
 
   // In a group, @ brings up its members (components/Mentions.jsx); taking one
   // writes "@Name " where the @ was, which is how a group hears who answers.
+  // The coloured copy under a group's box (Marks) kept where the box is:
+  // scrolled as far, and as narrow when the box shows a scroll bar.
+  const marks = useRef(null);
+  const syncMarks = () => {
+    const box = input.current;
+    const copy = marks.current;
+    if (!box || !copy) return;
+    copy.style.paddingRight = `${box.offsetWidth - box.clientWidth}px`;
+    copy.scrollTop = box.scrollTop;
+  };
+  useLayoutEffect(syncMarks, [value]);
   const at = useMentions(mentions || [], (chosen, { start, query }) => {
     const before = `${value.slice(0, start)}@${chosen.name} `;
     const after = value.slice(start + 1 + query.length).replace(/^\s+/, "");
@@ -134,8 +149,12 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
       <div className="composer-box">
         {files.list}
 
+        <div className="composer-field">
+        {mentions ? <Marks ref={marks} text={value} people={mentions} /> : null}
         <textarea
           ref={input}
+          data-marked={mentions ? "" : undefined}
+          onScroll={mentions ? syncMarks : undefined}
           rows={1}
           value={value}
           placeholder={blocked || (disabled ? `Queue a message for ${agentName}` : `Message ${agentName}`)}
@@ -156,6 +175,7 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
             }
           }}
         />
+        </div>
 
         <div className="composer-row">
           {files.button}
@@ -188,6 +208,35 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
     </form>
   );
 }
+
+/* What's typed, drawn again under the box's own (see-through) text, with each
+ * @Name in its agent's colour -- a textarea can't colour part of itself. The
+ * two lay out the same, letter for letter: same face, size, padding and
+ * wrapping (app.css .composer-marks). `tint`: a colour of the entry's own
+ * (the group's @everyone). */
+const Marks = forwardRef(function Marks({ text, people }, ref) {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const parts = [];
+  let from = 0;
+  for (const span of mentionSpans(text, people)) {
+    if (span.start > from) parts.push(text.slice(from, span.start));
+    const who = byId.get(span.id);
+    parts.push(
+      <mark key={span.start} style={{ "--who": who.tint || colourOf(who.look, who.name) }}>
+        {text.slice(span.start, span.end)}
+      </mark>,
+    );
+    from = span.end;
+  }
+  parts.push(text.slice(from));
+  // A last line that's empty still takes its height.
+  return (
+    <div className="composer-marks" ref={ref} aria-hidden="true">
+      {parts}
+      {"\u200b"}
+    </div>
+  );
+});
 
 /* The reasoning control, in whichever shape the model takes. */
 function Thinking({ control, value, onChange, disabled }) {

@@ -45,7 +45,12 @@ const short = (s, n = 160) => {
 const whoFor = (agentId, nameOf) => (by) => (by === "user" ? "the user" : by === agentId ? "you" : `${nameOf(by)} (another assistant)`);
 
 /** What kind a section is, as an agent is told. */
-export const kindOf = (s) => (s.type === "live" ? "kept current by the app; read-only" : TYPES[s.type].label.toLowerCase());
+export const kindOf = (s) =>
+  s.type === "live"
+    ? String(s.source).startsWith("custom:")
+      ? "a widget the user has; read-only here, widget_code to see or change it"
+      : "kept current by the app; read-only"
+    : TYPES[s.type].label.toLowerCase();
 
 /** A section's size, said briefly. */
 function sizeOf(s) {

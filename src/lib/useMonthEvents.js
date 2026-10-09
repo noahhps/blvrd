@@ -42,11 +42,13 @@ async function fetchMonth(key, connectors, patchConnectors, month, force) {
   if (hit?.data && !force && Date.now() - hit.at < FRESH_MS) return hit.data;
   const promise = monthEvents(connectors, patchConnectors, month).then((data) => {
     // A fetch where a calendar failed keeps the last good month rather than
-    // replacing it with a partial one (its problems are still shown), and
-    // isn't written down.
+    // replacing it with a partial one -- in the cache and in what's shown,
+    // with its problems said -- and isn't written down. (Handing back the
+    // partial month blanked the sidebar's widget, which checks every minute,
+    // whenever one check failed.)
     if (data.problems.length && hit?.data) {
       cache.set(key, { at: hit.at, data: hit.data });
-      return data;
+      return { ...hit.data, problems: data.problems };
     }
     const at = Date.now();
     cache.set(key, { at, data });
@@ -95,7 +97,8 @@ export function useMonthEvents(connectors, patchConnectors, month) {
     const load = (force) =>
       fetchMonth(key, latest.current.connectors, latest.current.patchConnectors, month, force)
         .then((data) => live && setResult({ key, ...data }))
-        .catch((err) => live && setResult({ key, events: [], problems: [String(err?.message || err)] }));
+        // A check that fails outright leaves what's shown as it was.
+        .catch((err) => live && setResult((prev) => ({ key, events: prev.key === key ? prev.events : cache.get(key)?.data?.events || [], problems: [String(err?.message || err)] })));
     // The kept month first, while a stale one is asked for again.
     ready.then(() => {
       const kept = cache.get(key)?.data;

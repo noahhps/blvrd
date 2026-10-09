@@ -9,7 +9,7 @@ export function Gallery({ presets, onNew, onAdd, onCustomize, firstRun, mood = "
     <div className="gallery">
       <header className="gallery-head">
         {/* The first thing you meet: blvrd, large, looking about. */}
-        {firstRun ? <Mascot shape="arc" colour="var(--red)" mood={mood} size={72} label="blvrd" /> : null}
+        {firstRun ? <Mascot shape="arc" colour="var(--accent)" mood={mood} size={72} label="blvrd" /> : null}
         <h1>{firstRun ? "Start with an agent" : "Add an agent"}</h1>
         <p>
           An agent is a model with a job: its own instructions, the abilities it may use, and

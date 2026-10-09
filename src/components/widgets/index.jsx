@@ -8,6 +8,8 @@ import { AgentsWidget, GroupsWidget } from "./ListWidgets.jsx";
 import { CalendarWidget } from "./CalendarWidget.jsx";
 import { MusicWidget } from "./MusicWidget.jsx";
 import { SettingsWidget } from "./SettingsWidget.jsx";
+import { CustomWidget } from "./CustomWidget.jsx";
+import { widgetIdOf } from "../../lib/widgets.js";
 
 /* The sidebar: the widgets dragged into it from the Notebook (lib/notebook.js
  * settings.sidebar), in its own order. The Notebook is the scratchpad where
@@ -33,6 +35,9 @@ export const LIVE_WIDGETS = {
   groups: GroupsWidget,
   setup: SettingsWidget,
 };
+
+/** What draws a live section: the app's widget, or the reader's own. */
+export const widgetFor = (source) => LIVE_WIDGETS[source] || (widgetIdOf(source) ? CustomWidget : null);
 
 // Before the notebook has loaded -- the first moment of a launch -- the
 // widgets it starts with, so the sidebar is never empty.
@@ -80,7 +85,7 @@ export function Widgets({ ctx }) {
   return (
     <div className="widgets" ref={list} data-dropping={line != null ? "" : undefined}>
       {shown.map((section) => {
-        const Component = section.type === "live" ? LIVE_WIDGETS[section.source] : NotebookWidget;
+        const Component = section.type === "live" ? widgetFor(section.source) : NotebookWidget;
         if (!Component) return null;
         return (
           <section

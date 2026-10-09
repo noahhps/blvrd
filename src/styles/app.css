@@ -19,7 +19,10 @@
 }
 
 :root {
-  --red: #e5392b;
+  /* The app's one colour: the logo, the selected row, busy days, the stop
+     button. Agents keep their own (lib/agents.js). --on-accent is text on it. */
+  --accent: #007cff; /* Kimi's blue */
+  --on-accent: #ffffff;
   --ground: #ffffff;
   --side: #f6f6f5;
   --surface: #ffffff;
@@ -34,7 +37,7 @@
   --ok: #1f7a4d;
   --warn: #9a5b00;
   --danger: #b3261e;
-  --compact: #1f6fd1; /* compacting a chat: the swipe, and its header button */
+  --compact: var(--accent); /* compacting a chat: the swipe, and its header button */
   --r-control: 8px;
   --r-card: 12px;
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -42,6 +45,11 @@
   --mono: ui-monospace, "SF Mono", Menlo, monospace;
   /* The conversation's own face: what you write and what the agent answers. */
   --prose: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* The Notebook's faces, and the app's own (--font): what the reader picked
+     in Settings, set on html by lib/fonts.js. These are the defaults. */
+  --nb-font-text: var(--prose);
+  --nb-font-section: var(--font);
+  --nb-font-widget: var(--font);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 12px 32px -16px rgba(0, 0, 0, 0.25);
   /* Motion. The two curves every animation here takes its timing from. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -53,13 +61,14 @@
   --controls-w: 0px;
   /* A spring, for the few things that still pop into place. */
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --glow: 0 0 0 1px color-mix(in srgb, var(--ink) 14%, transparent),
-    0 10px 34px -10px color-mix(in srgb, var(--ink) 30%, transparent);
   color-scheme: light;
 }
 
+/* Dark: the Mac's own setting, unless the reader picked one in Settings
+   (html data-theme, lib/theme.js). The same values twice -- CSS can't share
+   them between a media query and a selector. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --ground: #161616;
     --side: #1c1c1c;
     --surface: #1f1f1f;
@@ -74,12 +83,33 @@
     --ok: #5cc28d;
     --warn: #e0a24a;
     --danger: #ff7a70;
-    --red: #ef4a3c;
-    --compact: #4a90e8;
+    --accent: #3392ff;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
     color-scheme: dark;
   }
 }
+:root[data-theme="dark"] {
+  --ground: #161616;
+  --side: #1c1c1c;
+  --surface: #1f1f1f;
+  --well: #262626;
+  --line: #2f2f2f;
+  --line-strong: #444444;
+  --ink: #f2f2f0;
+  --ink-soft: #d8d8d5;
+  --dim: #aaaaa6;
+  --faint: #8e8e8a;
+  --on-ink: #141414;
+  --ok: #5cc28d;
+  --warn: #e0a24a;
+  --danger: #ff7a70;
+  --accent: #3392ff;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+
+/* Switching look in Settings: everything at once (lib/theme.js). */
+:root[data-theme-switching] *, :root[data-theme-switching] *::before, :root[data-theme-switching] *::after { transition: none !important; }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -130,6 +160,18 @@ input[type="text"], input[type="password"], textarea, select {
   outline: none;
 }
 input:focus, textarea:focus, select:focus { border-color: var(--ink); }
+/* Settings' native menus wear the font menus' chevrons. One grey reads in
+   either look (an image can't take currentColor). */
+.settings select {
+  appearance: none;
+  padding-right: 32px;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238e8e8a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 9.5l4-4 4 4M8 14.5l4 4 4-4'/%3E%3C/svg%3E") no-repeat right 9px center;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .settings select:hover:not(:focus) { border-color: var(--line-strong); }
+}
 textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 .label {
@@ -344,7 +386,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   bottom: 14px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--red);
+  background: var(--accent);
 }
 .contact-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
 .contact-top { display: flex; align-items: baseline; gap: 8px; }
@@ -366,7 +408,19 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   cursor: pointer;
 }
 .side-settings:hover, .side-settings[aria-current="true"] { background: var(--well); }
-.side-settings .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); margin-left: auto; }
+.side-settings:active { transform: scale(0.98); }
+.side-settings .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-left: auto; }
+/* Settings' shortcut, shown where the pointer is: there to learn, not to read
+   every time. */
+.side-settings kbd { margin-left: auto; color: var(--faint); font: 500 12px/1 var(--font); opacity: 0; transition: opacity 150ms ease; }
+.side-settings .dot + kbd { margin-left: 8px; }
+.side-settings:focus-visible kbd { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .side-settings:hover kbd { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .side-settings:active { transform: none; }
+}
 
 /* -- widgets ------------------------------------------------------------------- */
 
@@ -430,6 +484,19 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 }
 .widget:hover { background: var(--well); }
 .widget[aria-current="true"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+
+/* The reader's own widgets (components/widgets/CustomWidget, WidgetFrame):
+   the widget's page, edge to edge in the card, as tall as it says it is.
+   While anything is dragged, frames let the pointer through -- a frame
+   would otherwise keep it, and the drag would stall over a widget. */
+.widget-custom { padding: 4px 8px 6px; cursor: default; }
+.widget-custom:hover { background: none; }
+/* Its light or dark the same as the app's (inherited): a frame whose page
+   differs from it gets painted an opaque backdrop. */
+.widget-frame { display: block; width: 100%; border: 0; background: transparent; transition: height 200ms var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .widget-frame { transition: none; } }
+.app:has([data-dragging]) .widget-frame, body:has(.drag-widget) .widget-frame { pointer-events: none; }
+.widget-problem { margin: 4px 0 0; color: var(--warn); font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 /* What's playing (components/widgets/MusicWidget): the cover, the song and
    who it's by, back, play/pause and skip, and how far in. */
@@ -643,15 +710,15 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   padding: 0;
   border: 0;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--red) var(--heat, 0%), transparent);
+  background: color-mix(in srgb, var(--accent) var(--heat, 0%), transparent);
   color: var(--dim);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   transition: background-color 200ms var(--ease-out);
 }
-.month-day[data-strong] { color: #fff; font-weight: 600; }
+.month-day[data-strong] { color: var(--on-accent); font-weight: 600; }
 .month-day[data-today] { color: var(--ink); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--ink); }
-.month-day[data-today][data-strong] { color: #fff; }
+.month-day[data-today][data-strong] { color: var(--on-accent); }
 .month[data-size="small"] .month-day[data-out] { visibility: hidden; }
 /* The widget's days are each a way to that day on the calendar screen. */
 .widget-calendar { cursor: default; }
@@ -694,7 +761,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   gap: 16px;
   padding: 10px 12px;
   border-radius: var(--r-control);
-  border-left: 3px solid var(--red);
+  border-left: 3px solid var(--accent);
   background: var(--surface);
   box-shadow: 0 0 0 1px var(--line);
 }
@@ -713,7 +780,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   margin-left: 38px;
   padding: 12px 14px;
   border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--red);
+  border-left: 3px solid var(--accent);
   border-radius: var(--r-card);
   background: var(--surface);
   box-shadow: var(--shadow);
@@ -723,7 +790,7 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
   .approval { opacity: 0; transform: translateY(4px) scale(0.98); }
 }
 .approval-head { display: flex; align-items: flex-start; gap: 8px; line-height: 1.45; }
-.approval-head .icon { margin-top: 3px; color: var(--red); }
+.approval-head .icon { margin-top: 3px; color: var(--accent); }
 .approval-details { margin-top: 8px; font-size: 13px; color: var(--dim); }
 .approval-details summary { cursor: pointer; }
 .approval-details pre {
@@ -939,7 +1006,9 @@ button.link {
   transition: transform 160ms var(--ease-out), background-color 150ms ease, color 150ms ease;
 }
 .who-chip[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
-.who-chip:active { transform: scale(0.97); }
+.who-chip:active:not([data-named]) { transform: scale(0.97); }
+/* Lit by an @ in the message, not a click: it goes when the name does. */
+.who-chip[data-named] { cursor: default; }
 @media (prefers-reduced-motion: reduce) { .who-chip:active { transform: none; } }
 
 .member-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -1022,7 +1091,7 @@ button.link {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.where.hosted { color: var(--red); background: color-mix(in srgb, var(--red) 9%, var(--surface)); }
+.where.hosted { color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
 .where.none { color: var(--warn); }
 
 .thread { flex: 1; overflow-y: auto; padding: 28px 24px calc(var(--composer-reserve) + 12px); min-height: 0; }
@@ -1153,32 +1222,26 @@ button.link {
   margin: 0 auto;
   padding: 6px 0 16px;
 }
-/* The halo, behind the box's own background, so only what spreads past the
-   edge is seen. */
-.composer-box::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  z-index: -1;
-  border-radius: inherit;
-  box-shadow: var(--glow);
-  pointer-events: none;
-}
+/* A card like the app's others -- the same hairline and corners -- lifted
+   only as much as floating over the thread needs. Typing in it darkens the
+   edge a little; the caret says the rest. */
 .composer-box {
   position: relative;
   z-index: 1;
-  isolation: isolate;
   padding: 12px 12px 10px 16px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--line);
   border-radius: var(--r-card);
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -14px rgba(0, 0, 0, 0.22);
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
-.composer-box:focus-within { border-color: var(--ink); }
+.composer-box:focus-within { border-color: var(--line-strong); }
+/* Attaching sits inside the box's own edge: no second outline, a quiet
+   button until the pointer is on it -- like the sidebar's rows. */
+.composer-row .chip.icon { border-color: transparent; background: none; }
 .composer[data-dropping] .composer-box {
-  border-color: var(--red);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent), var(--shadow);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), var(--shadow);
 }
 .composer textarea {
   font-family: var(--prose);
@@ -1193,6 +1256,33 @@ button.link {
   background: none;
   line-height: 1.5;
 }
+/* A group's box: the typed text drawn again underneath with each @Name in
+   its agent's colour (Composer.jsx Marks), the box's own text see-through
+   over it, its caret and selection still its own. Both must lay out alike:
+   same face, size, line height, padding and wrapping. A mark only tints --
+   no padding or weight, which would move the letters off the caret. */
+.composer-field { position: relative; }
+.composer-marks {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  padding: 2px 0 8px;
+  font-family: var(--prose);
+  line-height: 1.5;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  pointer-events: none;
+}
+.composer-marks mark {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--who) 16%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--who) 16%, transparent);
+  color: var(--who);
+}
+.composer textarea[data-marked] { position: relative; color: transparent; caret-color: var(--ink); }
+.composer textarea[data-marked]::placeholder { color: var(--faint); }
+.composer textarea[data-marked]::selection { color: transparent; background: color-mix(in srgb, var(--accent) 28%, transparent); }
 .composer-row { display: flex; align-items: center; gap: 8px; }
 
 .chip {
@@ -1247,6 +1337,10 @@ button.link {
 .staged-item img { width: 28px; height: 28px; object-fit: cover; border-radius: 5px; }
 .staged-item > .icon { margin-left: 4px; color: var(--dim); }
 .staged-item[data-problem] { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+/* A document still having its text taken out: there, but not ready yet. */
+.staged-item[data-reading] .staged-name, .staged-item[data-reading] > .icon { opacity: 0.55; }
+/* Why a file won't go, said in words under the files -- not only on hover. */
+.staged-problems { list-style: none; margin: -4px 0 10px; padding: 0; font-size: 12.5px; color: var(--danger); }
 .staged-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .staged-item button {
   display: grid;
@@ -1361,7 +1455,7 @@ button.link {
   cursor: pointer;
 }
 .round:disabled { opacity: 0.3; cursor: default; }
-.round.stop { background: var(--red); color: #fff; }
+.round.stop { background: var(--accent); color: var(--on-accent); }
 
 /* -- sheet -------------------------------------------------------------------------- */
 
@@ -1416,6 +1510,57 @@ button.link {
 .sheet-actions { display: flex; gap: 8px; padding: 14px 24px; border-top: 1px solid var(--line); }
 .sheet > .error-line { padding: 0 24px; }
 
+/* The widget sheet (components/WidgetSheet): where to start, the code, and
+   the widget running beside it at the sidebar's width. */
+.widget-sheet { width: min(1040px, 100%); height: min(720px, 100%); }
+.ws-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 200px minmax(0, 1fr) 264px; }
+.ws-from { display: flex; flex-direction: column; gap: 1px; min-height: 0; overflow-y: auto; padding: 22px 10px 16px 16px; border-right: 1px solid var(--line); background: var(--side); }
+.ws-from .label { margin: 0 8px 6px; }
+.ws-from .ws-label-gap { margin-top: 14px; }
+.ws-from-row { display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border: 0; border-radius: var(--r-control); background: none; text-align: left; cursor: pointer; transition: background-color 150ms ease; }
+@media (hover: hover) and (pointer: fine) { .ws-from-row:hover { background: var(--well); } }
+.ws-from-row[aria-pressed="true"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.ws-from-row:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.ws-from-name { font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ws-from-hint { color: var(--dim); font-size: 12px; line-height: 1.35; }
+.ws-import { margin: 14px 8px 0; justify-content: center; }
+.ws-edit { display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: 18px 18px 14px; }
+.ws-name { width: calc(100% - 40px) !important; font: 600 18px var(--display) !important; border-color: transparent !important; background: var(--well) !important; }
+.ws-code {
+  flex: 1;
+  min-height: 160px;
+  resize: none;
+  padding: 12px 14px;
+  border-radius: var(--r-control);
+  background: var(--well);
+  border-color: transparent;
+  font: 12.5px/1.6 var(--mono);
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+.ws-code:focus { border-color: var(--line-strong); background: var(--surface); }
+.ws-help { font-size: 13px; color: var(--dim); }
+.ws-help summary { width: fit-content; cursor: pointer; font-weight: 500; }
+.ws-help pre { max-height: 180px; overflow: auto; margin: 8px 0 4px; padding: 10px 12px; border-radius: var(--r-control); background: var(--well); color: var(--ink-soft); font: 11.5px/1.55 var(--mono); white-space: pre-wrap; }
+.ws-help .hint { margin: 4px 0 0; }
+.ws-preview { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; padding: 22px 16px 16px; border-left: 1px solid var(--line); }
+.ws-preview .label { margin: 0; }
+.ws-preview .hint { margin: 0; font-size: 12px; }
+/* The sidebar's ground, at its width: the widget as it will sit there. */
+.ws-stage { width: 232px; padding: 8px 8px 10px; border-radius: var(--r-card); background: var(--side); box-shadow: inset 0 0 0 1px var(--line); }
+.ws-stage-name { margin: 0 0 6px 4px; color: var(--faint); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.widget-sheet .sheet-actions { align-items: center; }
+@media (max-width: 860px) {
+  .widget-sheet { height: 100%; }
+  .ws-grid { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
+  .ws-from { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line); overflow: visible; }
+  .ws-from .label { width: 100%; }
+  .ws-from-row { width: calc(50% - 4px); }
+  .ws-code { min-height: 260px; }
+  .ws-preview { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+}
+
 .picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .picker > .hint { grid-column: 1 / -1; margin: 0; }
 
@@ -1423,9 +1568,270 @@ button.link {
 
 .settings { overflow-y: auto; padding: 40px; }
 .settings > * { max-width: 820px; margin-inline: auto; }
-.settings > header { margin-bottom: 22px; }
+.settings > header { margin-bottom: 14px; }
 .settings > header h1 { font-size: 28px; }
-.settings > header p { color: var(--dim); margin: 8px 0 0; max-width: 600px; }
+.settings-lede { color: var(--dim); margin: 0 0 16px; max-width: 600px; }
+
+/* The tabs stay in reach while a long tab scrolls under them. Switching is
+   instant -- no sliding pill: it happens often, and the page changes anyway. */
+.settings-tabs-bar {
+  position: sticky;
+  top: -40px; /* the page's top padding: stuck flush with the top */
+  z-index: 2;
+  margin-top: -12px;
+  margin-bottom: 18px;
+  padding: 12px 0;
+  background: var(--ground);
+}
+.settings-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--well); }
+.settings-tabs [role="tab"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--dim);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+.settings-tabs [role="tab"][aria-selected="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+@media (hover: hover) and (pointer: fine) {
+  .settings-tabs [role="tab"]:hover { color: var(--ink); }
+}
+.settings-tabs [role="tab"]:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.settings-tabs .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* Appearance: a small picture of the app in each look. The pictures keep
+   their own colours, whichever look the app is in now. */
+.theme-choices { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.theme-choice { display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; }
+.theme-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-thumb {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 76px;
+  border-radius: 9px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--line);
+  transition: box-shadow 150ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.theme-choice input:checked + .theme-thumb { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.theme-choice input:focus-visible + .theme-thumb { outline: 2px solid var(--ink); outline-offset: 5px; }
+.theme-choice:active .theme-thumb { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .theme-choice:hover input:not(:checked) + .theme-thumb { box-shadow: 0 0 0 1px var(--line-strong); }
+}
+.theme-label { font-size: 13px; color: var(--dim); font-weight: 500; }
+
+/* App icon: each a small copy of the icon itself -- the tile, the name, the
+   character peeking up from the bottom -- in the look picked. */
+.icon-looks { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--well); }
+.icon-looks button {
+  height: 26px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--dim);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+.icon-looks button[aria-checked="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0, 0, 0, 0.06); }
+@media (hover: hover) and (pointer: fine) {
+  .icon-looks button:hover { color: var(--ink); }
+}
+.icon-looks button:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.icon-choices { display: flex; flex-wrap: wrap; gap: 16px 14px; margin-top: 14px; }
+.icon-choice { display: flex; flex-direction: column; align-items: center; gap: 7px; cursor: pointer; }
+.icon-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.icon-tile {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border-radius: 14.4px; /* the icon's corner: 185 of 824 */
+  background: linear-gradient(#ffffff, #f3f3f1);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 150ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.icon-tile[data-look="dark"] { background: linear-gradient(#2a2a2a, #121212); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), 0 1px 2px rgba(0, 0, 0, 0.3); }
+.icon-word {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  color: #141414;
+  font: 700 16.5px/1 "Helvetica Neue", Helvetica, Arial, sans-serif;
+  letter-spacing: -0.55px;
+  text-align: center;
+}
+.icon-tile[data-look="dark"] .icon-word { color: #f2f2f0; }
+.icon-figure { position: absolute; left: 50%; line-height: 0; }
+/* White paper on the light tile, drawn round as the icon is. */
+.icon-tile[data-look="light"][data-mascot="envelope"] .m-body { stroke: #1a1a1a; stroke-width: 3; }
+.icon-choice input:checked + .icon-tile { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.icon-choice input:focus-visible + .icon-tile { outline: 2px solid var(--ink); outline-offset: 5px; }
+.icon-choice:active .icon-tile { transform: scale(0.97); }
+.icon-label { font-size: 12px; color: var(--dim); font-weight: 500; }
+.icon-choice input:checked ~ .icon-label { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) {
+  .icon-choice:active .icon-tile { transform: none; }
+}
+
+/* Fonts: a small picture of the app set in them, then a row for each --
+   the app's, then the Notebook's three. The part a menu changes is marked
+   in the picture while it's open. */
+.font-preview {
+  display: flex;
+  height: 184px;
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+.font-preview-side { flex: none; display: flex; flex-direction: column; gap: 1px; width: 148px; padding: 10px 8px; background: var(--side); border-right: 1px solid var(--line); }
+/* The window's three buttons, quiet: it's a picture of the app, not a window. */
+.font-preview-dots { display: block; width: 7px; height: 7px; margin: 0 0 10px 4px; border-radius: 50%; background: var(--line-strong); box-shadow: 11px 0 var(--line-strong), 22px 0 var(--line-strong); }
+.font-preview-label { margin: 8px 6px 2px; color: var(--faint); font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.font-preview-dots + .font-preview-label { margin-top: 0; }
+.font-preview-row { padding: 3px 6px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.font-preview-row[data-on] { background: var(--well); font-weight: 500; }
+.font-preview-page { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 16px 28px; padding: 22px 24px; }
+.font-preview-block { display: flex; flex-direction: column; gap: 6px; width: 180px; }
+.font-preview-title { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+.font-preview-widget { display: flex; flex-direction: column; gap: 4px; }
+.font-preview-item { display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.font-preview-item[data-done] { color: var(--faint); text-decoration: line-through; }
+.font-preview-box { flex: none; width: 12px; height: 12px; border: 1.5px solid var(--line-strong); border-radius: 3.5px; }
+.font-preview-item[data-done] .font-preview-box { border-color: var(--ink); background: var(--ink); }
+.font-preview-fact { display: flex; gap: 8px; white-space: nowrap; }
+.font-preview-fact span { flex: 0 0 64px; color: var(--dim); }
+.font-preview-text { flex-basis: 100%; margin: 0; max-width: 400px; font-size: 14px; line-height: 1.6; }
+/* The mark: a soft tint with a ring, padded out from the words (and the
+   padding taken back, so nothing moves). */
+.font-preview [data-part] { transition: box-shadow 150ms ease, background-color 150ms ease; }
+.font-preview-page [data-part] { margin: -3px -6px; padding: 3px 6px; border-radius: 6px; }
+.font-preview[data-slot="sections"] [data-part="sections"],
+.font-preview[data-slot="widgets"] [data-part="widgets"],
+.font-preview[data-slot="text"] [data-part="text"] {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.font-preview[data-slot="app"] [data-part="app"] {
+  background: color-mix(in srgb, var(--accent) 5%, var(--side));
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+@media (max-width: 560px) { .font-preview-side { display: none; } }
+
+/* Each a name and what it's for on the left, its menu on the right, as a
+   Mac's own settings are laid out. */
+.font-rows { margin-top: 6px; }
+.font-rows-group { margin: 18px 0 0; color: var(--faint); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.font-row { display: flex; align-items: center; gap: 16px; padding: 10px 0; }
+.font-row + .font-row { border-top: 1px solid var(--line); }
+.font-row-label { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 500; }
+.font-row-hint { color: var(--dim); font-size: 12.5px; font-weight: 400; }
+.font-row .font-picker { flex: 0 0 240px; }
+@media (max-width: 560px) {
+  .font-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .font-row .font-picker { flex-basis: auto; }
+}
+
+/* A font menu, every choice in its own face (components/FontPicker.jsx). It
+   looks like the app's other menus; only the faces differ. */
+.font-picker { position: relative; }
+.font-picker-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 21px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .font-picker-button:hover { border-color: var(--line-strong); }
+}
+.font-picker-button:focus-visible, .font-picker-button[aria-expanded="true"] { border-color: var(--ink); outline: none; }
+.font-picker-button .icon { margin-left: auto; flex: none; color: var(--faint); }
+.font-picker-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 15px; }
+.font-picker-note { flex: none; padding: 0 6px; border-radius: 999px; background: var(--well); color: var(--dim); font: 500 11px/18px var(--font); }
+.font-picker-list {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  outline: none;
+  transform-origin: top center;
+  animation: font-picker-in 160ms var(--ease-out);
+}
+.font-picker-list[data-up] { top: auto; bottom: calc(100% + 6px); transform-origin: bottom center; }
+.font-picker-list[data-instant] { animation: none; }
+@keyframes font-picker-in { from { opacity: 0; transform: scale(0.97); } }
+.font-picker-list [role="option"] { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 4px 10px; border-radius: 6px; cursor: default; }
+.font-picker-list [role="option"][data-active] { background: var(--well); }
+.font-picker-list [role="option"] .icon { margin-left: auto; flex: none; color: var(--ink); }
+.font-picker-group { position: sticky; top: -4px; z-index: 1; margin: 0 -4px; padding: 10px 14px 4px; background: var(--surface); color: var(--faint); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.font-picker-rule { height: 1px; margin: 4px 6px; background: var(--line); }
+@media (prefers-reduced-motion: reduce) { .font-picker-list { animation-name: font-picker-fade; } }
+@keyframes font-picker-fade { from { opacity: 0; } }
+.theme-choice input:checked ~ .theme-label { color: var(--ink); }
+.thumb {
+  --t-side: #f6f6f5;
+  --t-main: #ffffff;
+  --t-line: #e4e4e2;
+  --t-accent: #007cff;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  background: var(--t-main);
+}
+.thumb[data-look="dark"] { --t-side: #1c1c1c; --t-main: #161616; --t-line: #2f2f2f; --t-accent: #3392ff; }
+.thumb[data-half] { clip-path: inset(0 0 0 50%); }
+.thumb-side { width: 34%; padding: 9px 7px; display: flex; flex-direction: column; gap: 5px; background: var(--t-side); }
+.thumb-main { flex: 1; padding: 12px 10px; display: flex; flex-direction: column; gap: 5px; }
+.thumb-dot { width: 9px; height: 9px; border-radius: 3px; background: var(--t-accent); margin-bottom: 2px; }
+.thumb-line { height: 4px; border-radius: 2px; background: var(--t-line); }
+.thumb-line.short { width: 60%; }
+.thumb-box { margin-top: auto; height: 12px; border-radius: 4px; box-shadow: 0 0 0 1px var(--t-line); }
+@media (prefers-reduced-motion: reduce) {
+  .theme-choice:active .theme-thumb { transform: none; }
+}
 .card {
   padding: 18px 20px;
   border: 1px solid var(--line);
@@ -1520,11 +1926,13 @@ a.server-note { width: fit-content; }
 
 /* Settings: the quickview's shortcut. */
 .search-fields { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; max-width: 420px; }
+/* Settings' menus: as wide as what they say, not the card. */
+.settings select.compact-at { display: block; width: auto; min-width: min(260px, 100%); max-width: 100%; margin-top: 12px; }
 .search-fallback { margin-top: 10px; font-size: 13px; }
-.shortcut-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.shortcut-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
 .btn.shortcut { min-width: 120px; justify-content: center; }
 .btn.shortcut kbd { font: 500 13px/1 var(--font); }
-.btn.shortcut.recording { border-color: var(--red); color: var(--dim); }
+.btn.shortcut.recording { border-color: var(--accent); color: var(--dim); }
 .hint.warn { color: var(--warn); }
 
 /* The quickview window (lib/quick.js): see-through, with the box near its
@@ -1549,7 +1957,7 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .quick-row { display: flex; align-items: center; gap: 8px; }
 .quick-box .staged { margin: 2px 0 8px; }
 /* Files held over the quickview: the box says it will take them. */
-.quick-box[data-dropping] { box-shadow: 0 0 0 2px var(--red), var(--shadow); }
+.quick-box[data-dropping] { box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
 .quick-box input {
   flex: 1;
   min-width: 0;
@@ -1793,7 +2201,136 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
    Each section's handles wait in the left margin until it's pointed at. */
 .nb-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 /* The page's head: its title, what it is, and the one setting. */
-.nb-head { max-width: 720px; padding: max(64px, calc(var(--titlebar-h) + 24px)) 40px 0; }
+.nb-head { position: relative; max-width: 720px; padding: max(64px, calc(var(--titlebar-h) + 24px)) 40px 0; }
+.nb-head[data-cover] { padding-top: 36px; }
+
+/* The cover: a band across the whole top of the page, under the window's
+   controls, as on a Notion page. */
+.nb-cover { position: relative; height: clamp(140px, 24vh, 240px); outline: none; cursor: grab; touch-action: none; }
+/* In hand: the picture follows the pointer; the buttons step aside. */
+.nb-cover[data-moving] { cursor: grabbing; }
+.nb-cover[data-moving] .nb-cover-actions, .nb-cover[data-sizing] .nb-cover-actions { opacity: 0 !important; pointer-events: none; }
+.nb-cover:focus-visible { box-shadow: inset 0 0 0 2px var(--ink); }
+.nb-cover-actions { cursor: auto; }
+/* Its bottom edge, dragged up and down: a strip across the whole edge, with a
+   small bar in the middle shown on pointing at the cover. */
+.nb-cover-edge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  z-index: 2;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  cursor: ns-resize;
+  outline: none;
+  touch-action: none;
+}
+.nb-cover-edge::after {
+  content: "";
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.nb-cover-edge:focus-visible::after, .nb-cover[data-sizing] .nb-cover-edge::after { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .nb-cover:hover .nb-cover-edge::after { opacity: 1; }
+}
+@media (hover: none) { .nb-cover-edge::after { opacity: 1; } }
+.nb-cover-reset { display: block; width: 100%; margin-top: 8px; padding: 6px 0 0; border: 0; border-top: 1px solid var(--line); background: none; color: var(--dim); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; }
+.nb-cover-reset:hover { color: var(--ink); }
+.nb-cover-actions { position: absolute; right: 40px; bottom: 14px; opacity: 0; transition: opacity 150ms ease; }
+.nb-cover-actions:focus-within, .nb-cover-actions[data-open] { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .nb-cover:hover .nb-cover-actions { opacity: 1; }
+}
+@media (hover: none) { .nb-cover-actions { opacity: 1; } }
+/* Readable on any cover: a small frosted chip. */
+.nb-cover-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 160ms var(--ease-out);
+}
+.nb-cover-button:hover { background: var(--surface); }
+.nb-cover-button:active { transform: scale(0.97); }
+/* Its menu grows from the button's top-right corner, where it was opened. */
+.nb-cover-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 10;
+  width: 280px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transform-origin: top right;
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+@starting-style {
+  .nb-cover-menu { opacity: 0; transform: scale(0.96); }
+}
+.nb-cover-swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.nb-cover-swatch {
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: box-shadow 150ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.nb-cover-swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.nb-cover-swatch:active { transform: scale(0.96); }
+.nb-cover-swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.nb-cover-menu-row { display: flex; gap: 8px; margin-top: 12px; }
+.nb-cover-menu-row .btn { flex: 1; justify-content: center; }
+/* No cover: "Add cover" over the title, shown on pointing at the head. */
+.nb-cover-add {
+  position: absolute;
+  top: max(28px, calc(var(--titlebar-h) - 8px));
+  left: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--faint);
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+.nb-cover-add:focus-visible { opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .nb-head:hover .nb-cover-add { opacity: 1; }
+  .nb-cover-add:hover { background: var(--well); color: var(--ink); }
+}
+@media (hover: none) { .nb-cover-add { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .nb-cover-menu { transition: opacity 150ms ease; }
+  .nb-cover-button:active, .nb-cover-swatch:active { transform: none; }
+}
 .nb-page-title { margin: 0; font-size: 38px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
 .nb-page-lede { margin: 10px 0 0; color: var(--dim); line-height: 1.5; }
 
@@ -1871,7 +2408,9 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 /* Every widget the same width (lib/placement.js WIDGET: twelve of the
    page's 24px cells), so they line up in columns wherever they're put. */
 .nb-canvas { --nb-widget: 288px; }
-.nb-block { position: relative; flex: none; width: var(--nb-widget); scroll-margin: 64px; }
+/* One made wider spans whole columns (--cols, lib/placement.js spanWidth):
+   its widths and the gaps between them. */
+.nb-block { position: relative; flex: none; font-family: var(--nb-font-widget); width: calc(var(--nb-widget) * var(--cols, 1) + 24px * (var(--cols, 1) - 1)); scroll-margin: 64px; }
 .nb-block.nb-live { width: var(--nb-widget); }
 /* In hand: above everything, lifted off the page. */
 .nb-place[data-dragging] { z-index: 5; }
@@ -1907,7 +2446,7 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .nb-freetext {
   min-height: 1.6em;
   padding: 3px 2px;
-  font-family: var(--prose);
+  font-family: var(--nb-font-text);
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1918,7 +2457,8 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .nb-caret { position: absolute; z-index: 4; width: var(--nb-widget); }
 
 .nb-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.nb-title { flex: 1 1 6ch; font-size: 21px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.3; }
+/* A long heading runs to the section's edge and ends in "…" there. */
+.nb-title { flex: 1 1 6ch; font-family: var(--nb-font-section); font-size: 21px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.3; text-overflow: ellipsis; }
 .nb-in-sidebar { flex: none; display: grid; place-items: center; color: var(--faint); }
 
 /* The handles: + and ⋮⋮, just above the widget's corner, shown on pointing
@@ -1949,7 +2489,9 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 @media (hover: none) { .nb-gutter-button { opacity: 1; } }
 
 /* Something made just now settles in where the caret was. */
-.nb-block { transition: transform 200ms var(--ease-out), opacity 200ms var(--ease-out); }
+.nb-block { transition: transform 200ms var(--ease-out), opacity 200ms var(--ease-out), width 200ms var(--ease-out); }
+/* Being resized: the width is the hand's, never eased. */
+.nb-place[data-resizing] > .nb-block { transition: none; }
 @starting-style {
   .nb-block { opacity: 0; transform: translateY(4px); }
 }
@@ -1984,15 +2526,39 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .nb-live-empty { margin: 0; padding: 3px 2px; color: var(--faint); }
 
 /* Free text: grows as it's written. */
-.nb-text { display: block; resize: none; overflow: hidden; min-height: 0; line-height: 1.6; font-family: var(--prose); }
+.nb-text { display: block; resize: none; overflow: hidden; min-height: 0; line-height: 1.6; font-family: var(--nb-font-text); }
 
-/* Who last changed it, in the heading's row: quiet until pointed at, unless
+/* Who last changed it, on a quiet line under the heading -- louder while
    it's new to the user. */
-.nb-meta { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; overflow: hidden; color: var(--faint); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; opacity: 0; transition: opacity 150ms ease; }
-.nb-block:hover .nb-meta, .nb-block:focus-within .nb-meta, .nb-block[data-marked] .nb-meta { opacity: 1; }
+.nb-meta { display: flex; align-items: center; gap: 6px; min-width: 0; margin: -1px 2px 2px; color: var(--faint); font-size: 12px; }
+.nb-meta-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .nb-block[data-marked] .nb-meta { color: var(--dim); }
-.nb-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
-@media (hover: none) { .nb-meta { opacity: 1; } }
+.nb-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* The right edge, to drag wider or narrower: in the gap beside the widget,
+   shown on pointing at it. */
+.nb-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -14px;
+  width: 12px;
+  display: grid;
+  place-items: center;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.nb-resize::after { content: ""; width: 4px; height: min(40px, 60%); border-radius: 2px; background: var(--line-strong); transition: background-color 150ms ease; }
+.nb-resize:focus-visible, .nb-place[data-resizing] .nb-resize { opacity: 1; }
+.nb-resize:focus-visible::after, .nb-place[data-resizing] .nb-resize::after { background: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+  .nb-block:hover .nb-resize { opacity: 1; }
+  .nb-resize:hover::after { background: var(--dim); }
+}
+@media (hover: none) { .nb-resize { opacity: 1; } }
 
 /* "/": the empty line that makes sections, and its menu of kinds. Opened by
    typing, so it appears at once. */
@@ -2091,7 +2657,7 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
   right: 6px;
   height: 2px;
   border-radius: 2px;
-  background: var(--red);
+  background: var(--accent);
   pointer-events: none;
   transition: transform 150ms var(--ease-out), opacity 150ms var(--ease-out);
 }
@@ -2125,15 +2691,15 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 @starting-style {
   .drag-widget-body { opacity: 0; transform: scale(0.96); }
 }
-.drag-widget[data-removing] .drag-widget-body { opacity: 0.75; box-shadow: 0 0 0 2px var(--red), 0 18px 40px -14px rgba(0, 0, 0, 0.35); }
+.drag-widget[data-removing] .drag-widget-body { opacity: 0.75; box-shadow: 0 0 0 2px var(--accent), 0 18px 40px -14px rgba(0, 0, 0, 0.35); }
 .drag-widget-note {
   position: absolute;
   top: -10px;
   right: 10px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--red);
-  color: #fff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 11px;
   font-weight: 600;
 }

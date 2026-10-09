@@ -93,7 +93,7 @@ export async function screenOf(chatId) {
   return shot?.image ? shot : null;
 }
 
-/** The sandbox's state, and the reader's say over it (Models screen). */
+/** The sandbox's state, and the reader's say over it (Settings, Computer tab). */
 export const sandboxStatus = () => invoke("machine_status", {}, "The sandbox");
 export async function stopSandbox() {
   for (const key of sessions) disconnect(key);

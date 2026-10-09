@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
+import { coverFrom } from "../lib/attach.js";
 import { LIVE, TYPES, isFixed, notebook, useNotebook } from "../lib/notebook.js";
 import { versionLines } from "../lib/notebookSync.js";
-import { GRID, freeSpot, packRows, pushDown, snap } from "../lib/placement.js";
+import { GRID, colsFor, freeSpot, packRows, pushDown, roomFor, snap, spanWidth } from "../lib/placement.js";
 import { outside, sidebarIndexAt, widgetDrop } from "../lib/widgetDrop.js";
 import { Icon } from "./Icon.jsx";
 import { RowMenu } from "./RowMenu.jsx";
-import { LIVE_WIDGETS } from "./widgets/index.jsx";
+import { widgetFor } from "./widgets/index.jsx";
 import { WidgetPlace } from "./widgets/WidgetHead.jsx";
 
 /* The Notebook (lib/notebook.js): a page that goes on down and sideways as
@@ -156,6 +157,9 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
   // Made where the caret was: a widget ("/"), or the words typed there.
   const create = (type, data, at) => {
     setCaret(null);
+    // A widget of the reader's own: made, picked or imported in the sheet,
+    // then put where the caret was.
+    if (type === "widget:new") return widgetCtx?.openWidgetSheet({ at });
     if (type.startsWith("live:")) {
       const added = notebook.addLive(type.slice(5));
       notebook.place(added.id, at);
@@ -282,7 +286,14 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
 
   return (
     <div className="nb-scroll" ref={scroll}>
-      <header className="nb-head">
+      <Cover cover={settings.cover} notify={notify} />
+      <header className="nb-head" data-cover={settings.cover ? "" : undefined}>
+        {!settings.cover ? (
+          <button type="button" className="nb-cover-add" onClick={() => notebook.setCover({ preset: "sky" })}>
+            <Icon name="image" size={15} />
+            Add cover
+          </button>
+        ) : null}
         <h1 className="nb-page-title">Notebook</h1>
         <p className="nb-page-lede">What your agents know about you. Click anywhere to write, or type “/” there for a widget. Drag widgets where you like, or onto the sidebar.</p>
         <div className="nb-props">
@@ -342,7 +353,7 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
         >
           {placed.map((section) => (
             <Item key={section.id} section={section} scroll={scroll} canvas={canvas} onSpot={setSpot} settleClear={made === section.id} onSettled={() => setMade(null)}>
-              {(handle) => body(section, handle)}
+              {(handle, resize) => body(section, handle, resize)}
             </Item>
           ))}
 
@@ -397,7 +408,7 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
   );
 
   // A section drawn: the app's widget, words on the page, or one of yours.
-  function body(section, handle) {
+  function body(section, handle, resize = null) {
     const onMenu = (at) => setMenu({ at, section });
     const onAddBelow = () => addBelow(section);
     if (section.type === "live")
@@ -417,6 +428,7 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
         onAddBelow={onAddBelow}
         onMenu={onMenu}
         inSidebar={sidebar.includes(section.id)}
+        resize={resize}
       />
     );
   }
@@ -426,6 +438,243 @@ export function NotebookView({ focus = null, nameOf, notify, widgetCtx }) {
     const el = document.getElementById(`section-${section.id}`)?.closest(".nb-place");
     setCaret({ x: section.at?.x ?? 0, y: snap((section.at?.y ?? 0) + (el?.offsetHeight ?? 0) + 24), start: "/" });
   }
+}
+
+/* -- the cover ---------------------------------------------------------------------
+ * A band across the top of the page, as a Notion page has: one of a few
+ * gradients, or a picture of the user's. Pointing at it shows "Change cover",
+ * which opens a small menu -- from the button's corner -- of the others, a
+ * picture to upload, and removing it; with none, "Add cover" waits over the
+ * title.
+ *
+ * Dragged, the picture (or gradient) moves inside the band -- straight under
+ * the hand -- and stays where it's left; its bottom edge, dragged, makes the
+ * band taller or shorter. Both are kept with the cover ({ x, y } as the
+ * background's position in %, `height` in px), and the arrow keys do the same
+ * on the band and on its edge. */
+
+const COVERS = [
+  { id: "sky", label: "Sky", background: "linear-gradient(120deg, #007cff 0%, #4da3ff 45%, #b9dcff 100%)" },
+  { id: "dusk", label: "Dusk", background: "linear-gradient(135deg, #1e2a78 0%, #4f46e5 50%, #f0abfc 100%)" },
+  { id: "sea", label: "Sea", background: "linear-gradient(120deg, #0f766e 0%, #14b8a6 50%, #a7f3d0 100%)" },
+  { id: "sunset", label: "Sunset", background: "linear-gradient(120deg, #f97316 0%, #fb7185 55%, #fbcfe8 100%)" },
+  { id: "sand", label: "Sand", background: "linear-gradient(120deg, #e6d3bd 0%, #f5ebe0 100%)" },
+  { id: "graphite", label: "Graphite", background: "linear-gradient(135deg, #1f2937 0%, #4b5563 100%)" },
+];
+// The band's height: between these, when it's been dragged.
+const COVER_MIN = 96;
+const COVER_MAX = 520;
+// A gradient is drawn larger than the band, so there's some of it to move.
+const GRADIENT_SIZE = [1.5, 2];
+const clampTo = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+function coverStyle(cover) {
+  const position = `${cover.x ?? 50}% ${cover.y ?? 50}%`;
+  const looks = cover.image
+    ? { backgroundImage: `url("${cover.image}")`, backgroundSize: "cover" }
+    : { backgroundImage: (COVERS.find((c) => c.id === cover.preset) || COVERS[0]).background, backgroundSize: `${GRADIENT_SIZE[0] * 100}% ${GRADIENT_SIZE[1] * 100}%` };
+  return { ...looks, backgroundRepeat: "no-repeat", backgroundPosition: position, ...(cover.height ? { height: cover.height } : {}) };
+}
+
+function Cover({ cover, notify }) {
+  const [open, setOpen] = useState(false);
+  const band = useRef(null);
+  const menu = useRef(null);
+  const toggle = useRef(null);
+  const picker = useRef(null);
+  const drag = useRef(null);
+  // A picture's own size, to know how far it can move in the band.
+  const natural = useRef(null);
+  useEffect(() => {
+    natural.current = null;
+    if (!cover?.image) return;
+    const img = new Image();
+    img.onload = () => (natural.current = { w: img.naturalWidth, h: img.naturalHeight });
+    img.src = cover.image;
+  }, [cover?.image]);
+  // Closed by Escape or a press anywhere else.
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e) => !menu.current?.contains(e.target) && !toggle.current?.contains(e.target) && setOpen(false);
+    const esc = (e) => e.key === "Escape" && (setOpen(false), toggle.current?.focus());
+    addEventListener("pointerdown", away);
+    addEventListener("keydown", esc);
+    return () => {
+      removeEventListener("pointerdown", away);
+      removeEventListener("keydown", esc);
+    };
+  }, [open]);
+  if (!cover) return null;
+  // Another cover keeps the band's height; where the last one sat doesn't carry over.
+  const pick = (next) => {
+    notebook.setCover(next && cover.height ? { ...next, height: cover.height } : next);
+    setOpen(false);
+  };
+  const moved = cover.x != null || cover.y != null || cover.height != null;
+
+  /* How much wider and taller than the band what's drawn in it is, in px:
+   * how far a drag can move it. */
+  const overflow = () => {
+    const { clientWidth: w, clientHeight: h } = band.current;
+    if (!cover.image) return { x: w * (GRADIENT_SIZE[0] - 1), y: h * (GRADIENT_SIZE[1] - 1) };
+    const n = natural.current;
+    if (!n) return { x: 0, y: 0 };
+    const scale = Math.max(w / n.w, h / n.h);
+    return { x: n.w * scale - w, y: n.h * scale - h };
+  };
+  const place = (x, y) => (band.current.style.backgroundPosition = `${x}% ${y}%`);
+  const move = {
+    onPointerDown: (e) => {
+      if (e.button !== 0 || e.target.closest(".nb-cover-actions, .nb-cover-edge")) return;
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      drag.current = { kind: "move", x: e.clientX, y: e.clientY, from: { x: cover.x ?? 50, y: cover.y ?? 50 }, room: overflow(), at: null };
+      band.current.dataset.moving = "";
+    },
+    onPointerMove: (e) => {
+      const d = drag.current;
+      if (d?.kind !== "move") return;
+      // Moved with the hand: the picture goes right, so its position goes left.
+      const x = d.room.x > 1 ? clampTo(d.from.x - ((e.clientX - d.x) / d.room.x) * 100, 0, 100) : d.from.x;
+      const y = d.room.y > 1 ? clampTo(d.from.y - ((e.clientY - d.y) / d.room.y) * 100, 0, 100) : d.from.y;
+      d.at = { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+      place(d.at.x, d.at.y);
+    },
+  };
+  const edge = {
+    onPointerDown: (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      drag.current = { kind: "height", y: e.clientY, from: band.current.offsetHeight, at: null };
+      band.current.dataset.sizing = "";
+    },
+    onPointerMove: (e) => {
+      const d = drag.current;
+      if (d?.kind !== "height") return;
+      d.at = Math.round(clampTo(d.from + e.clientY - d.y, COVER_MIN, COVER_MAX));
+      band.current.style.height = `${d.at}px`;
+    },
+  };
+  // Letting go keeps it where it is; a press that didn't move changes nothing.
+  const done = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    delete band.current.dataset.moving;
+    delete band.current.dataset.sizing;
+    if (d.at == null) return;
+    notebook.setCover(d.kind === "move" ? { ...cover, ...d.at } : { ...cover, height: d.at });
+  };
+  const keys = (e) => {
+    if (e.target !== e.currentTarget) return;
+    const step = e.shiftKey ? 10 : 2;
+    const by = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!by) return;
+    e.preventDefault();
+    notebook.setCover({ ...cover, x: clampTo((cover.x ?? 50) + by[0], 0, 100), y: clampTo((cover.y ?? 50) + by[1], 0, 100) });
+  };
+  const edgeKeys = (e) => {
+    const by = { ArrowUp: -16, ArrowDown: 16 }[e.key];
+    if (!by) return;
+    e.preventDefault();
+    e.stopPropagation();
+    notebook.setCover({ ...cover, height: Math.round(clampTo(band.current.offsetHeight + by, COVER_MIN, COVER_MAX)) });
+  };
+  const upload = async (file) => {
+    if (!file) return;
+    try {
+      pick({ image: await coverFrom(file) });
+    } catch {
+      notify(`${file.name} couldn't be used as a cover: it isn't a picture`);
+    }
+  };
+  return (
+    <div
+      ref={band}
+      className="nb-cover"
+      style={coverStyle(cover)}
+      tabIndex={0}
+      role="img"
+      aria-label="Cover. Drag, or use the arrow keys, to move it"
+      title="Drag to move"
+      onPointerDown={move.onPointerDown}
+      onPointerMove={move.onPointerMove}
+      onPointerUp={done}
+      onPointerCancel={done}
+      onKeyDown={keys}
+    >
+      <div className="nb-cover-actions" data-open={open ? "" : undefined}>
+        <button ref={toggle} type="button" className="nb-cover-button" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen((o) => !o)}>
+          <Icon name="image" size={14} />
+          Change cover
+        </button>
+        {open ? (
+          <div ref={menu} className="nb-cover-menu" role="dialog" aria-label="Cover">
+            <div className="nb-cover-swatches">
+              {COVERS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="nb-cover-swatch"
+                  style={{ background: c.background }}
+                  aria-label={c.label}
+                  title={c.label}
+                  aria-pressed={!cover.image && cover.preset === c.id}
+                  onClick={() => pick({ preset: c.id })}
+                />
+              ))}
+            </div>
+            <div className="nb-cover-menu-row">
+              <button type="button" className="btn" onClick={() => picker.current.click()}>
+                <Icon name="camera" size={15} />
+                Upload a picture
+              </button>
+              <button type="button" className="btn" onClick={() => pick(null)}>
+                Remove
+              </button>
+            </div>
+            {moved ? (
+              <button
+                type="button"
+                className="nb-cover-reset"
+                onClick={() => {
+                  notebook.setCover(cover.image ? { image: cover.image } : { preset: cover.preset });
+                  setOpen(false);
+                }}
+              >
+                Reset its position and height
+              </button>
+            ) : null}
+            <input
+              ref={picker}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                upload(e.target.files[0]);
+                e.target.value = "";
+              }}
+            />
+          </div>
+        ) : null}
+      </div>
+      <div
+        className="nb-cover-edge"
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Cover height. Drag, or use the up and down arrow keys, to change it"
+        tabIndex={0}
+        title="Drag to resize"
+        onPointerDown={edge.onPointerDown}
+        onPointerMove={edge.onPointerMove}
+        onPointerUp={done}
+        onPointerCancel={done}
+        onKeyDown={edgeKeys}
+      />
+    </div>
+  );
 }
 
 /* -- on the page -----------------------------------------------------------------
@@ -534,9 +783,62 @@ function Item({ section, scroll, canvas, onSpot, settleClear, onSettled, childre
       notebook.place(section.id, { x: next.x, y: next.y });
     },
   };
+
+  /* Its right edge, dragged: the widget follows the hand, the dashed outline
+   * shows the width it will take -- a whole number of the page's columns
+   * (lib/placement.js), never into a neighbour -- and on letting go it
+   * settles to that. The arrow keys, on the edge, step a column. */
+  const cols = section.at?.cols || 1;
+  const sizing = useRef(null);
+  const blockOf = () => el.current.querySelector(":scope > .nb-block");
+  const roomNow = () => {
+    const node = el.current;
+    return roomFor({ x: node.offsetLeft, y: node.offsetTop, h: node.offsetHeight }, othersThan(canvas.current, node));
+  };
+  const resize = {
+    cols,
+    onPointerDown: (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      sizing.current = { x: e.clientX, w: blockOf().offsetWidth, max: Math.max(cols, roomNow()), cols };
+      el.current.dataset.resizing = "";
+    },
+    onPointerMove: (e) => {
+      const r = sizing.current;
+      if (!r) return;
+      const w = Math.min(spanWidth(r.max), Math.max(spanWidth(1), r.w + e.clientX - r.x));
+      blockOf().style.width = `${w}px`; // straight under the hand
+      r.cols = colsFor(w, r.max);
+      onSpot({ x: section.at.x, y: section.at.y, w: spanWidth(r.cols), h: el.current.offsetHeight });
+    },
+    onPointerUp: () => {
+      const r = sizing.current;
+      sizing.current = null;
+      if (!r) return;
+      onSpot(null);
+      delete el.current.dataset.resizing;
+      blockOf().style.width = "";
+      if (r.cols !== cols) notebook.span(section.id, r.cols);
+    },
+    onPointerCancel: () => {
+      sizing.current = null;
+      onSpot(null);
+      delete el.current.dataset.resizing;
+      blockOf().style.width = "";
+    },
+    onKeyDown: (e) => {
+      const by = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+      if (!by) return;
+      e.preventDefault();
+      const next = Math.min(Math.max(cols, roomNow()), Math.max(1, cols + by));
+      if (next !== cols) notebook.span(section.id, next);
+    },
+  };
+
   return (
-    <div ref={el} className="nb-place" data-id={section.id} style={{ left: section.at.x, top: section.at.y }}>
-      {children(handle)}
+    <div ref={el} className="nb-place" data-id={section.id} style={{ left: section.at.x, top: section.at.y, ...(cols > 1 ? { "--cols": cols } : {}) }}>
+      {children(handle, resize)}
     </div>
   );
 }
@@ -573,7 +875,7 @@ function TextItem({ section, handle, onMenu }) {
 
 /* -- a section --------------------------------------------------------------- */
 
-function Block({ section, handle, autoFocus, onFocused, editor, marked, unsaved, clashes = [], nameOf, onAddBelow, onMenu, inSidebar }) {
+function Block({ section, handle, autoFocus, onFocused, editor, marked, unsaved, clashes = [], nameOf, onAddBelow, onMenu, inSidebar, resize = null }) {
   const root = useRef(null);
   const title = useRef(null);
   useLayoutEffect(() => {
@@ -612,21 +914,23 @@ function Block({ section, handle, autoFocus, onFocused, editor, marked, unsaved,
             focusIn(root.current, ".nb-body input:not([type=checkbox]), .nb-body textarea");
           }}
         />
-        {/* Who last changed it, when it was an agent: there whenever it's new to
-            the user (with the red mark), otherwise on pointing at the section.
-            It sits in the heading's row, so showing it moves nothing. */}
-        {editor ? (
-          <span className="nb-meta">
-            {marked ? <span className="nb-dot" /> : null}
-            Updated by {editor} · {ago(section.edited.at)}
-          </span>
-        ) : null}
         {inSidebar ? (
           <span className="nb-in-sidebar" title="In the sidebar">
             <Icon name="sidebar" size={14} />
           </span>
         ) : null}
       </div>
+      {/* Who last changed it, when it was an agent, on its own line under the
+          heading -- so the heading has the section's whole width -- with the
+          accent mark while it's new to the user. */}
+      {editor ? (
+        <p className="nb-meta">
+          {marked ? <span className="nb-dot" /> : null}
+          <span className="nb-meta-text">
+            Updated by {editor} · {ago(section.edited.at)}
+          </span>
+        </p>
+      ) : null}
 
       {clashes.map((c) => (
         <p className="nb-clash" key={c.target}>
@@ -642,6 +946,23 @@ function Block({ section, handle, autoFocus, onFocused, editor, marked, unsaved,
 
       {section.type === "facts" ? <Facts section={section} /> : section.type === "list" ? <Todo section={section} /> : <Text section={section} />}
 
+      {resize ? (
+        <div
+          className="nb-resize"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Width of ${section.title}: ${resize.cols} column${resize.cols === 1 ? "" : "s"}. Arrow keys to change`}
+          aria-valuenow={resize.cols}
+          aria-valuemin={1}
+          tabIndex={0}
+          title="Drag to resize"
+          onPointerDown={resize.onPointerDown}
+          onPointerMove={resize.onPointerMove}
+          onPointerUp={resize.onPointerUp}
+          onPointerCancel={resize.onPointerCancel}
+          onKeyDown={resize.onKeyDown}
+        />
+      ) : null}
     </section>
   );
 }
@@ -750,7 +1071,7 @@ function Gutter({ section, handle, onAddBelow, onMenu }) {
    as live as it is there. Agents read the same thing as rows
    (lib/liveRows.js), under the section's title. */
 function LiveBlock({ section, handle, widgetCtx, inSidebar, onAddBelow, onMenu }) {
-  const Widget = LIVE_WIDGETS[section.source];
+  const Widget = widgetFor(section.source);
   return (
     <section className="nb-block nb-live" id={`section-${section.id}`} data-sort={section.id}>
       <Gutter section={section} handle={handle} onAddBelow={onAddBelow} onMenu={onMenu} />
@@ -950,6 +1271,7 @@ function SlashLine({ onCreate, onCancel = null, onLeave = null, placeholder = "T
     ...Object.entries(TYPES)
       .filter(([type]) => KINDS[type])
       .map(([type, t]) => [type, { label: t.label, hint: t.hint, icon: KINDS[type].icon, also: KINDS[type].also }]),
+    ["widget:new", { label: "Widget", hint: "Make your own, start from a ready one, or import a file", icon: "plus", also: ["widget", "custom", "html", "code", "import", "clock", "timer", "counter", "links"] }],
     ...missingLive.map((source) => [`live:${source}`, { label: LIVE[source].title, hint: `${LIVE[source].hint} · live`, icon: "sidebar", also: ["widget", "live", source] }]),
   ];
   const options = query == null ? [] : kinds.filter(([, t]) => !query || t.label.toLowerCase().includes(query) || t.also.some((a) => a.includes(query)));

@@ -9,11 +9,15 @@
  *
  * Who answers (`respondersFor`): the members the reader picked, then anyone
  * @-mentioned in the message, in the group's order -- and if nobody was named,
- * everyone, in turn. An agent can hand the floor on by @-mentioning another
+ * or the reader wrote @everyone, everyone, in turn. An agent can hand the floor on by @-mentioning another
  * member in its reply (`mentionsIn`), up to MAX_HANDOFFS times a message, so
  * agents can't talk in circles. */
 
 export const MAX_HANDOFFS = 3;
+
+/* @everyone: offered in the @ list beside the members, and read as "all of
+ * you". Only the reader's: an agent writing it doesn't hand the floor round. */
+export const EVERYONE = { id: "everyone", name: "everyone" };
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -30,8 +34,29 @@ export function mentionsIn(text, members) {
   return found.sort((a, b) => a.at - b.at).map((f) => f.id);
 }
 
+/** Every @Name in `text`, where it is: [{ start, end, id }], in order. Where
+ *  two names could match at once ("@Ann" and "@Ann Lee"), the longer wins. */
+export function mentionSpans(text, members) {
+  const spans = [];
+  for (const m of members) {
+    const name = String(m.name || "").trim();
+    if (!name) continue;
+    const re = new RegExp(`(^|[^\\w@])(@${escape(name)})(?![\\w])`, "gi");
+    for (const hit of String(text || "").matchAll(re)) {
+      const start = hit.index + hit[1].length;
+      spans.push({ start, end: start + hit[2].length, id: m.id });
+    }
+  }
+  spans.sort((a, b) => a.start - b.start || b.end - a.end);
+  return spans.filter((s, i) => !spans.slice(0, i).some((t) => t.start < s.end && s.start < t.end));
+}
+
+/** Whether `text` says @everyone. */
+export const mentionsEveryone = (text) => mentionSpans(text, [EVERYONE]).length > 0;
+
 /** Who answers a message, in order. */
 export function respondersFor({ members, picked = [], text = "" }) {
+  if (mentionsEveryone(text)) return members.map((m) => m.id);
   const wanted = new Set([...picked, ...mentionsIn(text, members)]);
   const named = members.filter((m) => wanted.has(m.id)).map((m) => m.id);
   return named.length ? named : members.map((m) => m.id);

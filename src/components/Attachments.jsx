@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { kindOf, prepare } from "../lib/attach.js";
+import { kindOf, prepare, refusalOf } from "../lib/attach.js";
 import { Icon } from "./Icon.jsx";
 
 /* Files waiting to go with a message (lib/attach.js), for a message box:
  * picked with the paperclip, or dropped anywhere on the window -- `dropping`
- * is true while files are held over it, so the box can light up. A file that
- * can't be sent is still shown, with why, until it is removed. Used by the
+ * is true while files are held over it, so the box can light up. Each is
+ * read as soon as it is attached -- a PDF's text taken out then, not when
+ * Send is pressed -- so a file that can't be sent says why, in words under
+ * it, before anything goes; it stays until it is removed. Used by the
  * composer and the quickview. */
 export function useAttachments() {
-  const [staged, setStaged] = useState([]); // { key, file, preview, problem }
+  const [staged, setStaged] = useState([]); // { key, file, preview, problem, reading, ready }
   const [dropping, setDropping] = useState(false);
   const picker = useRef(null);
   const depth = useRef(0);
@@ -19,11 +21,18 @@ export function useAttachments() {
   const stage = useCallback((files) => {
     const items = [...files].map((file) => {
       const kind = kindOf(file);
+      const key = `${file.name}:${file.size}:${file.lastModified}:${Math.random()}`;
+      const ready = kind ? prepare(file) : null;
+      ready?.then((made) =>
+        setStaged((prev) => prev.map((i) => (i.key === key ? { ...i, reading: false, problem: made.error || null } : i))),
+      );
       return {
-        key: `${file.name}:${file.size}:${file.lastModified}:${Math.random()}`,
+        key,
         file,
         preview: kind === "image" ? URL.createObjectURL(file) : null,
-        problem: kind ? null : "isn't a picture or a text file",
+        problem: kind ? null : refusalOf(file),
+        reading: kind === "document",
+        ready,
       };
     });
     setStaged((prev) => [...prev, ...items]);
@@ -78,11 +87,12 @@ export function useAttachments() {
     usable,
     dropping,
     stage,
-    /** The files that can go, read and made ready; the box is emptied. */
+    /** The files that can go, read and made ready; the box is emptied. One
+     *  still being read is waited for. */
     take: async () => {
       const going = usable;
       setStaged([]);
-      const files = (await Promise.all(going.map((i) => prepare(i.file)))).filter((f) => !f.error);
+      const files = (await Promise.all(going.map((i) => i.ready))).filter((f) => !f.error);
       going.forEach((i) => i.preview && URL.revokeObjectURL(i.preview));
       return files;
     },
@@ -99,23 +109,42 @@ export function useAttachments() {
             e.target.value = ""; // so picking the same file again still fires
           }}
         />
-        <button type="button" className="chip icon" aria-label="Attach files" title="Attach pictures or text files" onClick={() => picker.current.click()}>
+        <button type="button" className="chip icon" aria-label="Attach files" title="Attach pictures, PDFs, Word or text files" onClick={() => picker.current.click()}>
           <Icon name="paperclip" size={16} />
         </button>
       </>
     ),
     list: staged.length ? (
-      <ul className="staged" aria-label="Attached">
-        {staged.map((item) => (
-          <li key={item.key} className="staged-item" data-problem={item.problem ? "" : undefined} title={item.problem ? `${item.file.name} ${item.problem}` : item.file.name}>
-            {item.preview ? <img src={item.preview} alt="" /> : <Icon name={item.problem ? "close" : "file"} size={16} />}
-            <span className="staged-name">{item.file.name}</span>
-            <button type="button" aria-label={`Remove ${item.file.name}`} onClick={() => unstage(item.key)}>
-              <Icon name="close" size={12} />
-            </button>
-          </li>
-        ))}
-      </ul>
+      <>
+        <ul className="staged" aria-label="Attached">
+          {staged.map((item) => (
+            <li
+              key={item.key}
+              className="staged-item"
+              data-problem={item.problem ? "" : undefined}
+              data-reading={item.reading ? "" : undefined}
+              title={item.problem ? `${item.file.name} ${item.problem}` : item.reading ? `Reading ${item.file.name}…` : item.file.name}
+            >
+              {item.preview ? <img src={item.preview} alt="" /> : <Icon name={item.problem ? "close" : "file"} size={16} />}
+              <span className="staged-name">{item.file.name}</span>
+              <button type="button" aria-label={`Remove ${item.file.name}`} onClick={() => unstage(item.key)}>
+                <Icon name="close" size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+        {staged.some((i) => i.problem) ? (
+          <ul className="staged-problems" aria-live="polite">
+            {staged
+              .filter((i) => i.problem)
+              .map((i) => (
+                <li key={i.key}>
+                  Won’t be sent: {i.file.name} {i.problem}.
+                </li>
+              ))}
+          </ul>
+        ) : null}
+      </>
     ) : null,
   };
 }

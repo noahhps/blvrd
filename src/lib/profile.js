@@ -16,7 +16,7 @@
  * Each comes from, in order, each overriding the one before: a default for
  * the server, what the server says about the model (`discover`), what was
  * learned while talking to it (a refusal, `learn`), the probe (lib/probe.js),
- * and what the reader set on the Models screen. Kept in this machine's
+ * and what the reader set in Settings (Models tab). Kept in this machine's
  * storage, apart from the rest of the app's (it is about servers, not
  * people), so it survives launches. */
 
@@ -57,7 +57,7 @@ const tell = () => {
   for (const fn of listeners) fn();
 };
 
-/** Hear when any profile changes (the Models screen). */
+/** Hear when any profile changes (Settings, Models tab). */
 export function onProfiles(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);

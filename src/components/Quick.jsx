@@ -138,7 +138,7 @@ export function Quick() {
         <div className="quick-row" data-tauri-drag-region>
         <span className="quick-grip" data-tauri-drag-region title="Drag to move" aria-hidden="true" />
         {/* blvrd watches you write: eyes on the words, a little give with each key. */}
-        <Mascot shape="arc" colour="var(--red)" mood={text ? "listening" : "idle"} tick={text.length} size={22} />
+        <Mascot shape="arc" colour="var(--accent)" mood={text ? "listening" : "idle"} tick={text.length} size={22} />
         {agent ? (
           <span className="quick-chip">
             <AgentAvatar look={agent.look} name={agent.name} size={20} />

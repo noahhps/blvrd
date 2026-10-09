@@ -1,6 +1,6 @@
 import { notebook } from "../lib/notebook.js";
 import { useWidgetDrop } from "../lib/widgetDrop.js";
-import { LIVE_WIDGETS } from "./widgets/index.jsx";
+import { widgetFor } from "./widgets/index.jsx";
 import { NotebookWidget } from "./widgets/NotebookWidget.jsx";
 
 /* The widget being carried between the Notebook page and the sidebar
@@ -13,7 +13,7 @@ export function DragChip({ ctx }) {
   const { chip, removing } = useWidgetDrop();
   if (!chip) return null;
   const section = notebook.get().sections.find((s) => s.id === chip.id);
-  const Widget = section ? (section.type === "live" ? LIVE_WIDGETS[section.source] : NotebookWidget) : null;
+  const Widget = section ? (section.type === "live" ? widgetFor(section.source) : NotebookWidget) : null;
   if (!Widget) return null;
   return (
     <div className="drag-widget" style={{ transform: `translate(${chip.x - 24}px, ${chip.y - 16}px)` }} data-removing={removing ? "" : undefined} aria-hidden="true" inert="">

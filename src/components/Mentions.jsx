@@ -4,12 +4,16 @@ import { taglineOf } from "../lib/agents.js";
 import { mentionAt, mentionable } from "../lib/mentions.js";
 import { PRESETS } from "../lib/presets.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { GroupAvatar } from "./GroupAvatar.jsx";
 
 /* The @ list: typing @ in a box brings up the agents it can reach, above the
  * box, narrowed as you type. ↑ ↓ to choose -- the list runs upward, so ↑ goes
  * further from the box -- Enter or Tab to take one, Escape to let it go. What
  * taking one does is the box's own business (`take`): the quickview puts the
- * agent in a chip, a group's composer writes "@Name " into the message. */
+ * agent in a chip, a group's composer writes "@Name " into the message.
+ *
+ * An entry with `members` stands for them all (a group's @everyone): drawn as
+ * the group, and saying what it does in its own `tagline`. */
 
 export function useMentions(agents, take) {
   const [mention, setMention] = useState(null); // { start, query }
@@ -61,10 +65,10 @@ export function useMentions(agents, take) {
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => choose(a)}
               >
-                <AgentAvatar look={a.look} name={a.name} size={28} />
+                {a.members ? <GroupAvatar members={a.members} size={28} /> : <AgentAvatar look={a.look} name={a.name} size={28} />}
                 <span className="mention-text">
                   <span className="mention-name">{a.name}</span>
-                  <span className="mention-tagline">{taglineOf(a, PRESETS)}</span>
+                  <span className="mention-tagline">{a.tagline ?? taglineOf(a, PRESETS)}</span>
                 </span>
               </button>
             </li>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { taglineOf } from "./lib/agents.js";
-import { connectorTools, groupsOf } from "./lib/connectors/index.js";
+import { connectorNote, connectorTools, connectorsOf, groupsOf } from "./lib/connectors/index.js";
 import { MAX_HANDOFFS, groupBrief, mentionsIn, respondersFor, viewFor } from "./lib/group.js";
 import { PRESETS } from "./lib/presets.js";
 import { runTurn } from "./lib/run.js";
@@ -43,8 +43,11 @@ import {
   withPause,
   withReports,
 } from "./lib/schedule.js";
-import { canFold, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
+import { canCompact as canCompactChat, compact, compactAtOf, sinceSummary, summaryContext, tooLong, withSummary } from "./lib/compact.js";
 import { QUICK_SEND, holdShortcut, shortcutOf, showMain, toggleQuick } from "./lib/quick.js";
+import { applyFonts, fontsOf } from "./lib/fonts.js";
+import { applyTheme, themeOf, useDark } from "./lib/theme.js";
+import { appIconOf, applyAppIcon, iconName } from "./lib/appIcon.js";
 import { AgentEditor } from "./components/AgentEditor.jsx";
 import { CalendarView } from "./components/CalendarView.jsx";
 import { NotebookView } from "./components/NotebookView.jsx";
@@ -61,6 +64,9 @@ import { RowMenu } from "./components/RowMenu.jsx";
 import { Tasks } from "./components/Tasks.jsx";
 import { Settings } from "./components/Settings.jsx";
 import { Widgets } from "./components/widgets/index.jsx";
+import { WidgetSheet } from "./components/WidgetSheet.jsx";
+import { MAX_DATA, newWidgetId, sourceOf } from "./lib/widgets.js";
+import { widgetTools } from "./lib/widgetTools.js";
 
 /* What goes back to the model: the chat since its last summary (lib/compact.js),
  * minus turns that failed -- an error is for the reader, not part of the
@@ -265,10 +271,79 @@ export default function App() {
   };
   const scheduleToolList = useMemo(() => scheduleTools(scheduleOps.current), []);
 
+  /* -- the reader's own widgets (lib/widgets.js) ----------------------------------
+   * Their code and saved data in the app's state; each placed one a live
+   * section of the Notebook. Made in the sheet, or by an agent. */
+  const [widgetSheet, setWidgetSheet] = useState(null); // { id, at }: the sheet, open
+  const saveWidget = useCallback(
+    ({ id = null, name, html, by = "user" }, { sidebar = false, at = null } = {}) => {
+      const known = id && stateRef.current.customWidgets?.[id];
+      const wid = known ? id : newWidgetId();
+      update((s) => {
+        const was = s.customWidgets?.[wid];
+        return { customWidgets: { ...s.customWidgets, [wid]: { ...was, name, html, by: was?.by || by, updatedAt: Date.now() } } };
+      });
+      if (known) notebook.retitleLive(sourceOf(wid), name);
+      else {
+        // New: on the page where it was asked for (else where the page puts
+        // what has no place yet), and in the sidebar if wanted.
+        const added = notebook.addWidget(sourceOf(wid), name);
+        if (at) notebook.place(added.id, at);
+        if (sidebar) notebook.addToSidebar(added.id);
+      }
+      return wid;
+    },
+    [update],
+  );
+  // What a widget keeps (blvrd.save), within its allowance.
+  const saveWidgetData = useCallback(
+    (id, data) => {
+      if (JSON.stringify(data ?? null).length > MAX_DATA) return;
+      update((s) => (s.customWidgets?.[id] ? { customWidgets: { ...s.customWidgets, [id]: { ...s.customWidgets[id], data } } } : {}));
+    },
+    [update],
+  );
+  // A widget as a file, to pass on: Downloads in the app, a download here.
+  const exportWidget = useCallback(
+    (id) => {
+      const w = stateRef.current.customWidgets?.[id];
+      if (!w) return;
+      if (inDesktop()) {
+        invoke("widget_export", { name: w.name, html: w.html }, "Saving the widget")
+          .then(() => notify(`Saved “${w.name}” to Downloads.`))
+          .catch((e) => notify(String(e?.message || e)));
+        return;
+      }
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([w.html], { type: "text/html" }));
+      link.download = `${w.name}.html`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    },
+    [notify],
+  );
+  const widgetToolList = useMemo(
+    () =>
+      widgetTools({
+        list: () => Object.entries(stateRef.current.customWidgets || {}).map(([id, w]) => ({ id, ...w })),
+        make: (widget, options) => saveWidget(widget, options),
+      }),
+    [saveWidget],
+  );
+  // What agents read of each in the Notebook: its name and what it keeps.
+  useEffect(() => {
+    for (const id of Object.keys(state.customWidgets || {})) {
+      provideLive(sourceOf(id), () => {
+        const w = stateRef.current.customWidgets?.[id];
+        return w ? [{ key: "Widget", value: w.name }, { key: "What it has saved", value: JSON.stringify(w.data ?? null).slice(0, 800) }] : [];
+      });
+    }
+  }, [state.customWidgets]);
+
   // Every tool an agent could be given: the built-in ones and every connected
   // account's and server's.
   const available = useMemo(
-    () => [...TOOLS, ...NOTEBOOK_TOOLS, ...MEMORY_TOOLS, ...scheduleToolList, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
+    () => [...TOOLS, ...NOTEBOOK_TOOLS, ...MEMORY_TOOLS, ...scheduleToolList, ...widgetToolList, ...connectorTools(state.connectors, { getConnectors, patchConnectors })],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [state.connectors],
   );
@@ -416,7 +491,7 @@ export default function App() {
   });
 
   /* The models agents run on -- the default and each agent's own -- and who
-   * uses each, for the Models screen's computer access. */
+   * uses each, for Settings' computer access (Models tab). */
   const modelsInUse = () => {
     const found = new Map();
     const add = (choice, who) => {
@@ -455,6 +530,12 @@ export default function App() {
     // What the model can take and do, asked of its server once a launch
     // (lib/profile.js): its context, whether it calls tools natively.
     const profile = await discover(target.provider, target.model, { adapters: ADAPTERS });
+    // Connectors connected or disconnected since it last answered here, said
+    // in this request only (never in the chat), and remembered once it's gone
+    // through (`toldConnectors`).
+    const available = availableIn(chatId);
+    const connectorsNow = connectorsOf(toolsFor(agent, available));
+    const connectorsNews = connectorNote(stateRef.current.toldConnectors?.[chatId]?.[agent.id], connectorsNow);
     try {
       await runTurn({
         agent,
@@ -467,9 +548,9 @@ export default function App() {
         notebook: notebookOf(agent.id, chatId),
         thinking,
         context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
-        note: behindNote(agent.id, chatId, history, agentName),
+        note: [behindNote(agent.id, chatId, history, agentName), connectorsNews].filter(Boolean).join("\n\n"),
         memory,
-        available: availableIn(chatId),
+        available,
         approve: askFirst(chatId, agent),
         emit: (event) => {
           if (event.type === "text") setLive((l) => l && { ...l, text: l.text + event.delta, parts: withText(l.parts, event.delta), status: "" });
@@ -496,6 +577,7 @@ export default function App() {
       }
       return fail(explain(problem, target));
     }
+    update((s) => ({ toldConnectors: { ...s.toldConnectors, [chatId]: { ...s.toldConnectors?.[chatId], [agent.id]: connectorsNow } } }));
     return said;
   };
 
@@ -542,7 +624,7 @@ export default function App() {
    * with `agent`'s model and puts the summary in; it returns the chat with
    * it in, or null if there was nothing to fold or it couldn't be done.
    * Throws STOPPED when the reader stops it. */
-  const fold = async ({ chatId, chat, agent, keep, controller, loud = false }) => {
+  const fold = async ({ chatId, chat, agent, keep, controller, loud = false, all = false }) => {
     const target = modelFor(agent);
     const say = (problem) => (loud ? notify(problem) : console.warn(problem));
     if (!target || !target.provider.enabled) {
@@ -552,7 +634,10 @@ export default function App() {
     const nameOf = (id) => (id ? agents.find((a) => a.id === id)?.name || "A removed agent" : agent.name);
     setLive({ chatId, agentId: agent.id, text: "", parts: [], status: "Summarizing earlier messages…", queue: [] });
     try {
-      const done = await compact({ messages: chat, keep, provider: target.provider, model: target.model, nameOf, signal: controller.signal });
+      // What the summarizer can take decides how much of each attached file
+      // it reads.
+      const room = usableWindow(target.provider, getProfile(target.provider, target.model));
+      const done = await compact({ messages: chat, keep, provider: target.provider, model: target.model, nameOf, signal: controller.signal, room, all });
       if (!done) return null;
       const summary = { id: newId("m"), at: Date.now(), ...done.summary };
       update((s) => ({ chats: { ...s.chats, [chatId]: withSummary(s.chats[chatId] || [], done.before, summary) } }));
@@ -581,24 +666,25 @@ export default function App() {
     return (await fold({ chatId, chat, agent, keep: Math.round(limit / 4), controller })) || chat;
   };
 
-  // Whether a chat has anything to fold: more than one message from the
-  // reader since its last summary.
-  const canCompact = (chatId) => canFold(state.chats[chatId] || []);
+  // Whether a chat has anything to fold by hand: a message from the reader
+  // since its last summary.
+  const canCompact = (chatId) => canCompactChat(state.chats[chatId] || []);
 
-  // From the header, the sidebar's menu, or a swipe: all but the last exchange.
+  // From the header, the sidebar's menu, or a swipe: all but the last
+  // exchange -- or, with only one (a file and a question about it), all of it.
   const compactNow = async (chatId, agent) => {
     if (running.current || !agent) return;
     await filesIn.current;
     if (running.current) return;
     const chat = stateRef.current.chats[chatId] || [];
-    if (!canFold(chat)) {
-      notify("Nothing to compact yet: it needs more than one message from you since the last summary.");
+    if (!canCompactChat(chat)) {
+      notify("Nothing to compact yet: there's nothing from you since the last summary.");
       return;
     }
     const controller = new AbortController();
     running.current = { chatId, controller };
     try {
-      await fold({ chatId, chat, agent, keep: 0, controller, loud: true });
+      await fold({ chatId, chat, agent, keep: 0, controller, loud: true, all: true });
     } catch (stopped) {
       if (stopped !== STOPPED) throw stopped;
     } finally {
@@ -1047,6 +1133,29 @@ export default function App() {
     return () => off.then((un) => un());
   }, []);
 
+  // ⌘, opens Settings, as in any Mac app (Ctrl+, elsewhere).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "," || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.isComposing) return;
+      e.preventDefault();
+      setView((v) => (v.kind === "settings" ? v : { kind: "settings" }));
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, []);
+
+  // Light, dark or the Mac's own (lib/theme.js).
+  const theme = themeOf(state);
+  useEffect(() => applyTheme(theme), [theme]);
+  // The app's face and the Notebook's (lib/fonts.js).
+  const fonts = fontsOf(state);
+  useEffect(() => applyFonts(fonts), [fonts.app, fonts.text, fonts.sections, fonts.widgets]);
+  // The Dock's icon (lib/appIcon.js), light or dark with the app if asked.
+  const appIcon = appIconOf(state);
+  const dark = useDark(theme);
+  const dockIcon = iconName(appIcon, dark);
+  useEffect(() => applyAppIcon(dockIcon), [dockIcon]);
+
   // Links in answers and in Settings open in the reader's browser, not in the app.
   useEffect(() => {
     const onClick = async (event) => {
@@ -1084,6 +1193,12 @@ export default function App() {
     newGroup: () => setGroupEditor({}),
     hasDefaultModel: Boolean(state.defaultModel?.model),
     scheduledCount: waiting,
+    // The reader's own widgets (lib/widgets.js).
+    customWidgets: state.customWidgets || {},
+    saveWidgetData,
+    exportWidget,
+    openWidgetSheet: ({ id = null, at = null } = {}) => setWidgetSheet({ id, at }),
+    dark,
   };
 
   return (
@@ -1132,8 +1247,8 @@ export default function App() {
           </button>
         </div>
         <div className="brand">
-          <Mascot shape="arc" colour="var(--red)" mood={mood} size={26} />
-          <span className="wordmark">blvrd</span>
+          <Mascot shape="arc" colour="var(--accent)" mood={mood} size={26} />
+          <span className="wordmark">Blvrd</span>
         </div>
 
         {/* Every part of the sidebar is a widget (components/widgets), in the
@@ -1182,6 +1297,13 @@ export default function App() {
             search={searchOf(state)}
             onSearch={(patch) => update((s) => ({ search: { ...searchOf(s), ...patch } }))}
             inUse={modelsInUse()}
+            theme={theme}
+            onTheme={(theme) => update(() => ({ theme }))}
+            fonts={fonts}
+            onFont={(slot, id) => update((s) => ({ fonts: { ...fontsOf(s), [slot]: id } }))}
+            appIcon={appIcon}
+            dark={dark}
+            onAppIcon={(patch) => update((s) => ({ appIcon: { ...appIconOf(s), ...patch } }))}
             browser={state.browser || null}
             onBrowser={(browser) => {
               update(() => ({ browser }));
@@ -1257,6 +1379,19 @@ export default function App() {
       <DragChip ctx={widgetCtx} />
       <Notice notice={notice} onDone={() => setNotice(null)} />
       {rowMenu ? <RowMenu at={rowMenu.at} items={rowMenuItems()} onClose={closeRowMenu} /> : null}
+      {widgetSheet ? (
+        <WidgetSheet
+          widgets={state.customWidgets || {}}
+          editing={widgetSheet.id}
+          dark={dark}
+          onSave={(widget, { sidebar }) => {
+            saveWidget(widget, { sidebar, at: widgetSheet.at });
+            setWidgetSheet(null);
+            if (!widget.id) notify(`Added “${widget.name}” to the Notebook${sidebar ? " and the sidebar" : ""}.`);
+          }}
+          onClose={() => setWidgetSheet(null)}
+        />
+      ) : null}
       {groupEditor ? (
         <GroupEditor
           group={groupEditor.group || null}

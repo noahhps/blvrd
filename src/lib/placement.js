@@ -55,6 +55,24 @@ export function freeSpot(want, size, others, gap = GAP) {
 // A column of the table: a widget and the room after it.
 export const COLUMN = WIDGET + GAP;
 
+// A widget made wider spans whole columns, so its edges still line up with
+// the widgets above and below it: up to this many.
+export const MAX_COLS = 4;
+export const spanWidth = (cols) => cols * COLUMN - GAP;
+/** The columns nearest a width being dragged to, between 1 and `max`. */
+export const colsFor = (width, max = MAX_COLS) => Math.min(max, Math.max(1, Math.round((width + GAP) / COLUMN)));
+/** The most columns something at `rect` ({ x, y, h }) can span before it would
+ *  run into one of `others` -- never fewer than 1. */
+export function roomFor(rect, others, max = MAX_COLS, gap = GAP) {
+  let cols = 1;
+  while (cols < max) {
+    const w = spanWidth(cols + 1);
+    if (others.some((o) => overlaps({ x: rect.x, y: rect.y, w, h: rect.h }, o, gap))) break;
+    cols += 1;
+  }
+  return cols;
+}
+
 /** Positions for things laid out for the first time ([{ w, h }]): in rows
  *  from `top`, left to right, each starting on a column (so they line up
  *  whatever their width), wrapping at `width`, a cell between rows. */

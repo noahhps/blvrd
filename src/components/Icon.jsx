@@ -27,6 +27,7 @@ const PATHS = {
   tool: "M14.7 6.3a4 4 0 0 0-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 0 0 5.2-5.4l-2.5 2.5-2.6-.4-.4-2.6 2.5-2.5Z",
   chevron: "M9 6l6 6-6 6",
   "chevron-left": "M15 6l-6 6 6 6",
+  updown: "M8 9.5l4-4 4 4 M8 14.5l4 4 4-4",
   refresh: "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7",
   paperclip: "M20.5 11.5 12 20a5.5 5.5 0 0 1-7.8-7.8l8.5-8.5a3.7 3.7 0 0 1 5.2 5.2l-8.5 8.5a1.8 1.8 0 0 1-2.6-2.6l7.8-7.8",
   file: "M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z M14 3v5h5",
@@ -42,6 +43,7 @@ const PATHS = {
   // A display on its stand: the computer's screen.
   screen: "M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z M9 21h6 M12 17v4",
   camera: "M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
+  image: "M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z M4 16l4.5-4.5L13 16 M12 15l3-3 5 5 M15.5 9.5v.01",
 };
 
 /* Solid shapes drawn under a glyph's lines: the filled sidebar's panel. */

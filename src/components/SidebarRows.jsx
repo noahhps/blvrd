@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 
 import { taglineOf } from "../lib/agents.js";
-import { canFold } from "../lib/compact.js";
+import { canCompact as canCompactChat } from "../lib/compact.js";
 import { PRESETS } from "../lib/presets.js";
 import { agentCount, lastLine, shortWhen, speakerName } from "../lib/preview.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
@@ -67,7 +67,7 @@ export const AgentRow = memo(function AgentRow({ agent, chat = NO_CHAT, selected
       menuOpen={menuOpen}
       removing={removing}
       busy={busy}
-      canCompact={canFold(chat)}
+      canCompact={canCompactChat(chat)}
       act={act}
       onDelete={() => act("deleteAgent", agent)}
       onCompact={() => act("compact", agent.id, agent)}
@@ -103,7 +103,7 @@ export const GroupRow = memo(function GroupRow({ group, chat = NO_CHAT, agentsBy
       menuOpen={menuOpen}
       removing={removing}
       busy={busy}
-      canCompact={members.length > 0 && canFold(chat)}
+      canCompact={members.length > 0 && canCompactChat(chat)}
       act={act}
       onDelete={() => act("deleteGroup", group)}
       onCompact={() => act("compact", group.id, members[0])}

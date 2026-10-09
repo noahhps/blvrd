@@ -90,3 +90,34 @@ export function groupsOf(tools) {
   }
   return [...groups.values()];
 }
+
+/* -- telling agents ------------------------------------------------------------- */
+
+// The groups that are connectors (the computer and Tasks have groups too).
+const isConnector = (group) => group === "google" || group === "apple" || group === "home" || String(group).startsWith("mcp:");
+
+/** The connectors among an agent's `tools`: { [group]: its name }. */
+export function connectorsOf(tools) {
+  const out = {};
+  for (const t of tools) if (t.group && isConnector(t.group)) out[t.group] ??= t.groupLabel || t.group;
+  return out;
+}
+
+const listed = (names) => (names.length < 3 ? names.join(" and ") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`);
+
+/** What an agent should hear about connectors since it was last told:
+ *  `before`, what it had then (undefined: never told, so nothing to say);
+ *  `now`, what it has. Added to its next request only, never shown in the
+ *  chat (lib/run.js `note`). */
+export function connectorNote(before, now) {
+  if (!before) return "";
+  const added = Object.keys(now).filter((g) => !(g in before)).map((g) => now[g]);
+  const gone = Object.keys(before).filter((g) => !(g in now)).map((g) => before[g]);
+  const lines = [];
+  if (added.length) {
+    const one = added.length === 1;
+    lines.push(`The user has just connected ${listed(added)}: ${one ? "its" : "their"} tools are now among yours, so use ${one ? "it" : "them"} when ${one ? "it helps" : "they help"} with what they ask.`);
+  }
+  if (gone.length) lines.push(`${listed(gone)} ${gone.length === 1 ? "was" : "were"} disconnected: ${gone.length === 1 ? "its" : "their"} tools are gone.`);
+  return lines.length ? `(Connectors: ${lines.join(" ")})` : "";
+}

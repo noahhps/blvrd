@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>blvrd, Teyvat edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* blvrd dressed the way Genshin Impact dresses its menus: cream parchment
+ * panels edged in thin gold, a night-navy HUD behind them, a diamond at every
+ * corner, and the dialogue box -- a gold name over a dark band -- for what an
+ * agent says. Each agent carries an element instead of a plain colour, and a
+ * rarity in stars for how much it's been trusted with. Choices you make are
+ * the game's dialogue options: a list of lines, each behind a small diamond.
+ *
+ * Light is the parchment of the in-game menus; dark is the HUD at night. */
+
+:root {
+  --sky: #f4efe4;           /* the page */
+  --parch: #ece5d8;         /* menu panels */
+  --parch-2: #e2d9c8;       /* wells inside them */
+  --parch-ink: #495366;     /* text on parchment: Genshin's slate */
+  --parch-dim: #7d8597;
+  --gold: #c9a86a;
+  --gold-hi: #f4d8a8;
+  --gold-deep: #9a7a43;
+  --hud: #2b3247;           /* dark bands: dialogue, sidebar */
+  --hud-2: #353d55;
+  --hud-ink: #ece5d8;
+  --hud-dim: #a6adbf;
+  --line: rgba(201, 168, 106, .45);
+  --star: #ffcc32;
+  --r5a: #a0683a; --r5b: #e0a854;   /* five-star card */
+  --r4a: #5a5390; --r4b: #a286c6;   /* four-star card */
+  --anemo: #5fbfa0; --hydro: #3fb6ec; --geo: #e8a92a; --electro: #a77ef0;
+  --cryo: #8fd0e0;  --dendro: #9cc23a; --pyro: #ef7a3a;
+  --display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --font: "Nunito", ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --eo: cubic-bezier(0.23, 1, 0.32, 1);
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sky: #12172a; --parch: #1e2438; --parch-2: #272e46; --parch-ink: #ece5d8; --parch-dim: #a6adbf;
+    --hud: #0d1120; --hud-2: #171d33; --line: rgba(201, 168, 106, .35); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --sky: #12172a; --parch: #1e2438; --parch-2: #272e46; --parch-ink: #ece5d8; --parch-dim: #a6adbf;
+  --hud: #0d1120; --hud-2: #171d33; --line: rgba(201, 168, 106, .35); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--sky); color: var(--parch-ink); font: 15px/1.55 var(--font); }
+main { max-width: 1120px; margin: 0 auto; padding: 0 16px 90px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: .04em; margin: 0; }
+
+/* -- ornaments -------------------------------------------------------------- */
+
+/* A diamond: the game's bullet, corner, and "this one" marker. */
+.dia { display: inline-block; width: 8px; height: 8px; transform: rotate(45deg); background: var(--gold); flex: none; }
+.dia.hollow { background: none; border: 1.5px solid var(--gold); }
+
+/* A panel edged the Genshin way: an inner gold hairline inset from the edge,
+   and a diamond at each corner of it. */
+.frame { position: relative; background: var(--parch); border-radius: 6px; }
+.frame::before {
+  content: ""; position: absolute; inset: 6px; border: 1px solid var(--line); border-radius: 3px; pointer-events: none;
+}
+.frame > .c { position: absolute; width: 7px; height: 7px; background: var(--gold); transform: rotate(45deg); }
+.frame > .c.tl { top: 3px; left: 3px; } .frame > .c.tr { top: 3px; right: 3px; }
+.frame > .c.bl { bottom: 3px; left: 3px; } .frame > .c.br { bottom: 3px; right: 3px; }
+
+/* A heading with gold rules running off each side, as on the menu titles. */
+.rule { display: flex; align-items: center; gap: 12px; color: var(--gold-deep); }
+:root[data-theme="dark"] .rule { color: var(--gold-hi); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rule { color: var(--gold-hi); } }
+.rule::before, .rule::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.rule::after { background: linear-gradient(90deg, var(--gold), transparent); }
+
+.stars { color: var(--star); letter-spacing: 1px; font-size: 13px; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+
+/* -- nav and hero ------------------------------------------------------------ */
+
+nav { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; gap: 12px; }
+nav .brand { display: flex; align-items: center; gap: 10px; font: 700 22px/1 var(--display); letter-spacing: .08em; }
+nav .seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--parch); border: 1px solid var(--line); }
+nav .seg button { border: 0; background: none; color: var(--parch-dim); font: 700 13px var(--font); padding: 5px 12px; border-radius: 999px; cursor: pointer; }
+nav .seg button[aria-pressed="true"] { background: var(--hud); color: var(--gold-hi); }
+
+.hero {
+  position: relative; overflow: hidden; border-radius: 10px; padding: 56px 40px 48px; color: var(--hud-ink);
+  background:
+    radial-gradient(1.5px 1.5px at 12% 22%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 64%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 44% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 42%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 78% 16%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 58%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 54% 82%, #fff 50%, transparent 51%),
+    radial-gradient(120% 90% at 80% 120%, #c98d5a 0%, rgba(201,141,90,0) 55%),
+    linear-gradient(180deg, #151b33 0%, #2c3760 60%, #5a5a7a 100%);
+  display: grid; grid-template-columns: auto 1fr; gap: 36px; align-items: center;
+}
+.hero h1 { font-size: 46px; line-height: 1.05; color: var(--gold-hi); text-shadow: 0 2px 18px rgba(244,216,168,.35); }
+.hero p { max-width: 52ch; color: #d6d9e4; margin: 14px 0 0; }
+.hero .crest { width: 150px; height: 150px; }
+.hero .const { position: absolute; right: -20px; top: 10px; width: 360px; opacity: .55; pointer-events: none; }
+
+section { margin-top: 64px; }
+section > h2 { font-size: 26px; margin-bottom: 6px; }
+section > p { color: var(--parch-dim); margin: 0 0 22px; max-width: 70ch; }
+
+/* -- the app window ------------------------------------------------------------ */
+
+.win { display: grid; grid-template-columns: 264px 1fr; height: 760px; border-radius: 12px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(20,24,40,.6), 0 0 0 1px var(--line); }
+
+.side { background: linear-gradient(180deg, #2b3247, #232a3e); color: var(--hud-ink); display: flex; flex-direction: column; min-height: 0; border-right: 1px solid rgba(201,168,106,.3); }
+:root[data-theme="dark"] .side { background: linear-gradient(180deg, #0f1426, #0b0f1d); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .side { background: linear-gradient(180deg, #0f1426, #0b0f1d); } }
+.side-top { display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px; }
+.side-top .dots { display: flex; gap: 6px; margin-right: 8px; }
+.side-top .dots i { width: 11px; height: 11px; border-radius: 50%; background: #5a6178; }
+.side-top b { font: 700 15px var(--display); letter-spacing: .1em; color: var(--gold-hi); }
+.side .lbl { font: 800 10.5px var(--font); letter-spacing: .14em; text-transform: uppercase; color: var(--hud-dim); padding: 14px 16px 6px; display: flex; align-items: center; gap: 8px; }
+.side .lbl::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(201,168,106,.5), transparent); }
+.rows { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+.r { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 6px; cursor: pointer; transition: background-color 160ms ease; }
+.r:hover { background: rgba(255,255,255,.05); }
+/* Selected: the game's highlighted list item -- a cream bar, slate text, a
+   gold diamond leading in. */
+.r.sel { background: linear-gradient(90deg, #ece5d8, #e2d9c8); color: #3b4255; box-shadow: 0 0 0 1px var(--gold), 0 0 16px -4px rgba(244,216,168,.7); }
+.r.sel::before { content: ""; position: absolute; left: -5px; top: 50%; width: 8px; height: 8px; background: var(--gold); transform: translateY(-50%) rotate(45deg); }
+.r .t { min-width: 0; flex: 1; }
+.r .n { font-weight: 800; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.r .n small { font-weight: 600; font-size: 11px; color: var(--hud-dim); }
+.r.sel .n small, .r.sel .s { color: #6b7389; }
+.r .s { font-size: 12px; color: var(--hud-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r .badge { position: absolute; right: 8px; bottom: 7px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--pyro); color: #fff; font: 800 11px/18px var(--font); text-align: center; padding: 0 5px; box-shadow: 0 0 0 2px #2b3247; }
+
+/* An agent's portrait: a disc in its element, edged gold, with its element's
+   crest pinned at the shoulder. */
+.av { position: relative; flex: none; width: var(--s, 38px); height: var(--s, 38px); border-radius: 50%; background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--el) 55%, #fff) 0%, var(--el) 70%); box-shadow: 0 0 0 1.5px var(--gold), inset 0 -6px 12px rgba(0,0,0,.18); }
+.av svg.m { position: absolute; inset: 12%; width: 76%; height: 76%; }
+.av .el { position: absolute; right: -3px; top: -3px; width: 42%; height: 42%; border-radius: 50%; background: #2b3247; box-shadow: 0 0 0 1.5px var(--gold); display: grid; place-items: center; }
+.av .el svg { width: 72%; height: 72%; }
+.av.working::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px dashed var(--gold-hi); animation: spin 6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.side-foot { margin-top: auto; padding: 10px 12px 14px; display: flex; gap: 6px; border-top: 1px solid rgba(201,168,106,.2); }
+.side-foot button { flex: 1; height: 34px; border-radius: 999px; border: 1px solid rgba(201,168,106,.45); background: rgba(255,255,255,.04); color: var(--hud-ink); font: 700 12px var(--font); display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; }
+
+.main { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background:
+  radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--anemo) 18%, transparent), transparent 60%),
+  linear-gradient(180deg, var(--parch), var(--parch-2)); }
+.head { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+.head h3 { font-size: 17px; }
+.head .sub { font-size: 12px; color: var(--parch-dim); display: flex; align-items: center; gap: 6px; }
+.head .tools { margin-left: auto; display: flex; gap: 6px; }
+.ib { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--parch); color: var(--parch-ink); display: grid; place-items: center; cursor: pointer; }
+.ib svg { width: 16px; height: 16px; }
+
+.chat { flex: 1; overflow: auto; padding: 56px 26px 8px; display: flex; flex-direction: column; gap: 16px; }
+.chat > * { flex-shrink: 0; }
+.when { align-self: center; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--parch-dim); display: flex; align-items: center; gap: 10px; }
+.when::before, .when::after { content: ""; width: 40px; height: 1px; background: var(--line); }
+
+/* You: a cream note, right-aligned, edged in gold. */
+.me { align-self: flex-end; max-width: 64%; background: #f8f4ea; color: #3b4255; border: 1px solid var(--gold); border-radius: 14px 14px 4px 14px; padding: 10px 14px; box-shadow: 0 6px 16px -10px rgba(60,50,30,.35); }
+
+/* The agent: the dialogue box. Gold name with a fading rule beneath it, white
+   words on a dark band that fades out to the right. */
+.say { align-self: stretch; display: grid; grid-template-columns: auto 1fr; gap: 12px; }
+.say .box { position: relative; padding: 12px 18px 14px; border-radius: 4px 14px 14px 14px; color: #f1ede4;
+  background: linear-gradient(90deg, rgba(36,42,62,.96) 0%, rgba(43,50,71,.92) 70%, rgba(43,50,71,.78) 100%); box-shadow: 0 10px 24px -14px rgba(10,14,30,.8); max-width: 640px; }
+.say .who { font-weight: 800; font-size: 13.5px; color: var(--gold-hi); display: flex; align-items: center; gap: 8px; }
+.say .who::after { content: ""; flex: 0 0 120px; height: 1px; background: linear-gradient(90deg, var(--gold), transparent); }
+.say p { margin: 6px 0 0; }
+.say .more { position: absolute; right: 14px; bottom: 8px; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--gold-hi); animation: bob 1.2s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(3px); } }
+.say ul { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.say li { display: flex; gap: 10px; align-items: baseline; font-size: 14px; }
+.say li .dia { width: 6px; height: 6px; transform: translateY(-2px) rotate(45deg); }
+
+/* A tool call, as an item obtained: a small cream tag with a rarity edge. */
+.got { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; padding: 4px 10px 4px 4px; border-radius: 999px; background: rgba(236,229,216,.12); border: 1px solid rgba(244,216,168,.35); font-size: 12px; color: var(--gold-hi); }
+.got i { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, var(--r4a), var(--r4b)); display: grid; place-items: center; font-style: normal; color: #fff; font-size: 11px; }
+
+/* Asking you: the game's dialogue options, stacked on the right. */
+.opts { align-self: flex-end; display: flex; flex-direction: column; gap: 6px; width: min(340px, 100%); }
+.opt { display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-radius: 999px; background: rgba(36,42,62,.9); color: #f1ede4; border: 1px solid transparent; font: 700 14px var(--font); cursor: pointer; text-align: left; transition: border-color 160ms ease, background-color 160ms ease, transform 160ms var(--eo); }
+.opt .ico { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(244,216,168,.14); }
+.opt .ico .dia { width: 7px; height: 7px; background: var(--gold-hi); }
+.opt:hover { border-color: var(--gold-hi); background: rgba(52,60,86,.95); transform: translateX(-3px); }
+.opt.go .ico { background: var(--gold-hi); } .opt.go .ico .dia { background: #2b3247; }
+
+.compose { margin: 8px 20px 18px; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 999px; background: #f8f4ea; border: 1px solid var(--gold); box-shadow: 0 10px 24px -16px rgba(60,50,30,.6); }
+:root[data-theme="dark"] .compose, :root[data-theme="dark"] .me { background: #2a3149; color: var(--hud-ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .compose, :root:not([data-theme="light"]) .me { background: #2a3149; color: var(--hud-ink); } }
+.compose input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font: 600 14px var(--font); color: inherit; }
+.compose input::placeholder { color: var(--parch-dim); }
+.compose .model { font-size: 12px; font-weight: 800; color: var(--parch-dim); display: flex; align-items: center; gap: 6px; padding: 0 6px; }
+.send { width: 38px; height: 38px; border-radius: 50%; border: 0; background: radial-gradient(circle at 50% 35%, #f6dfae, var(--gold) 70%, var(--gold-deep)); display: grid; place-items: center; cursor: pointer; box-shadow: 0 0 0 2px #fff6, 0 4px 10px -4px rgba(120,90,40,.7); }
+.send svg { width: 16px; height: 16px; }
+
+/* "Quest" banner: a task finished elsewhere, sliding in at the top. */
+.toast { position: absolute; left: 50%; top: 80px; z-index: 1; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 26px; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, transparent, rgba(20,24,40,.82) 18%, rgba(20,24,40,.82) 82%, transparent); animation: toast 5s var(--eo) infinite; }
+.toast b { font: 700 14px var(--display); letter-spacing: .08em; color: var(--gold-hi); }
+.toast span { font-size: 13px; color: #d6d9e4; }
+@keyframes toast { 0% { opacity: 0; transform: translate(-50%, -8px); } 8%, 70% { opacity: 1; transform: translate(-50%, 0); } 80%, 100% { opacity: 0; transform: translate(-50%, -4px); } }
+
+/* -- the roster ---------------------------------------------------------------- */
+
+.crew { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+/* A card from the wish screen: a tall gradient in its rarity, the portrait
+   standing in it, name and stars on a dark band at the foot. */
+.card { position: relative; aspect-ratio: 3 / 4.4; border-radius: 10px 10px 22px 10px; overflow: hidden; color: #fff; cursor: pointer;
+  background: linear-gradient(170deg, var(--ra) 0%, var(--rb) 100%); box-shadow: 0 0 0 1px rgba(255,255,255,.25) inset, 0 16px 30px -18px rgba(20,24,40,.7);
+  transition: transform 260ms var(--eo), box-shadow 260ms var(--eo); }
+.card:hover { transform: translateY(-4px); box-shadow: 0 0 0 1px rgba(255,255,255,.4) inset, 0 22px 36px -18px rgba(20,24,40,.8); }
+.card.r5 { --ra: var(--r5b); --rb: var(--r5a); } .card.r4 { --ra: var(--r4b); --rb: var(--r4a); }
+.card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(70% 50% at 50% 38%, color-mix(in srgb, var(--el) 60%, transparent), transparent 70%); }
+.card .fig { position: absolute; left: 50%; top: 14%; width: 70%; transform: translateX(-50%); filter: drop-shadow(0 8px 10px rgba(0,0,0,.25)); }
+.card .elc { position: absolute; left: 10px; top: 10px; width: 26px; height: 26px; border-radius: 50%; background: rgba(20,24,40,.55); display: grid; place-items: center; }
+.card .elc svg { width: 18px; height: 18px; }
+.card .lv { position: absolute; right: 10px; top: 12px; font: 800 11px var(--font); background: rgba(20,24,40,.5); padding: 2px 8px; border-radius: 999px; }
+.card .foot { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 12px 12px; background: linear-gradient(180deg, transparent, rgba(20,24,40,.85) 45%); }
+.card .foot b { display: block; font: 700 17px var(--display); letter-spacing: .05em; }
+.card .foot small { display: block; font-size: 11.5px; color: #d6d9e4; margin-top: 2px; }
+
+/* -- side by side panels --------------------------------------------------------- */
+
+.two { display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; align-items: start; }
+.pad { padding: 26px; }
+
+/* Calendar as the Adventurer's Handbook: parchment grid, busy days crested. */
+.cal-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.cal-h h3 { font-size: 20px; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal .dow { font: 800 10.5px var(--font); letter-spacing: .12em; text-transform: uppercase; text-align: center; color: var(--parch-dim); padding-bottom: 4px; }
+.cal .d { position: relative; aspect-ratio: 1; border-radius: 6px; background: var(--parch-2); padding: 5px 6px; font-weight: 800; font-size: 12px; display: flex; flex-direction: column; justify-content: space-between; }
+.cal .d.out { opacity: .35; }
+.cal .d.today { background: var(--hud); color: var(--gold-hi); box-shadow: 0 0 0 1.5px var(--gold), 0 0 14px -4px var(--gold-hi); }
+.cal .d .pips { display: flex; gap: 3px; flex-wrap: wrap; }
+.cal .d .pips i { width: 7px; height: 7px; transform: rotate(45deg); background: var(--c); border-radius: 1px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; font-size: 12px; color: var(--parch-dim); font-weight: 700; }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.legend i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--c); }
+
+/* Settings as the Paimon menu's settings: a column of crests, a parchment page. */
+.set { display: grid; grid-template-columns: 64px 1fr; overflow: hidden; }
+.set nav { flex-direction: column; justify-content: flex-start; gap: 6px; padding: 14px 0; background: var(--hud); border-radius: 6px 0 0 6px; }
+.set nav i { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--hud-dim); }
+.set nav i.on { background: rgba(244,216,168,.14); color: var(--gold-hi); box-shadow: 0 0 0 1px var(--gold); }
+.set nav i svg { width: 18px; height: 18px; }
+.set .page { padding: 22px 24px; }
+.set h3 { font-size: 18px; margin-bottom: 12px; }
+.line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border-radius: 4px; }
+.line:nth-child(odd) { background: color-mix(in srgb, var(--parch-2) 70%, transparent); }
+.line b { font-weight: 700; font-size: 14px; }
+.line small { display: block; color: var(--parch-dim); font-size: 12px; }
+.sw { position: relative; width: 44px; height: 22px; border-radius: 11px; background: #a4a9b6; flex: none; cursor: pointer; transition: background-color 200ms ease; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform 240ms var(--eo); }
+.sw.on { background: linear-gradient(90deg, var(--gold-deep), var(--gold)); }
+.sw.on::after { transform: translateX(22px); }
+.pills { display: flex; gap: 4px; }
+.pills span { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; border: 1px solid var(--line); color: var(--parch-dim); }
+.pills span.on { background: var(--hud); color: var(--gold-hi); border-color: var(--gold); }
+.elpick { display: flex; gap: 6px; }
+.elpick span { width: 28px; height: 28px; border-radius: 50%; background: var(--hud); display: grid; place-items: center; box-shadow: 0 0 0 1px var(--line); }
+.elpick span.on { box-shadow: 0 0 0 2px var(--gold-hi), 0 0 10px var(--gold-hi); }
+.elpick svg { width: 18px; height: 18px; }
+
+/* The ask, at full size: the dialogue, as it would sit over a scene. */
+.scene { position: relative; height: 340px; border-radius: 10px; overflow: hidden; margin-top: 18px;
+  background: radial-gradient(60% 80% at 75% 20%, #ffe5b0 0%, rgba(255,229,176,0) 60%), linear-gradient(180deg, #8fb8d8 0%, #c8d9cf 55%, #7fa36b 56%, #5a7f4c 100%); }
+.scene .hill { position: absolute; left: -10%; right: -10%; bottom: 0; height: 46%; background: radial-gradient(60% 100% at 30% 100%, #4f7444 0%, #4f7444 60%, transparent 61%), radial-gradient(50% 90% at 80% 100%, #3f6238 0%, #3f6238 60%, transparent 61%); }
+.scene .dlg { position: absolute; left: 0; right: 0; bottom: 0; padding: 22px 12% 26px; text-align: center; color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(12,16,30,.82) 35%, rgba(12,16,30,.9)); }
+.scene .dlg .who { font-weight: 800; color: var(--gold-hi); font-size: 16px; display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+.scene .dlg .who::after { content: ""; width: 180px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+.scene .dlg p { margin: 8px auto 0; max-width: 60ch; font-size: 16px; }
+.scene .opts { position: absolute; right: 7%; top: 30px; }
+.scene .portrait { position: absolute; left: 7%; bottom: 120px; --s: 120px; }
+
+@media (max-width: 900px) {
+  .win { grid-template-columns: 1fr; }
+  .side { display: none; }
+  .two { grid-template-columns: 1fr; }
+  .scene .opts { right: 16px; left: 16px; width: auto; }
+  .scene .portrait { display: none; }
+}
+@media (max-width: 640px) {
+  .hero { grid-template-columns: 1fr; padding: 36px 20px; }
+  .hero h1 { font-size: 36px; }
+  .me { max-width: 85%; }
+  .chat { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; }
+  .toast { opacity: 1; }
+}
+</style>
+</head>
+<body>
+<main>
+  <nav>
+    <div class="brand"><span id="navmark"></span>blvrd</div>
+    <div class="seg" role="group" aria-label="Theme">
+      <button data-t="system" aria-pressed="true">System</button>
+      <button data-t="light" aria-pressed="false">Parchment</button>
+      <button data-t="dark" aria-pressed="false">Night</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <svg class="const" viewBox="0 0 360 200" aria-hidden="true">
+      <g stroke="#f4d8a8" stroke-width=".8" fill="none" opacity=".8"><path d="M20 150 L90 110 L150 130 L210 60 L280 80 L340 30"/><path d="M150 130 L170 180"/><path d="M210 60 L240 140"/></g>
+      <g fill="#fff"><circle cx="20" cy="150" r="2.5"/><circle cx="90" cy="110" r="3"/><circle cx="150" cy="130" r="2.5"/><circle cx="210" cy="60" r="3.5"/><circle cx="280" cy="80" r="2.5"/><circle cx="340" cy="30" r="3"/><circle cx="170" cy="180" r="2"/><circle cx="240" cy="140" r="2.5"/></g>
+    </svg>
+    <div id="herocrest"></div>
+    <div>
+      <h1>Your party,<br>ready to set out.</h1>
+      <p>blvrd as a Genshin menu: parchment panels edged in gold with a diamond at every corner, a night-navy sidebar, agents that speak in the game's dialogue box, and the choices they ask of you laid out as dialogue options. Every agent carries an element and a rarity.</p>
+    </div>
+  </div>
+
+  <section>
+    <h2 class="rule">The app</h2>
+    <p>The sidebar is the party list. The selected agent gets the cream highlight bar and gold diamond the game uses for "this one." Replies come in the dialogue box, tool calls show up as items obtained, and approvals are dialogue options.</p>
+    <div class="win">
+      <aside class="side">
+        <div class="side-top"><div class="dots"><i></i><i></i><i></i></div><span id="sidemark"></span><b>BLVRD</b></div>
+        <div class="lbl">Party</div>
+        <div class="rows" id="rows"></div>
+        <div class="lbl">Groups</div>
+        <div class="rows" id="groups"></div>
+        <div class="side-foot">
+          <button><span class="dia"></span> New agent</button>
+          <button>Handbook</button>
+        </div>
+      </aside>
+      <div class="main">
+        <div class="head">
+          <div class="av" id="headav" style="--s:40px"></div>
+          <div>
+            <h3>Scout</h3>
+            <div class="sub"><span class="stars">★★★★★</span> Anemo · researching</div>
+          </div>
+          <div class="tools">
+            <button class="ib" title="Notebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11"/></svg></button>
+            <button class="ib" title="Calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
+            <button class="ib" title="More"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="18" cy="12" r="1.8"/></svg></button>
+          </div>
+        </div>
+        <div class="toast"><span class="dia"></span><b>Commission complete</b><span>Quill finished “Q3 board letter”</span><span class="dia"></span></div>
+        <div class="chat">
+          <div class="when">Today · 9:41</div>
+          <div class="me">Find three venues near Shoreditch for the offsite on the 24th. 40 people, under £3k.</div>
+          <div class="say">
+            <div class="av working" data-agent="scout"></div>
+            <div class="box">
+              <div class="who">Scout</div>
+              <p>Three that fit, all free on the 24th:</p>
+              <ul>
+                <li><span class="dia"></span><span><b>The Box Factory</b>, 3 min from Old St. £2,400, projector included</span></li>
+                <li><span class="dia"></span><span><b>Second Home</b>, 6 min walk. £2,850 with lunch</span></li>
+                <li><span class="dia"></span><span><b>Rich Mix, Room 2</b>, £1,900, seats 44</span></li>
+              </ul>
+              <span class="got"><i>✦</i>Searched 14 venues · checked 3 calendars</span>
+            </div>
+          </div>
+          <div class="say">
+            <div class="av" data-agent="scout"></div>
+            <div class="box">
+              <div class="who">Scout</div>
+              <p>The Box Factory has the best room. Should I send them a hold request from your email?</p>
+              <span class="more"></span>
+            </div>
+          </div>
+          <div class="opts">
+            <button class="opt go"><span class="ico"><span class="dia"></span></span>Yes, send the hold request</button>
+            <button class="opt"><span class="ico"><span class="dia"></span></span>Let me read it first</button>
+            <button class="opt"><span class="ico"><span class="dia"></span></span>Try Second Home instead</button>
+          </div>
+        </div>
+        <div class="compose">
+          <input placeholder="Say something to Scout…">
+          <span class="model"><span class="dia hollow"></span>Opus 5.5</span>
+          <button class="send" aria-label="Send"><svg viewBox="0 0 24 24" fill="#2b3247"><path d="M12 3l3 9-3 9-3-9z"/><path d="M3 12l9-3 9 3-9 3z" opacity=".55"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="rule">The party</h2>
+    <p>The agent gallery as the wish screen. Five stars for the agents you've given the most to do, four for the rest. Each one's element replaces the plain colour it has today.</p>
+    <div class="crew" id="crew"></div>
+  </section>
+
+  <section>
+    <h2 class="rule">When an agent needs you</h2>
+    <p>The same approval at full size, the way a quest stops for you to choose: the portrait on the left, the line at the foot, the options on the right.</p>
+    <div class="scene">
+      <div class="hill"></div>
+      <div class="av portrait" data-agent="post"></div>
+      <div class="opts">
+        <button class="opt go"><span class="ico"><span class="dia"></span></span>Send it to Maya</button>
+        <button class="opt"><span class="ico"><span class="dia"></span></span>Show me the draft</button>
+        <button class="opt"><span class="ico"><span class="dia"></span></span>Not now</button>
+      </div>
+      <div class="dlg">
+        <div class="who">Post</div>
+        <p>I've written the reply to Maya about the contract dates. It goes out from your address. Shall I send it?</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="rule">Handbook &amp; settings</h2>
+    <p>The calendar as the Adventurer's Handbook: busy days marked with a diamond in the colour of each agent's element. Settings work like the Paimon menu, with a column of crests and a parchment page beside it.</p>
+    <div class="two">
+      <div class="frame pad">
+        <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+        <div class="cal-h"><h3>October</h3><span class="stars">✦ 18 commissions</span></div>
+        <div class="cal" id="cal"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div class="frame set">
+        <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+        <nav>
+          <i class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg></i>
+          <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></i>
+          <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></i>
+          <i><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></i>
+        </nav>
+        <div class="page">
+          <h3 class="rule">General</h3>
+          <div class="line"><div><b>Look</b><small>Parchment by day, Night after dark</small></div><div class="pills"><span class="on">System</span><span>Light</span><span>Dark</span></div></div>
+          <div class="line"><div><b>Accent element</b><small>Colours the logo and selected rows</small></div><div class="elpick" id="elpick"></div></div>
+          <div class="line"><div><b>Commission alerts</b><small>A banner when an agent finishes</small></div><div class="sw on"></div></div>
+          <div class="line"><div><b>Ask before sending</b><small>Show dialogue options for email and messages</small></div><div class="sw on"></div></div>
+          <div class="line"><div><b>Quick summon</b><small>⌥ Space opens the quickview</small></div><div class="sw"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/* Element crests: one glyph each, drawn fresh -- a swirl, a drop, a cut
+   stone, a bolt, a flake, a leaf, a flame. */
+const EL = {
+  anemo:   { label: "Anemo",   path: '<path d="M12 3a9 9 0 1 0 9 9c0-3-2.5-5-5-5s-4 2-4 4 1.5 3 3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' },
+  hydro:   { label: "Hydro",   path: '<path d="M12 2.5C9 7 5.5 10.5 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 10.5 15 7 12 2.5z" fill="currentColor"/><path d="M9 15a3 3 0 0 0 3 3" stroke="#2b3247" stroke-width="1.6" fill="none" stroke-linecap="round"/>' },
+  geo:     { label: "Geo",     path: '<path d="M12 2l8 7-8 13-8-13z" fill="currentColor"/><path d="M4 9h16M12 2l-3 7 3 13 3-13z" stroke="#2b3247" stroke-width="1.1" fill="none"/>' },
+  electro: { label: "Electro", path: '<path d="M13.5 2L5 13.5h6L9.5 22 19 9.5h-6.2z" fill="currentColor"/>' },
+  cryo:    { label: "Cryo",    path: '<g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7"/><path d="M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5"/></g>' },
+  dendro:  { label: "Dendro",  path: '<path d="M5 19C5 10 11 4 20 4c0 9-6 15-15 15z" fill="currentColor"/><path d="M5 19L14 10" stroke="#2b3247" stroke-width="1.5" stroke-linecap="round"/>' },
+  pyro:    { label: "Pyro",    path: '<path d="M12 2c1 4 6 6 6 12a6 6 0 0 1-12 0c0-3 2-5 3-6 0 2 1 3 2 3 0-3 0-6 1-9z" fill="currentColor"/>' },
+};
+const crest = (el) => `<svg viewBox="0 0 24 24" style="color:var(--${el})" aria-hidden="true">${EL[el].path}</svg>`;
+
+/* blvrd's mascots -- a shape that says what it does, with a pair of eyes --
+   in white, so the element disc behind shows through as their colour. */
+const eyes = (x1, x2, y) => `<g><ellipse cx="${x1}" cy="${y}" rx="4.2" ry="5" fill="#fff" stroke="#2b3247" stroke-width="1.8"/><ellipse cx="${x2}" cy="${y}" rx="4.2" ry="5" fill="#fff" stroke="#2b3247" stroke-width="1.8"/><circle cx="${x1}" cy="${y + 1.2}" r="2.3" fill="#2b3247"/><circle cx="${x2}" cy="${y + 1.2}" r="2.3" fill="#2b3247"/></g>`;
+const SHAPE = {
+  arc:       `<path d="M12 58V34a20 20 0 0 1 40 0v24H40V34a8 8 0 0 0-16 0v24z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>${eyes(26, 38, 20)}`,
+  magnifier: `<path d="M38 38l14 14" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="27" cy="27" r="17" fill="#fff"/><circle cx="27" cy="27" r="12" fill="none" stroke="var(--el)" stroke-width="2" opacity=".5"/>${eyes(21, 33, 27)}`,
+  pencil:    `<path d="M22 8h20v38l-10 12-10-12z" fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M22 46h20" stroke="var(--el)" stroke-width="2" opacity=".6"/><path d="M29 54l3 4 3-4z" fill="#2b3247"/>${eyes(27, 37, 24)}`,
+  calendar:  `<rect x="10" y="14" width="44" height="40" rx="7" fill="#fff"/><rect x="10" y="14" width="44" height="11" rx="5" fill="var(--el)" opacity=".45"/><path d="M22 9v10M42 9v10" stroke="#fff" stroke-width="5" stroke-linecap="round"/>${eyes(26, 38, 38)}`,
+  envelope:  `<rect x="8" y="16" width="48" height="34" rx="6" fill="#fff"/><path d="M10 20l22 16 22-16" fill="none" stroke="var(--el)" stroke-width="2.4" opacity=".6" stroke-linejoin="round"/>${eyes(26, 38, 41)}`,
+  chart:     `<rect x="10" y="10" width="44" height="44" rx="10" fill="#fff"/><path d="M18 44l9-10 7 5 12-15" fill="none" stroke="var(--el)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>${eyes(24, 36, 24)}`,
+  palette:   `<path d="M32 8C18 8 8 18 8 31s10 25 22 25c4 0 5-3 4-6s0-6 4-6h6c7 0 12-5 12-12C56 18 46 8 32 8z" fill="#fff"/><circle cx="44" cy="24" r="3.5" fill="var(--pyro)"/><circle cx="46" cy="34" r="3.5" fill="var(--hydro)"/><circle cx="20" cy="40" r="3.5" fill="var(--geo)"/>${eyes(24, 35, 24)}`,
+};
+const fig = (shape) => `<svg class="m" viewBox="0 0 64 64" aria-hidden="true">${SHAPE[shape]}</svg>`;
+
+const AGENTS = {
+  scout: { name: "Scout", role: "Research",    el: "anemo",   shape: "magnifier", r: 5, st: "Comparing venues near Old St…", t: "now", working: true, tasks: 128 },
+  quill: { name: "Quill", role: "Writing",     el: "hydro",   shape: "pencil",    r: 5, st: "Finished the board letter", t: "9:20", tasks: 96 },
+  hour:  { name: "Hour",  role: "Calendar",    el: "geo",     shape: "calendar",  r: 4, st: "Moved standup to 10:30", t: "8:55", tasks: 61 },
+  post:  { name: "Post",  role: "Email",       el: "electro", shape: "envelope",  r: 4, st: "Reply to Maya is ready to send", t: "8:40", badge: 1, tasks: 74 },
+  tally: { name: "Tally", role: "Analysis",    el: "cryo",    shape: "chart",     r: 4, st: "September churn is down 2.1%", t: "Tue", tasks: 33 },
+  fern:  { name: "Fern",  role: "Design",      el: "dendro",  shape: "palette",   r: 4, st: "Three takes on the deck cover", t: "Mon", tasks: 27 },
+};
+const av = (id, s) => {
+  const a = AGENTS[id];
+  return `<div class="av${a.working ? " working" : ""}" style="--el:var(--${a.el});${s ? `--s:${s}px` : ""}">${fig(a.shape)}<span class="el">${crest(a.el)}</span></div>`;
+};
+const fill = (el, id) => { const a = AGENTS[id]; el.style.setProperty("--el", `var(--${a.el})`); el.innerHTML = fig(a.shape) + `<span class="el">${crest(a.el)}</span>`; };
+
+// Marks
+const mark = (s) => `<div class="av" style="--el:var(--pyro);--s:${s}px">${fig("arc")}</div>`;
+document.getElementById("navmark").innerHTML = mark(30);
+document.getElementById("sidemark").innerHTML = mark(22);
+document.getElementById("herocrest").innerHTML = `<div class="av crest" style="--el:var(--pyro);--s:150px;box-shadow:0 0 0 3px var(--gold),0 0 0 10px rgba(244,216,168,.15),0 0 60px rgba(244,216,168,.35)">${fig("arc")}</div>`;
+
+// Sidebar
+document.getElementById("rows").innerHTML = Object.entries(AGENTS).map(([id, a]) =>
+  `<div class="r${id === "scout" ? " sel" : ""}">${av(id, 36)}<div class="t"><div class="n">${a.name}<small>${a.t}</small></div><div class="s">${a.st}</div></div>${a.badge ? `<span class="badge">${a.badge}</span>` : ""}</div>`).join("");
+document.getElementById("groups").innerHTML =
+  `<div class="r"><div class="av" style="--el:var(--geo);--s:36px">${fig("arc")}</div><div class="t"><div class="n">Offsite crew<small>Mon</small></div><div class="s">Scout, Hour, Post</div></div></div>`;
+fill(document.getElementById("headav"), "scout");
+document.querySelectorAll("[data-agent]").forEach((el) => fill(el, el.dataset.agent));
+
+// Wish cards
+document.getElementById("crew").innerHTML = Object.values(AGENTS).map((a) =>
+  `<div class="card r${a.r}" style="--el:var(--${a.el})"><span class="elc">${crest(a.el)}</span><span class="lv">${a.tasks} done</span><svg class="fig" viewBox="0 0 64 64">${SHAPE[a.shape]}</svg><div class="foot"><b>${a.name}</b><span class="stars">${"★".repeat(a.r)}</span><small>${EL[a.el].label} · ${a.role}</small></div></div>`).join("");
+
+// Calendar: October 2026 starts on a Thursday.
+const busy = { 2: ["geo"], 5: ["geo", "electro"], 6: ["hydro"], 8: ["anemo", "geo", "electro"], 9: ["cryo"], 12: ["geo"], 14: ["hydro", "dendro"], 15: ["electro"], 19: ["geo", "anemo"], 21: ["cryo"], 22: ["hydro"], 24: ["anemo", "geo", "electro", "pyro"], 27: ["dendro"], 29: ["geo", "hydro"] };
+let cal = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => `<div class="dow">${d}</div>`).join("");
+for (let i = 0; i < 35; i++) {
+  const n = i - 2, out = n < 1 || n > 31, day = out ? (n < 1 ? 30 + n : n - 31) : n;
+  const pips = (!out && busy[n] || []).map((e) => `<i style="--c:var(--${e})"></i>`).join("");
+  cal += `<div class="d${out ? " out" : ""}${n === 8 ? " today" : ""}"><span>${day}</span><span class="pips">${pips}</span></div>`;
+}
+document.getElementById("cal").innerHTML = cal;
+document.getElementById("legend").innerHTML = Object.values(AGENTS).map((a) => `<span><i style="--c:var(--${a.el})"></i>${a.name}</span>`).join("");
+document.getElementById("elpick").innerHTML = ["pyro", "anemo", "hydro", "electro", "geo"].map((e, i) => `<span class="${i === 0 ? "on" : ""}" title="${EL[e].label}">${crest(e)}</span>`).join("");
+
+const chat = document.querySelector(".chat"); chat.scrollTop = chat.scrollHeight;
+
+// Theme
+const seg = document.querySelectorAll("nav .seg button");
+seg.forEach((b) => b.addEventListener("click", () => {
+  seg.forEach((o) => o.setAttribute("aria-pressed", o === b));
+  if (b.dataset.t === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = b.dataset.t;
+}));
+</script>
+</body>
+</html>

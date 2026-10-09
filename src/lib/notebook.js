@@ -29,14 +29,15 @@ import { applyOps, bare, diffData, diffSections, invertAll, newEntryId, stale, t
  *            for each row and item
  *     by     "user" or an agent's id
  *   version  { v, by, at, chat, label, revertOf, ops }
- *   layout   { [sectionId]: { x, y } } -- where each sits on the page, which
- *            goes on down and sideways (lib/placement.js). Not memory: not
+ *   layout   { [sectionId]: { x, y, cols? } } -- where each sits on the page,
+ *            which goes on down and sideways (lib/placement.js), and how many
+ *            of its columns it spans (1 if not set). Not memory: not
  *            versioned, and never in a draft. Read back as `section.at`.
- *   settings { approve, liveAdded, sidebar, saveDelay } -- agents' edits wait
+ *   settings { approve, liveAdded, sidebar, saveDelay, cover } -- agents' edits wait
  *            for the user's yes; which live sections have been put in once
  *            already; the sidebar's sections, in its order; how long after the
  *            user's hand leaves the notebook their draft is saved (ms; null:
- *            only when they save)
+ *            only when they save); the band across the top of the page
  *
  * Kept in this machine's webview database (IndexedDB); nothing leaves it. */
 
@@ -207,7 +208,7 @@ const run = (store, mode, fn) =>
 
 let committed = []; // the sections at `head`: what agents read
 let layout = {};
-let settings = { approve: false, liveAdded: [], saveDelay: DEFAULT_SAVE_DELAY };
+let settings = { approve: false, liveAdded: [], saveDelay: DEFAULT_SAVE_DELAY, cover: { preset: "sky" } };
 let head = 1;
 let log = []; // versions, oldest first
 let draft = []; // [{ op, step }]: the user's unsaved operations
@@ -574,14 +575,19 @@ export const notebook = {
 
   /* -- the page and the sidebar: not memory, never versioned ---------------------- */
 
-  /** Where a section sits on the page. */
+  /** Where a section sits on the page. Its width stays as it was. */
   place(id, at) {
-    layout = { ...layout, [id]: at };
+    layout = { ...layout, [id]: { ...layout[id], ...at } };
     changed();
   },
   /** Several placed at once ({ [id]: { x, y } }). */
   placeMany(where) {
-    layout = { ...layout, ...where };
+    layout = { ...layout, ...Object.fromEntries(Object.entries(where).map(([id, at]) => [id, { ...layout[id], ...at }])) };
+    changed();
+  },
+  /** How many of the page's columns a section spans (lib/placement.js). */
+  span(id, cols) {
+    layout = { ...layout, [id]: { ...layout[id], cols } };
     changed();
   },
   /** A section into the sidebar at `at` (the end if left out); one already
@@ -622,6 +628,12 @@ export const notebook = {
     settings = { ...settings, approve };
     changed();
   },
+  /** The band across the top of the page: { preset } (one of NotebookView's
+   *  COVERS), { image } (a data URL), or null for none. */
+  setCover(cover) {
+    settings = { ...settings, cover };
+    changed();
+  },
   setSaveDelay(saveDelay) {
     settings = { ...settings, saveDelay };
     changed();
@@ -634,10 +646,24 @@ export const notebook = {
     changed();
     return sectionOf(section.id);
   },
+  /** One of the reader's own widgets (lib/widgets.js) on the page: a live
+   *  section `source` ("custom:<id>") called `title`. */
+  addWidget(source, title, index = 0) {
+    const section = { ...liveSection(source), title };
+    committed = [...committed.slice(0, index), section, ...committed.slice(index)];
+    changed();
+    return sectionOf(section.id);
+  },
+  /** A widget renamed: its sections called the new name. */
+  retitleLive(source, title) {
+    if (!committed.some((s) => s.type === "live" && s.source === source && s.title !== title)) return;
+    committed = committed.map((s) => (s.type === "live" && s.source === source ? { ...s, title } : s));
+    changed();
+  },
 };
 
 function liveSection(source) {
-  return { id: newId("live"), title: LIVE[source].title, type: "live", source, data: {}, v: 0, ev: {}, edited: null, createdAt: Date.now() };
+  return { id: newId("live"), title: LIVE[source]?.title || "Widget", type: "live", source, data: {}, v: 0, ev: {}, edited: null, createdAt: Date.now() };
 }
 
 /* What was kept, brought up to now: rows get ids, places move to `layout`,
