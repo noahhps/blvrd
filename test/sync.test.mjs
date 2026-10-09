@@ -138,3 +138,62 @@ test("the brief stays the same while only the notebook's contents change", async
   assert.equal(notebookBrief(), before);
   assert.match(before, /Brief \(list\)/);
 });
+
+test("an agent starts a section of its own, and the others hear of it", async () => {
+  await ready;
+  const planner = convo("planner", "chat-start");
+  const researcher = convo("researcher", "chat-start-r");
+  await planner("notebook_sync");
+  await researcher("notebook_sync");
+
+  const out = await planner("notebook_add_section", { title: "Books to read", kind: "list", items: ["Piranesi", "The Overstory", "Piranesi"] });
+  assert.match(out, /Started “Books to read” \(list\), saved as v\d+\. It now reads:\n- \[ \] Piranesi\n- \[ \] The Overstory\n/);
+  const made = notebook.head().sections.find((s) => s.title === "Books to read");
+  assert.equal(made.edited.by, "planner");
+  assert.equal(made.data.items.length, 2, "the same item twice is kept once");
+
+  // Told to the others, not to the one that made it.
+  assert.match(await researcher("notebook_sync"), /New section “Books to read” \(list\) \(Planner \(another assistant\), v\d+\):\n {2}- \[ \] Piranesi/);
+  assert.match(await planner("notebook_sync"), /nothing has changed since you last looked/);
+  // And kept up to date like any other.
+  assert.match(await planner("notebook_edit", { section: "Books to read", action: "add", item: "Middlemarch" }), /Saved as v\d+/);
+  assert.match(notebookBrief(), /- Books to read \(list\)/);
+});
+
+test("a section like one already there isn't started: the agent is sent to that one", async () => {
+  await fresh("Coffee order", "facts", { rows: [{ key: "Usual", value: "Flat white" }] });
+  const planner = convo("planner", "chat-dupe");
+  const count = () => notebook.head().sections.length;
+  const before = count();
+  assert.match(await planner("notebook_add_section", { title: "coffee order", kind: "facts", rows: [{ key: "Milk", value: "Oat" }] }), /Not started: there is already “Coffee order” -- add to it with notebook_edit\./);
+  assert.match(await planner("notebook_add_section", { title: "Coffee", kind: "list", items: ["Heart"] }), /Not started: there is already “Coffee order” -- add to it with notebook_edit \(it's a facts section\)/);
+  assert.match(await planner("notebook_add_section", { title: "My books", kind: "list", items: ["Emma"] }), /Not started: there is already “Books to read”/);
+  assert.equal(count(), before);
+  // Something else is fine, even sharing a word with what's there.
+  assert.match(await planner("notebook_add_section", { title: "Coffee shops to try", kind: "list", items: ["Heart, on 12th"] }), /Started “Coffee shops to try”/);
+});
+
+test("a new section starts with something, is one of three kinds, and facts can come as lines", async () => {
+  const planner = convo("planner", "chat-kinds");
+  await assert.rejects(planner("notebook_add_section", { title: "Empty", kind: "list", items: [] }), /give it what it starts with: items/);
+  await assert.rejects(planner("notebook_add_section", { title: "Table", kind: "table", rows: [] }), /kind is facts, list or note/);
+  await assert.rejects(planner("notebook_add_section", { title: "", kind: "note", text: "x" }), /give the section a title/);
+  const out = await planner("notebook_add_section", { title: "Car", kind: "facts", rows: ["Plate: 7ABC123", { key: "Insurer", value: "Lemonade" }, "no colon"] });
+  assert.match(out, /Started “Car” \(facts\).*\n- Plate: 7ABC123\n- Insurer: Lemonade/s);
+  assert.match(await planner("notebook_add_section", { title: "How Sam likes feedback", kind: "note", text: "Straight, with an example." }), /Started “How Sam likes feedback” \(note\)/);
+});
+
+test("three sections a conversation at most, and it asks first when the notebook says so", async () => {
+  const planner = convo("planner", "chat-many");
+  for (const title of ["Houseplants", "Podcasts", "Restaurants in Seoul"]) assert.match(await planner("notebook_add_section", { title, kind: "list", items: ["one"] }), /Started/);
+  assert.match(await planner("notebook_add_section", { title: "Board games", kind: "list", items: ["Catan"] }), /Not started: you've already started 3 sections in this conversation/);
+  // Another conversation is another count.
+  assert.match(await convo("planner", "chat-many-2")("notebook_add_section", { title: "Board games", kind: "list", items: ["Catan"] }), /Started/);
+
+  const add = tool("notebook_add_section");
+  assert.equal(add.confirm, false);
+  notebook.setApprove(true);
+  assert.equal(add.confirm, true);
+  notebook.setApprove(false);
+  assert.equal(add.summary({ title: "Wines", kind: "list", items: ["Barolo", "Rioja"] }), "start a section “Wines” (list, 2 items)");
+});

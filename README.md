@@ -103,6 +103,12 @@ and every notebook call first tells it only what changed since -- never the
 whole notebook again. An edit to something someone else changed after the
 agent last looked isn't saved; the agent is told what it now says.
 
+Agents can start sections of their own when something worth keeping has no
+home -- a reading list, a trip's plans, how you like your coffee -- as facts,
+a list or a note, marked with who started it. A few a conversation at most,
+and never one like a section already there; only you remove sections. With
+**Ask before saving** on, a new section waits for your Allow like any edit.
+
 Your own edits show at once and are saved with ⌘S, or a few seconds after you
 leave the notebook (and always before an agent answers). ⌘Z / ⇧⌘Z undo and redo
 your steps; **History** lists every version, agents' included, and can undo

@@ -39,6 +39,9 @@ import { applyOps, bare, diffData, diffSections, invertAll, newEntryId, stale, t
  *            user's hand leaves the notebook their draft is saved (ms; null:
  *            only when they save); the band across the top of the page
  *
+ * Agents keep sections up to date and may start new ones of their own
+ * (`agentCreate`, lib/notebookTools.js); only the user removes them.
+ *
  * Kept in this machine's webview database (IndexedDB); nothing leaves it. */
 
 export const TYPES = {
@@ -390,6 +393,21 @@ export const notebook = {
   /** An agent's change, saved at once as one version. `ops` from
    *  lib/versions.js; `chat` where the agent was answering. */
   agentCommit: (ops, agentId, chat = null) => commit(ops, agentId, { chat }),
+  /** A section an agent started, holding `data` (facts { rows: [{ key,
+   *  value }] }, list { items: [{ text, done }] }, note { text }), saved at
+   *  once as one version. It has no place on the page yet: the page puts it
+   *  under what's there (NotebookView.jsx). Returns { record, section }. */
+  agentCreate(type, title, data, agentId, chat = null) {
+    const content =
+      type === "facts"
+        ? { rows: withRowIds(data.rows || []) }
+        : type === "list"
+          ? { items: (data.items || []).map((i) => ({ id: newId("i"), text: i.text, done: Boolean(i.done) })) }
+          : { text: String(data.text ?? "") };
+    const section = { id: newId("sec"), title, type, data: content, createdAt: Date.now() };
+    const record = commit([{ kind: "create", sec: section.id, index: committed.length, after: section }], agentId, { chat });
+    return { record, section: committed.find((x) => x.id === section.id) };
+  },
   /** An agent's single edit (checked by `apply`), saved as one version. */
   edit(id, agentId, change, chat = null) {
     const section = committed.find((s) => s.id === id);

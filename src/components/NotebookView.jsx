@@ -927,7 +927,8 @@ function Block({ section, handle, autoFocus, onFocused, editor, marked, unsaved,
         <p className="nb-meta">
           {marked ? <span className="nb-dot" /> : null}
           <span className="nb-meta-text">
-            Updated by {editor} · {ago(section.edited.at)}
+            {/* An agent's own section, not changed since it started it. */}
+            {section.edited.at - (section.createdAt || 0) < 2000 ? "Started" : "Updated"} by {editor} · {ago(section.edited.at)}
           </span>
         </p>
       ) : null}

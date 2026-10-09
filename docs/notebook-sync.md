@@ -127,7 +127,7 @@ in the notebook — now comes from the delta itself.
 
 ### 2.2 The tools
 
-Three tools, all `always` on as today. **Every one of them returns the catch-up
+Four tools, all `always` on as today. **Every one of them returns the catch-up
 first**, then its own result, and moves the cursor to the new head. That is the
 "reads and updates" rule: an agent can't touch the notebook without being
 brought up to date, and is never sent the whole notebook to be brought up to
@@ -138,6 +138,7 @@ date.
 | `notebook_sync` | none | Just the catch-up. Replaces `notebook_contents`. |
 | `notebook_read` | `section` | Catch-up, then that one section in full. |
 | `notebook_edit` | `section`, `action`, and `key`/`value`, `item`, `text`, `old`/`new`; or `changes: [ … ]` for several at once | Catch-up, then applies the edits as **one version**, checked against the cursor (§2.5). |
+| `notebook_add_section` | `title`, `kind` (facts, list, note), and what it starts with: `rows`, `items` or `text` | Catch-up, then a new section of the agent's own as **one version** (`notebook.agentCreate`), unplaced until the page puts it under what's there. Refused -- told which section to use instead -- when a section already there has the same title or one whose words take in the other's ("Books" and "Books to read"); and after three in one conversation. It starts with something, never empty. Asks first when **Ask before saving** is on. Only the user removes a section. |
 
 `notebook_edit` keeps today's actions (`set`/`remove` for facts;
 `add`/`check`/`uncheck`/`remove` for lists; `append`/`replace` for notes) and
