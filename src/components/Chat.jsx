@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { colourOf, taglineOf } from "../lib/agents.js";
 import { hostOf, isLocalUrl } from "../lib/catalog.js";
@@ -13,7 +13,7 @@ import { Approval } from "./Approval.jsx";
 import { Composer } from "./Composer.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
-import { WHERE, screenOf } from "../lib/computer/connection.js";
+import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
 
 /* One agent's ongoing chat. `live` is the answer still arriving: its text so
  * far, shown under the messages already kept.
@@ -40,14 +40,13 @@ export function Chat({
   onApprove,
   computer = "off",
   onComputer = null,
+  queued = [],
+  onUnqueue = null,
 }) {
   const thread = useRef(null);
   const area = useRef(null);
-  // The computer's screen, in a panel out from the right (ScreenPanel).
-  const [screenOpen, setScreenOpen] = useState(false);
-  const screen = useCallback(() => screenOf(agent.id), [agent.id]);
-  useEffect(() => setScreenOpen(false), [agent.id]);
-  const closeScreen = useCallback(() => setScreenOpen(false), []);
+  // The computer's screen, in a column beside the conversation.
+  const view = useScreen(agent.id);
   const stuck = useRef(true);
   const read = useReadWidth(area);
 
@@ -118,24 +117,14 @@ export function Chat({
             <Icon name="compact" />
           </button>
         ) : null}
-        {computer !== "off" ? (
-          <button
-            type="button"
-            className="btn"
-            aria-pressed={screenOpen}
-            title="The computer's screen, as it is now"
-            onClick={() => setScreenOpen((open) => !open)}
-          >
-            <Icon name="screen" />
-            Screen
-          </button>
-        ) : null}
+        {computer !== "off" ? <ScreenButton open={view.open} onClick={view.toggle} /> : null}
         <button type="button" className="btn" onClick={onCustomize}>
           <Icon name="pen" />
           Customize
         </button>
       </header>
 
+      <div className="chat-row">
       <div
         className="chat-body"
         ref={area}
@@ -172,16 +161,18 @@ export function Chat({
             {timeline(messages, Boolean(live)).map(({ key, message }) => (
               <Turn key={key} message={message} agent={agent} />
             ))}
-            {live ? <LiveTurn live={live} agent={agent} onWatch={computer !== "off" ? () => setScreenOpen(true) : null} /> : null}
+            {live ? <LiveTurn live={live} agent={agent} onWatch={computer !== "off" ? () => view.setOpen(true) : null} /> : null}
             <Approval request={approval} onAnswer={onApprove} />
           </div>
         </div>
 
-        <ScreenPanel open={screenOpen} onClose={closeScreen} screen={screen} status={live?.watch?.length ? live.status : ""} />
-
         <Composer
           agentName={agent.name}
-          disabled={busy}
+          // Answering here: Stop, and what's written is queued. An answer in
+          // another chat doesn't hold this one -- its send is queued too.
+          disabled={Boolean(live)}
+          queued={queued}
+          onUnqueue={onUnqueue}
           provider={provider}
           model={model}
           focusKey={agent.id}
@@ -199,29 +190,14 @@ export function Chat({
                 defaultLabel={defaultLabel}
                 compact
               />
-              {onComputer ? (
-                <>
-                  <span className="tray-label">Computer</span>
-                  <select
-                    className="computer-where"
-                    value={computer}
-                    onChange={(e) => onComputer(e.target.value)}
-                    title={computer === "host" ? "Works on this Mac, in its own folder; commands ask you first" : computer === "sandbox" ? "Works in a sandbox Linux machine; nothing asks" : "No computer in this chat"}
-                    aria-label="This chat's computer"
-                  >
-                    {WHERE.map((w) => (
-                      <option key={w.id} value={w.id} disabled={w.soon}>
-                        {w.label}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              ) : null}
+              {onComputer ? <ComputerChoice value={computer} onChange={onComputer} /> : null}
               <span className="spacer" />
               <span className="tray-note" title={abilitiesLine}>{abilitiesLine}</span>
             </>
           }
         />
+      </div>
+      <ScreenPanel open={view.open} onClose={view.close} screen={view.screen} status={live?.watch?.length ? live.status : ""} />
       </div>
     </div>
   );
@@ -496,54 +472,6 @@ function LiveComputer({ steps, onWatch }) {
         </button>
       ) : null}
     </div>
-  );
-}
-
-/* The computer's screen -- its browser's page -- in a panel out from the
-   right of the chat, refreshed while it's open. For the reader: the model
-   never sees these pictures. Esc or ✕ puts it away. */
-function ScreenPanel({ open, onClose, screen, status }) {
-  const [shot, setShot] = useState(null);
-  useEffect(() => {
-    if (!open) return undefined;
-    let going = true;
-    const look = async () => {
-      const next = await screen().catch(() => null);
-      if (going) setShot(next || { none: true });
-    };
-    look();
-    const timer = setInterval(look, 1200);
-    const onKey = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => {
-      going = false;
-      clearInterval(timer);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, screen, onClose]);
-  return (
-    <aside className="screen-panel" data-open={open ? "" : undefined} aria-hidden={!open} aria-label="The computer's screen">
-      <div className="screen-panel-head">
-        <Icon name="screen" size={16} />
-        <span>The computer’s screen</span>
-        <span className="spacer" />
-        <button type="button" className="btn icon-only" aria-label="Close the screen" title="Close (Esc)" onClick={onClose}>
-          <Icon name="close" />
-        </button>
-      </div>
-      {status ? <p className="screen-panel-status">{status}</p> : null}
-      {shot?.image ? (
-        <figure className="live-screen">
-          <img src={shot.image} alt={`The computer's browser: ${shot.title || shot.url}`} />
-          <figcaption>
-            {shot.title ? `${shot.title} — ` : ""}
-            {shot.url}
-          </figcaption>
-        </figure>
-      ) : (
-        <p className="hint">{shot?.none ? "No browser open on the computer yet. It shows here once the agent opens one." : "Looking…"}</p>
-      )}
-    </aside>
   );
 }
 

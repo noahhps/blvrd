@@ -55,6 +55,15 @@ app labels it wherever it is chosen. Claude goes through the official
 handed to another model server-side (`fallbacks: "default"`) rather than
 ending with nothing.
 
+## Talking to agents
+
+Write while an agent is still answering -- in its chat or another -- and the
+message is queued: it shows above the box, can be taken out, and goes in
+turn as soon as nothing else is answering, before any scheduled task. A
+turn may take up to 40 rounds of tool calls (a computer task up to 150
+steps); a call repeated more than three times in one turn is turned back so
+a looping model tries something else.
+
 ## What an agent can do
 
 | Ability | |
@@ -134,8 +143,8 @@ kept in a file it can grep (`docs/computer.md`).
 
 While it works you can follow along: each step shows in the chat as it
 starts, ticked or crossed as it ends, open for what it said -- and **Screen**
-(in the chat's header, or *Watch the screen* under the steps) slides out a
-panel on the right with the computer's browser as it is, refreshed every
+(in the chat's header, or *Watch the screen* under the steps) opens a column
+beside the conversation with the computer's browser as it is, refreshed every
 second or so. The pictures are for you; the model never sees them.
 
 **This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, the browser is a

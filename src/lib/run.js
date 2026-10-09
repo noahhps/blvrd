@@ -17,7 +17,12 @@ import { thinkingFields } from "./thinking.js";
 import { memoryBrief } from "./agentMemory.js";
 import { toolsFor } from "./tools.js";
 
-export const MAX_ROUNDS = 8;
+// Rounds of tool calls a turn may take before it must answer: room for real
+// work, with the same call made over and over stopped sooner (REPEATS).
+export const MAX_ROUNDS = 40;
+// The same call -- same tool, same arguments -- made this many times in one
+// turn is turned back instead of run again: a small model in a loop.
+export const REPEATS = 3;
 
 const newId = () => `call_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
 
@@ -85,6 +90,7 @@ export async function runTurn({
   let mode = tools.length && profile.tools === "prompted" ? "prompted" : "native";
   let switched = "";
   const tried = new Set();
+  const made = new Map(); // a call's tool and arguments -> times made this turn
 
   for (let round = 0; round < maxRounds; round++) {
     checkStopped(signal);
@@ -183,6 +189,14 @@ export async function runTurn({
 
     for (const call of prepared) {
       checkStopped(signal);
+      if (!call.problem) {
+        const key = `${call.name} ${JSON.stringify(call.args)}`;
+        const times = (made.get(key) || 0) + 1;
+        made.set(key, times);
+        if (times > REPEATS) {
+          call.problem = `You have already made this exact call ${REPEATS} times this turn. Running it again won't give anything new: try something different, or answer with what you have.`;
+        }
+      }
       const message = { role: "tool", callId: call.id, name: call.name, content: "", error: false };
       if (call.problem) {
         message.content = call.problem;

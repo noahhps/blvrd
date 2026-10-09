@@ -143,7 +143,7 @@ tools:   the agent's abilities
 - **The result is appended to the chat** as an assistant message with
   `scheduled: { id, title }`, and the run's tool calls folded under it as
   today. Compaction and the next user turn see it like any other message.
-- **Its own step limit** (`MAX_ROUNDS`, 8) and a time limit (10 minutes); a
+- **Its own step limit** (`MAX_ROUNDS`, 40) and a time limit (10 minutes); a
   run that hits either is recorded as failed with what it got to.
 - **The computer**: a run can use `computer_task` if the chat's computer is on
   (`docs/computer.md`). In the sandbox, as in the chat. On this Mac, see §6.

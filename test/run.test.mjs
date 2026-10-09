@@ -240,3 +240,28 @@ test("two turns with the notebook: caught up once, then told only what changed, 
   // The note was for the request only, not kept in the chat.
   assert.equal(chat.filter((m) => m.role === "user").at(-1).content, "anything new?");
 });
+
+/* A model in a loop: the same call, again and again. Room for many rounds
+ * mustn't mean many identical ones -- after REPEATS it's turned back. */
+test("the same call made over and over is turned back after a few, and the model told why", async (t) => {
+  let n = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    n += 1;
+    if (n <= 5) return ndjsonResponse([{ message: { role: "assistant", content: "", tool_calls: [{ function: { name: "lookup", arguments: { q: "same" } } }] }, done: true }]);
+    return ndjsonResponse([{ message: { content: "Giving up on that." }, done: true }]);
+  });
+  let ran = 0;
+  const results = [];
+  await runTurn({
+    agent: { name: "Looper", tools: null },
+    provider: { id: "ollama", kind: "ollama", name: "Ollama", base: "http://127.0.0.1:11434" },
+    model: "loopy",
+    history: [{ role: "user", content: "find it" }],
+    available: [{ name: "lookup", description: "Look up.", parameters: { type: "object", properties: { q: { type: "string" } }, required: ["q"] }, run: () => (ran += 1, "nothing") }],
+    notebook: {},
+    emit: (e) => e.type === "message" && e.message.role === "tool" && results.push(e.message),
+  });
+  assert.equal(ran, 3);
+  assert.match(results[3].content, /already made this exact call 3 times/);
+  assert.equal(results[3].error, true);
+});

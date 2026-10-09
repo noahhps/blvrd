@@ -195,8 +195,9 @@ computer_task(task: string, continue?: boolean)
 
 Calling it starts a worker loop on the computer -- by default the agent's own
 model, optionally a different one per agent (a coder model for code). The
-worker has the tools above, a step limit (30 by default, against the chat's
-`MAX_ROUNDS` of 8), and a short, fixed system prompt:
+worker has the tools above, a step limit (150, against the chat's
+`MAX_ROUNDS` of 40; the same call made more than three times in a turn is
+turned back), and a short, fixed system prompt:
 
 > You are working on a computer for {agent}. Task: {task}.
 > Keep `/work/.task/notes.md` current: the plan, what is done, what you
@@ -342,8 +343,9 @@ browser context; **Reset machine** restores the clean snapshot.
 
 **Status:** phases 0, 1 and 2 are built, and the reader can watch the
 computer work: each step live in the chat (the worker's `watch`, Chat.jsx
-`LiveComputer`), and its browser's screen in a panel out from the chat's
-right edge (`ScreenPanel`), polled while it's open
+`LiveComputer`), and its browser's screen in a column beside the
+conversation, in an agent's chat or a group's (`ComputerParts.jsx`
+`ScreenPanel`), polled while it's open
 (`blvrd/screen`, answered even while a command runs; never sent to a model). The sandbox (phase 2) is
 `src-tauri/src/machine.rs` -- Lima from the reader's PATH or a pinned release
 (1.0.7) fetched into the app's folder, a Debian 12 VM provisioned with Node

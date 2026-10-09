@@ -36,7 +36,9 @@ const ONSET = 2;
 const STICK_PX = 80; // a thread scrolled this close to its end counts as "at the end"
 // `disabled`: an answer is under way (Send becomes Stop). `blocked`: why this
 // chat can't take a message at all, said in the box; what's typed is kept.
-export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop }) {
+// `queued`: messages written while it was answering, waiting their turn
+// (App.jsx `queue`); sending while `disabled` adds to them.
+export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop, queued = [], onUnqueue = null }) {
   const form = useRef(null);
   const stack = useRef(null);
   const [popping, setPopping] = useState(false);
@@ -194,9 +196,8 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
 
   const submit = async (event) => {
     event.preventDefault();
-    // Enter still submits while an answer streams; clearing the box for a
-    // send that is then refused would lose what was typed.
-    if (disabled || blocked) return;
+    // While an answer streams, a send is queued: it goes when it's done.
+    if (blocked) return;
     if (!value.trim() && !usable.length) return;
     const text = value;
     setValue("");
@@ -215,6 +216,22 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
     >
       <div className="composer-stack" ref={stack}>
       {mentions ? at.list : null}
+      {queued.length ? (
+        <ul className="queued" aria-label="Queued messages">
+          {queued.map((q) => (
+            <li key={q.id}>
+              <Icon name="clock" size={13} />
+              <span className="queued-text">{q.text || `${q.files?.length || 0} file${q.files?.length === 1 ? "" : "s"}`}</span>
+              {onUnqueue ? (
+                <button type="button" className="btn icon-only" aria-label="Take it out of the queue" title="Don't send it" onClick={() => onUnqueue(q.id)}>
+                  <Icon name="close" size={13} />
+                </button>
+              ) : null}
+            </li>
+          ))}
+          <li className="queued-note">Sent in turn, when {disabled ? `${agentName} is done` : "the agent answering elsewhere is done"}.</li>
+        </ul>
+      ) : null}
       <div className="composer-box">
         {files.list}
 
@@ -222,7 +239,7 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
           ref={input}
           rows={1}
           value={value}
-          placeholder={blocked || `Message ${agentName}`}
+          placeholder={blocked || (disabled ? `Queue a message for ${agentName}` : `Message ${agentName}`)}
           autoComplete="off"
           onChange={(e) => {
             setValue(e.target.value);
@@ -249,9 +266,16 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
           <Thinking control={control} value={thinking} onChange={setThinking} disabled={disabled} />
 
           {disabled ? (
-            <button type="button" className="round stop" aria-label="Stop" title="Stop" onClick={onStop}>
-              <Icon name="stop" size={16} />
-            </button>
+            <>
+              {value.trim() || usable.length ? (
+                <button type="submit" className="round" aria-label="Queue" title={`Queue it: sent when ${agentName} is done`}>
+                  <Icon name="clock" size={16} />
+                </button>
+              ) : null}
+              <button type="button" className="round stop" aria-label="Stop" title="Stop" onClick={onStop}>
+                <Icon name="stop" size={16} />
+              </button>
+            </>
           ) : (
             <button type="submit" className="round" aria-label="Send" title="Send" disabled={Boolean(blocked) || (!value.trim() && !usable.length)}>
               <Icon name="send" size={16} />

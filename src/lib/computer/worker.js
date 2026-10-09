@@ -18,8 +18,10 @@ import { runTurn } from "../run.js";
 import { budgetFor } from "./budget.js";
 import { computerTools } from "./tools.js";
 
-export const MAX_STEPS = 30;
-const SLICE = 6; // rounds between looks at the context's size
+// Steps a task may take: long work, kept in bounds by the checkpoints and by
+// run.js turning back a call repeated over and over.
+export const MAX_STEPS = 150;
+const SLICE = 10; // rounds between looks at the context's size
 export const NOTES = ".task/notes.md";
 
 const clip = (text, n) => {

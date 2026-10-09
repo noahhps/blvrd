@@ -349,6 +349,7 @@ export default function App() {
    * with an Undo in the notice rather than a question first (see `notify`). */
   const deleteAgent = (agent) => {
     if (running.current?.chatId === agent.id) running.current.controller.abort();
+    setQueued((q) => q.filter((x) => x.chatId !== agent.id));
     const before = stateRef.current;
     const chat = before.chats[agent.id];
     const notes = before.notes[agent.id];
@@ -498,7 +499,45 @@ export default function App() {
     return said;
   };
 
-  const send = (text, files = [], thinking = null) => selected && sendTo(selected, text, files, thinking);
+  /* Messages queued while an agent is answering -- in its chat or another --
+   * go in the order they were written, each when nothing else is running
+   * (`drain`, after every turn). Kept for this launch only. */
+  const [queue, setQueue] = useState([]); // [{ id, chatId, kind, text, files, thinking, picked }]
+  const queueNow = useRef([]);
+  queueNow.current = queue;
+  const setQueued = (fn) => {
+    const next = fn(queueNow.current);
+    queueNow.current = next;
+    setQueue(next);
+  };
+  const enqueue = (entry) => setQueued((q) => [...q, { id: newId("q"), at: Date.now(), ...entry }]);
+  const unqueue = (id) => setQueued((q) => q.filter((x) => x.id !== id));
+  const drainRef = useRef(null);
+  drainRef.current = () => {
+    if (running.current) return;
+    const next = queueNow.current[0];
+    if (!next) return;
+    setQueued((q) => q.slice(1));
+    if (next.kind === "group") {
+      const group = (stateRef.current.groups || []).find((g) => g.id === next.chatId);
+      if (group) return sendGroup(next.text, next.files, null, next.picked, group);
+    } else {
+      const agent = stateRef.current.agents.find((a) => a.id === next.chatId);
+      if (agent) return sendTo(agent, next.text, next.files, next.thinking);
+    }
+    drainSoon(); // its chat is gone: the one after it
+  };
+  function drainSoon() {
+    setTimeout(() => drainRef.current(), 0);
+  }
+  // Busy, or others already waiting: in the queue, behind them.
+  const mustQueue = () => Boolean(running.current) || queueNow.current.length > 0;
+
+  const send = (text, files = [], thinking = null) => {
+    if (!selected) return;
+    if (mustQueue()) return enqueue({ chatId: selected.id, kind: "agent", text, files, thinking });
+    sendTo(selected, text, files, thinking);
+  };
   /* Compaction (lib/compact.js). `fold` summarizes the older part of a chat
    * with `agent`'s model and puts the summary in; it returns the chat with
    * it in, or null if there was nothing to fold or it couldn't be done.
@@ -564,6 +603,7 @@ export default function App() {
       if (stopped !== STOPPED) throw stopped;
     } finally {
       running.current = null;
+      drainSoon();
       setLive(null);
     }
   };
@@ -584,6 +624,7 @@ export default function App() {
       if (stopped !== STOPPED) throw stopped;
     } finally {
       running.current = null;
+      drainSoon();
       setLive(null);
     }
   };
@@ -592,9 +633,11 @@ export default function App() {
    * each shown the chat as it stands -- earlier answers in this round
    * included -- from its own seat (lib/group.js). An answer that @-mentions
    * another member brings that member in next, up to MAX_HANDOFFS times. */
-  const sendGroup = async (text, files = [], _thinking = null, picked = []) => {
-    const group = selectedGroup;
-    if (!group || running.current) return;
+  const sendGroup = async (text, files = [], _thinking = null, picked = [], target = null) => {
+    const group = target || selectedGroup;
+    if (!group) return;
+    if (!target && mustQueue()) return enqueue({ chatId: group.id, kind: "group", text, files, picked });
+    if (running.current) return;
     await filesIn.current;
     if (running.current) return;
     const members = membersOf(group);
@@ -641,6 +684,7 @@ export default function App() {
       if (stopped !== STOPPED) throw stopped;
     } finally {
       running.current = null;
+      drainSoon();
       setLive(null);
     }
   };
@@ -804,7 +848,7 @@ export default function App() {
   // says a time has come: run what's due, if nothing else is running.
   const tickRef = useRef(null);
   tickRef.current = () => {
-    if (schedRunRef.current || running.current) return;
+    if (schedRunRef.current || running.current || queueNow.current.length) return;
     const due = dueTasks(schedulesNow.current, Date.now())[0];
     if (due) runScheduled(due);
   };
@@ -868,6 +912,7 @@ export default function App() {
   // A group's conversation: the group and its chat go; its agents stay.
   const deleteGroup = (group) => {
     if (running.current?.chatId === group.id) running.current.controller.abort();
+    setQueued((q) => q.filter((x) => x.chatId !== group.id));
     const chat = stateRef.current.chats[group.id];
     const tasks = (stateRef.current.schedules || []).filter((x) => x.chatId === group.id);
     update((s) => {
@@ -1157,6 +1202,8 @@ export default function App() {
             }}
             onSend={send}
             onStop={stop}
+            queued={queue.filter((x) => x.chatId === selected.id)}
+            onUnqueue={unqueue}
             onCompact={() => compactNow(selected.id, selected)}
             canCompact={canCompact(selected.id)}
             computer={whereOf(state.computers, selected.id)}
@@ -1178,6 +1225,14 @@ export default function App() {
             busy={Boolean(live)}
             onSend={sendGroup}
             onStop={stop}
+            queued={queue.filter((x) => x.chatId === selectedGroup.id)}
+            onUnqueue={unqueue}
+            computer={whereOf(state.computers, selectedGroup.id)}
+            onComputer={(where) => {
+              const id = selectedGroup.id;
+              if (where === "off") stopComputer(id);
+              update((s) => ({ computers: { ...(s.computers || {}), [id]: { where } } }));
+            }}
             onCompact={() => compactNow(selectedGroup.id, membersOf(selectedGroup)[0])}
             canCompact={canCompact(selectedGroup.id) && membersOf(selectedGroup).length > 0}
             onEdit={() => setGroupEditor({ group: selectedGroup })}

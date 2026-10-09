@@ -9,6 +9,7 @@ import { timeline } from "../lib/timeline.js";
 import { LiveTurn, Turn } from "./Chat.jsx";
 import { Composer } from "./Composer.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
+import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
 import { Icon } from "./Icon.jsx";
 
 const GONE = { id: null, name: "A removed agent", look: { colour: "ink" } };
@@ -17,7 +18,9 @@ const NO_MEMBERS = "This group has no agents left. Add some with Edit group.";
 /* A group's chat: the reader and several agents in one thread, each answer
  * labelled with who gave it. Under the composer, who answers the next
  * message -- everyone, or the members picked (or @-mentioned in the text). */
-export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onCompact, canCompact = false, approval = null, onApprove }) {
+export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onCompact, canCompact = false, approval = null, onApprove, queued = [], onUnqueue = null, computer = "off", onComputer = null }) {
+  // The group's computer's screen, in a column beside the conversation.
+  const view = useScreen(group.id);
   const thread = useRef(null);
   const area = useRef(null);
   const stuck = useRef(true);
@@ -77,12 +80,14 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
             <Icon name="compact" />
           </button>
         ) : null}
+        {computer !== "off" ? <ScreenButton open={view.open} onClick={view.toggle} /> : null}
         <button type="button" className="btn" onClick={onEdit}>
           <Icon name="pen" />
           Edit group
         </button>
       </header>
 
+      <div className="chat-row">
       <div
         className="chat-body"
         ref={area}
@@ -127,7 +132,7 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
               <Turn key={key} message={message} agent={message.role === "user" ? null : agentOf(message.agentId)} speaker />
             ))}
             {live && speaking ? (
-              <LiveTurn live={live} agent={speaking} speaker after={next.length ? <p className="note">Then {next.join(", ")}</p> : null} />
+              <LiveTurn live={live} agent={speaking} speaker onWatch={computer !== "off" ? () => view.setOpen(true) : null} after={next.length ? <p className="note">Then {next.join(", ")}</p> : null} />
             ) : null}
             <Approval request={approval} onAnswer={onApprove} />
           </div>
@@ -135,7 +140,9 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
 
         <Composer
           agentName={group.name}
-          disabled={busy}
+          disabled={Boolean(live)}
+          queued={queued}
+          onUnqueue={onUnqueue}
           blocked={members.length ? null : NO_MEMBERS}
           provider={null}
           model={null}
@@ -158,9 +165,12 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
                   </button>
                 ))}
               </div>
+              {onComputer ? <ComputerChoice value={computer} onChange={onComputer} /> : null}
             </>
           }
         />
+      </div>
+      <ScreenPanel open={view.open} onClose={view.close} screen={view.screen} status={live?.watch?.length ? live.status : ""} />
       </div>
     </div>
   );
