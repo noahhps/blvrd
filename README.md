@@ -132,6 +132,12 @@ long session doesn't fill the chat -- its steps are under the report, to
 open. Answers are cut to what the model's window can afford, with the rest
 kept in a file it can grep (`docs/computer.md`).
 
+While it works you can follow along: each step shows in the chat as it
+starts, ticked or crossed as it ends, open for what it said -- and **Screen**
+(in the chat's header, or *Watch the screen* under the steps) slides out a
+panel on the right with the computer's browser as it is, refreshed every
+second or so. The pictures are for you; the model never sees them.
+
 **This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, the browser is a
 profile of its own (`~/blvrd/Browser`), and every command -- and anything
 that reaches outside the folder, or sends a form -- waits for your Allow;

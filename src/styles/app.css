@@ -765,6 +765,45 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 }
 .turn.scheduled .step { margin-top: 6px; }
 
+/* The computer at work, live (Chat.jsx LiveComputer). */
+.live-computer { margin-top: 8px; }
+.live-computer ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.live-computer summary { cursor: pointer; font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; color: var(--dim); }
+.live-computer li[data-state="running"] summary { color: var(--ink); }
+.live-computer li[data-state="failed"] summary, .live-computer li[data-state="declined"] summary { color: var(--danger); }
+.live-mark { display: inline-block; width: 16px; }
+.live-computer li[data-state="running"] .live-mark { animation: live-blink 1s ease-in-out infinite; }
+@keyframes live-blink { 50% { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .live-computer li[data-state="running"] .live-mark { animation: none; } }
+.live-computer pre { max-height: 220px; overflow: auto; }
+.live-watch { margin-top: 8px; }
+
+/* The computer's screen, in a panel that slides out from the chat's right
+   edge over the conversation (Chat.jsx ScreenPanel). */
+.screen-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: min(480px, 92%);
+  padding: 14px 16px;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: -12px 0 32px -18px rgba(0, 0, 0, 0.25);
+  transform: translateX(100%);
+  visibility: hidden;
+  transition: transform 260ms var(--ease-out), visibility 0s linear 260ms;
+}
+.screen-panel[data-open] { transform: none; visibility: visible; transition: transform 260ms var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .screen-panel, .screen-panel[data-open] { transition: none; } }
+.screen-panel-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.screen-panel-status { margin: 8px 0 0; color: var(--dim); font-size: 12.5px; overflow-wrap: anywhere; }
+.live-screen { margin: 12px 0 0; }
+.live-screen img { display: block; width: 100%; max-width: 640px; border: 1px solid var(--line); border-radius: var(--r-control); }
+.live-screen figcaption { margin-top: 4px; font-size: 12px; color: var(--faint); overflow-wrap: anywhere; }
+
 /* The computer: where a chat's is, and what its worker did. */
 .computer-where { font-size: 12.5px; }
 .computer-steps { margin: 8px 0; }

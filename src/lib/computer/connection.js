@@ -63,6 +63,7 @@ export async function openComputer(chatId, where, { progress = null } = {}) {
     }
     throw problem;
   }
+  live.set(chatId, session);
   return {
     where,
     root: plan.root,
@@ -76,6 +77,17 @@ export async function openComputer(chatId, where, { progress = null } = {}) {
       },
     },
   };
+}
+
+const live = new Map(); // chatId -> the session open to its computer
+
+/** The chat's computer's screen -- its browser's page -- for the reader to
+ *  watch: { image, url, title }, or null with no browser open. */
+export async function screenOf(chatId) {
+  const session = live.get(chatId);
+  if (!session) return null;
+  const shot = await session.request("blvrd/screen", {}, 5000).catch(() => null);
+  return shot?.image ? shot : null;
 }
 
 /** The sandbox's state, and the reader's say over it (Models screen). */
@@ -92,5 +104,6 @@ export async function resetSandbox() {
 
 /** End the chat's computer session: its shell and browser go; its files stay. */
 export function stopComputer(chatId) {
+  live.delete(chatId);
   for (const where of ["host", "sandbox"]) disconnect(serverId(chatId, where));
 }

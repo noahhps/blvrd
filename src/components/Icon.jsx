@@ -39,6 +39,8 @@ const PATHS = {
   plug: "M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0V8Z M12 17v4",
   check: "M5 12.5l4.5 4.5L19 7",
   clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 7.5V12l3 2",
+  // A display on its stand: the computer's screen.
+  screen: "M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z M9 21h6 M12 17v4",
   camera: "M4 8a2 2 0 0 1 2-2h1.5l1.5-2h6l1.5 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z M12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z",
 };
 

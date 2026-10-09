@@ -17,6 +17,7 @@ import { runTurn } from "../src/lib/run.js";
 import { computerTaskTool } from "../src/lib/computer/task.js";
 import { runWorker } from "../src/lib/computer/worker.js";
 import { budgetFor } from "../src/lib/computer/budget.js";
+import { watched } from "../src/lib/computer/watch.js";
 
 const SERVER = new URL("../computer/server.mjs", import.meta.url).pathname;
 const OLLAMA = { id: "ollama", kind: "ollama", name: "Ollama", base: "http://127.0.0.1:11434" };
@@ -86,6 +87,7 @@ test("the chat's agent hands a task to the computer and gets a short report; the
   });
   const said = [];
   const statuses = [];
+  const watching = [];
   await runTurn({
     agent: { name: "Sam", tools: null },
     provider: OLLAMA,
@@ -93,8 +95,17 @@ test("the chat's agent hands a task to the computer and gets a short report; the
     history: [{ role: "user", content: "make me a script that prints 6*7" }],
     available: [tool],
     notebook: { agentId: "a1", chatId: "a1" },
-    emit: (e) => (e.type === "message" ? said.push(e.message) : e.type === "status" && statuses.push(e.status)),
+    emit: (e) => (e.type === "message" ? said.push(e.message) : e.type === "status" ? statuses.push(e.status) : e.type === "watch" && watching.push(e)),
   });
+
+  // Followed live: each step as it starts, then as it ends.
+  assert.deepEqual(watching.map((w) => w.event.kind), ["start", "end", "start", "end"]);
+  assert.equal(watching[0].event.line, "shell: mkdir -p app && cd app && echo 'echo $((6*7))' > calc.sh && bash calc.sh");
+  const steps = watching.reduce((list, w) => watched(list, w.event), []);
+  assert.deepEqual(steps.map((x) => x.state), ["done", "done"]);
+  assert.match(steps[0].result, /\n42$/);
+  assert.equal(watched(steps, { kind: "start", id: "z", line: "x" }).at(-1).state, "running");
+  assert.equal(watched([{ id: "z", state: "running" }], { kind: "end", id: "z", declined: true })[0].state, "declined");
 
   const result = said.find((m) => m.role === "tool");
   assert.equal(result.content, "Made app/calc.sh, which prints 42.");

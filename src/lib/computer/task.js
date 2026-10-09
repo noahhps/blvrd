@@ -46,6 +46,7 @@ export function computerTaskTool(ops) {
           signal: ctx.signal,
           approve: ctx.approve,
           progress: ctx.progress,
+          watch: ctx.watch,
           resume: Boolean(args.continue),
         });
       } finally {

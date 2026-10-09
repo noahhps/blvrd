@@ -164,6 +164,14 @@ export class Browser {
     }
   }
 
+  /** The page as a picture, for the reader to watch -- never the model.
+   *  Null when the browser hasn't been started. */
+  async screen() {
+    if (!this.context || !this.page || this.page.isClosed()) return null;
+    const shot = await this.page.screenshot({ type: "jpeg", quality: 60, timeout: 3000 }).catch(() => null);
+    return shot ? { image: `data:image/jpeg;base64,${shot.toString("base64")}`, url: this.page.url(), title: await this.page.title().catch(() => "") } : null;
+  }
+
   tabs() {
     return `Tabs: ${this.context.pages().map((pg, i) => `${i + 1}${pg === this.page ? " (this one)" : ""} ${pg.url()}`).join(" · ")}`;
   }

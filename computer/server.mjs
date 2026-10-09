@@ -93,7 +93,9 @@ async function handle(msg) {
   }
 }
 
-// One call at a time, in the order they came: the shell is one shell.
+// One call at a time, in the order they came: the shell is one shell. Except
+// a look at the screen, for the reader watching (not a tool -- the model never
+// sees it): answered at once, even while a long command runs.
 let queue = Promise.resolve();
 const lines = createInterface({ input: process.stdin });
 lines.on("line", (line) => {
@@ -101,6 +103,13 @@ lines.on("line", (line) => {
   try {
     msg = JSON.parse(line);
   } catch {
+    return;
+  }
+  if (msg.method === "blvrd/screen") {
+    browser
+      .screen()
+      .then((screen) => send({ jsonrpc: "2.0", id: msg.id, result: screen || {} }))
+      .catch((problem) => send({ jsonrpc: "2.0", id: msg.id, error: { code: -32603, message: String(problem.message || problem) } }));
     return;
   }
   queue = queue.then(() => handle(msg));

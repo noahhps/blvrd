@@ -132,7 +132,10 @@ export function parseStep(line) {
 /** Every line of `text` as a step; the first that can't be read stops it. */
 export function parseSteps(text) {
   const steps = [];
-  for (const line of String(text || "").split(/\n|;\s*(?=[a-z])/i)) {
+  // One to a line -- or several on one line with "; " between, when what
+  // follows is a step (a URL may have semicolons of its own).
+  const next = new RegExp(`\\n|;\\s+(?=(?:${[...VERBS, ...Object.keys(SYNONYMS)].join("|")})\\b)`, "i");
+  for (const line of String(text || "").split(next)) {
     const step = parseStep(line);
     if (step === null) continue;
     if (step instanceof Error) return { steps, error: step.message };

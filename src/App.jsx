@@ -9,6 +9,7 @@ import { ADAPTERS } from "./lib/providers.js";
 import { discover, getProfile, usableWindow } from "./lib/profile.js";
 import { computerTaskTool } from "./lib/computer/task.js";
 import { openComputer, stopComputer, whereOf } from "./lib/computer/connection.js";
+import { watched } from "./lib/computer/watch.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
 import { loadFiles, withFiles } from "./lib/fileStore.js";
 import { TOOLS, toolsFor } from "./lib/tools.js";
@@ -475,12 +476,15 @@ export default function App() {
           else if (event.type === "call") setLive((l) => l && { ...l, parts: [...l.parts, { type: "call", name: event.name }] });
           // A tool saying what it's doing (the computer's worker, step by step).
           else if (event.type === "status") setLive((l) => l && { ...l, status: event.status });
+          // Its steps as they happen, for the reader to follow.
+          else if (event.type === "watch") setLive((l) => l && { ...l, watch: watched(l.watch, event.event) });
           else if (event.type === "message") {
             const message = { ...event.message, ...tag };
             append(chatId, message);
             said.push(message);
             const calling = message.role === "assistant" && message.calls?.length;
-            setLive((l) => l && { ...l, text: "", parts: [], status: calling ? `Using ${message.calls.map((c) => c.name).join(", ")}…` : "" });
+            // A tool's result in: its live steps are on the message now.
+            setLive((l) => l && { ...l, text: "", parts: [], status: calling ? `Using ${message.calls.map((c) => c.name).join(", ")}…` : "", ...(message.role === "tool" ? { watch: null } : {}) });
           }
         },
       });

@@ -138,6 +138,7 @@ test("browser steps are read the lenient way", () => {
   assert.deepEqual(parseStep("press ctrl+a"), { verb: "press", key: "Control+a" });
   assert.deepEqual(parseStep("wait 2s"), { verb: "wait", seconds: 2 });
   assert.deepEqual(parseStep("open localhost:5180/x"), { verb: "open", url: "http://localhost:5180/x" });
+  assert.deepEqual(parseSteps("open https://a.org/x;y=1; click 3").steps, [{ verb: "open", url: "https://a.org/x;y=1" }, { verb: "click", ref: "3" }]);
   const { steps, error } = parseSteps("open https://a.org\nclick 3\nfly away");
   assert.equal(steps.length, 2);
   assert.match(error, /"fly" isn't a step/);
@@ -166,7 +167,18 @@ test("the browser: a page in a few lines, a form filled in one call, what change
   const base = `http://127.0.0.1:${site.address().port}`;
   const c = computer(mkdtempSync(join(tmpdir(), "blvrd-c-")), t);
   try {
+    // The reader's look at the screen: nothing before a browser is open.
+    assert.deepEqual((await c.rpc("blvrd/screen", {})).result, {});
     let r = await c.call("browser", { steps: `open ${base}/` });
+    const shot = (await c.rpc("blvrd/screen", {})).result;
+    assert.match(shot.image, /^data:image\/jpeg;base64,\/9j\//);
+    assert.equal(shot.title, "Shop");
+    // And it answers while a long command holds the computer.
+    const long = c.call("shell", { script: "sleep 3" });
+    const started = Date.now();
+    assert.ok((await c.rpc("blvrd/screen", {})).result.image);
+    assert.ok(Date.now() - started < 2500, "not kept waiting behind the command");
+    await long;
     assert.equal(r.error, false, r.text);
     assert.match(r.text, /^Shop — http:\/\/127\.0\.0\.1:\d+\//);
     const email = /\[(\d+)\] textbox "Email"/.exec(r.text)?.[1];

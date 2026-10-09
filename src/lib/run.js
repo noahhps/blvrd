@@ -198,7 +198,17 @@ export async function runTurn({
           // `approve` and `progress`: for a tool that runs a turn of its own
           // (the computer's worker) and asks, or says what it's doing, through
           // this one.
-          const ctx = { signal, ...notebook, callId: call.id, messages, approve, progress: (status) => emit({ type: "status", status }) };
+          // `watch`: a tool's own steps as they happen, for the reader to
+          // follow live (the computer's worker).
+          const ctx = {
+            signal,
+            ...notebook,
+            callId: call.id,
+            messages,
+            approve,
+            progress: (status) => emit({ type: "status", status }),
+            watch: (event) => emit({ type: "watch", callId: call.id, event }),
+          };
           // A call that can't work goes back to the model before anyone is
           // asked about it (a time lib/when.js can't read, say).
           if (tool.check) tool.check(call.args, ctx);

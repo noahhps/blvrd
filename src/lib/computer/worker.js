@@ -103,8 +103,10 @@ async function checkpoint({ task, history, client, root, budget }) {
 }
 
 /** Do `task` on the computer. Resolves to { text, detail }: the report for
- *  the chat's model, and the steps for the reader. */
-export async function runWorker({ task, agent, provider, model, profile, client, where, root, signal, approve = null, progress = null, resume = false }) {
+ *  the chat's model, and the steps for the reader. `watch` hears each step
+ *  as it starts and ends -- { kind: "start", id, line } and { kind: "end",
+ *  id, result, error, declined } -- so the reader can follow along. */
+export async function runWorker({ task, agent, provider, model, profile, client, where, root, signal, approve = null, progress = null, watch = null, resume = false }) {
   const budget = budgetFor(provider, profile);
   if (!budget.enough) {
     return { text: `The computer needs a model that can take at least 6k tokens; ${model} has ${budget.window}. Use another model for this agent, or give this one a bigger context.`, detail: null };
@@ -134,8 +136,14 @@ export async function runWorker({ task, agent, provider, model, profile, client,
       notebook: {},
       emit: (e) => {
         if (e.type !== "message") return;
-        said.push(e.message);
-        if (e.message.role === "assistant" && e.message.calls?.length) progress?.(`On the computer: ${callLine(e.message.calls[0])}`);
+        const m = e.message;
+        said.push(m);
+        if (m.role === "assistant" && m.calls?.length) {
+          progress?.(`On the computer: ${callLine(m.calls[0])}`);
+          for (const c of m.calls) watch?.({ kind: "start", id: c.id, line: callLine(c) });
+        } else if (m.role === "tool") {
+          watch?.({ kind: "end", id: m.callId, result: clip(m.content, 2000), error: Boolean(m.error), declined: Boolean(m.declined) });
+        }
       },
     });
     // The slice's end isn't part of the work.
