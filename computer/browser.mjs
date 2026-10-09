@@ -1,7 +1,8 @@
-/* The browser: Chromium through Playwright, started the first time it's
- * used and kept for the task. On this Mac it is Chrome with a profile of its
- * own (no saved logins unless the reader signs in to it on purpose); in the
- * sandbox, the VM's Chromium.
+/* The browser: any browser built on Chromium, through Playwright, started
+ * the first time it's used and kept for the task. On this Mac it is the one
+ * the reader picked -- Dia, Arc, Chrome, Brave, Edge... -- with a profile of
+ * its own (no saved logins unless the reader signs in to it on purpose); in
+ * the sandbox, the VM's Chromium. Safari and Firefox can't be driven this way.
  *
  * Steps (steps.mjs) run one after another; the runtime waits for the page
  * to settle after each, and a ref that went stale -- the page redrew -- is
@@ -19,7 +20,7 @@ const NAV_MS = 30_000;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// A Chromium to drive: the one named, the Mac's Chrome, or one found here.
+// A Chromium to drive when none was named: the first of these that's here.
 const CANDIDATES = [
   "/usr/bin/chromium",
   "/usr/bin/chromium-browser",
@@ -27,6 +28,11 @@ const CANDIDATES = [
   "/snap/bin/chromium",
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/Applications/Dia.app/Contents/MacOS/Dia",
+  "/Applications/Arc.app/Contents/MacOS/Arc",
+  "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+  "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "/Applications/Vivaldi.app/Contents/MacOS/Vivaldi",
 ];
 
 async function playwright() {
@@ -57,7 +63,13 @@ export class Browser {
     try {
       this.context = await chromium.launchPersistentContext(this.profileDir, options);
     } catch (problem) {
-      throw new Error(`couldn't start a browser (${String(problem.message || problem).split("\n")[0]}). Install Chrome, or set BLVRD_CHROME to a Chromium.`);
+      const which = executablePath ? executablePath.replace(/^.*\/([^/]+)\.app\/.*$/, "$1") : "Chrome";
+      const why = String(problem.message || problem).split("\n")[0];
+      throw new Error(
+        executablePath
+          ? `couldn't start ${which} (${why}). It may not let itself be driven${this.headless ? ", or not run hidden -- try showing its window" : ""}; or pick another browser on the Models screen.`
+          : `couldn't find a browser to use (${why}). Install one built on Chromium (Chrome, Dia, Arc, Brave, Edge…) and pick it on the Models screen.`,
+      );
     }
     this.context.on("page", (page) => this.opened.push(page));
     this.page = this.context.pages()[0] || (await this.context.newPage());

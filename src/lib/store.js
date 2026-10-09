@@ -22,6 +22,8 @@
  *                 tasks waiting; otherwise blvrd stays in the menu bar
  *   computers     { [chatId]: { where: "off" | "host" | "sandbox" } } -- each
  *                 chat's computer (lib/computer/connection.js)
+ *   browser       { name, app, path, show } | null -- the browser the computer
+ *                 uses on this Mac; null, the first Chromium one found
  *
  * Nothing here leaves the machine. API keys are stored in the same place, in
  * plain text, which is the trade a single-user desktop app makes; the Settings

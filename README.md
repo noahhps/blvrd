@@ -147,8 +147,10 @@ starts, ticked or crossed as it ends, open for what it said -- and **Screen**
 beside the conversation with the computer's browser as it is, refreshed every
 second or so. The pictures are for you; the model never sees them.
 
-**This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, the browser is a
-profile of its own (`~/blvrd/Browser`), and every command -- and anything
+**This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, the browser is
+any built on Chromium you pick under **Models → The computer's browser** (Dia,
+Arc, Chrome, Brave, Edge, … or any other `.app`; the first one found if you
+don't), always with a profile of its own (`~/blvrd/Browser/<browser>`), and every command -- and anything
 that reaches outside the folder, or sends a form -- waits for your Allow;
 "Always allow" covers that one command. It needs Node.js on the Mac.
 **Sandbox**: a Linux VM of its own (Lima on Apple's Virtualization

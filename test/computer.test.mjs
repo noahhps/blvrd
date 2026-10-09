@@ -122,6 +122,17 @@ test("files: numbered windows, an outline of a big file, writing in parts, edits
   c.close();
 });
 
+test("the browser it's told to use is the one it starts, and one that won't start is named", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "blvrd-c-"));
+  const proc = spawn(process.execPath, [SERVER, "--root", root, "--browser", "/Applications/Nope.app/Contents/MacOS/Nope"], { stdio: ["pipe", "pipe", "inherit"], env: { ...process.env, BLVRD_CHROME: "" } });
+  t.after(() => proc.stdin.end());
+  const answer = new Promise((resolve) => createInterface({ input: proc.stdout }).once("line", (l) => resolve(JSON.parse(l))));
+  proc.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "browser", arguments: { steps: "open https://example.com" } } })}\n`);
+  const { result } = await answer;
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /^couldn't start Nope \(.*\)\. It may not let itself be driven, or not run hidden -- try showing its window; or pick another browser on the Models screen\.$/);
+});
+
 test("cutting and cleaning on their own", () => {
   assert.equal(clean("a\rb\rc\nd"), "c\nd");
   const text = Array.from({ length: 100 }, (_, i) => `line ${i}`).join("\n");

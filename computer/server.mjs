@@ -4,7 +4,8 @@
  * runs on this Mac and in the sandbox VM (docs/computer.md §2); the app
  * decides what needs the reader's Allow, this does what it's asked.
  *
- *   node server.mjs --root <workspace> [--profile <browser profile>] [--show]
+ *   node server.mjs --root <workspace> [--profile <browser profile>]
+ *                   [--browser <a Chromium browser's program>] [--show]
  *
  * Every tool takes `_limit`, the characters its answer may use, set by the
  * app from the model's window; what doesn't fit is kept in a file under the
@@ -27,7 +28,11 @@ const ROOT = resolve(arg("root", process.cwd()));
 mkdirSync(ROOT, { recursive: true });
 setRoot(ROOT);
 const shell = new Shell(ROOT);
-const browser = new Browser({ profileDir: resolve(arg("profile", join(ROOT, ".blvrd", "browser"))), headless: !process.argv.includes("--show") });
+const browser = new Browser({
+  profileDir: resolve(arg("profile", join(ROOT, ".blvrd", "browser"))),
+  headless: !process.argv.includes("--show"),
+  executable: arg("browser", process.env.BLVRD_CHROME || null),
+});
 
 const str = (description) => ({ type: "string", description });
 export const TOOLS = [

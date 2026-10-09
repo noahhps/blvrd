@@ -36,12 +36,14 @@ const sandboxUsed = () => {
 const sessions = new Set(); // sandbox server ids open now
 
 /** Open (or reuse) the chat's computer. `progress` hears what the sandbox
- *  is doing while it starts -- the first time, it is made. */
-export async function openComputer(chatId, where, { progress = null } = {}) {
+ *  is doing while it starts -- the first time, it is made. `browser`: on
+ *  this Mac, the browser the reader picked ({ path, show }); none, the first
+ *  one found. */
+export async function openComputer(chatId, where, { progress = null, browser = null } = {}) {
   if (where === "off") throw new Error("this chat's computer is off");
   // What to start, and where its workspace is, from the desktop shell.
   let plan;
-  if (where === "host") plan = await invoke("computer_host", { chatId }, "The computer");
+  if (where === "host") plan = await invoke("computer_host", { chatId, browser: browser?.path || null, show: Boolean(browser?.show) }, "The computer");
   else {
     const off = await listen("machine-progress", ({ line }) => line?.trim() && progress?.(`Sandbox: ${line.trim().slice(0, 140)}`));
     try {
@@ -100,6 +102,20 @@ export async function stopSandbox() {
 export async function resetSandbox() {
   await stopSandbox();
   return invoke("machine_reset", {}, "The sandbox");
+}
+
+/** The browsers on this Mac the computer can use ({ name, app, path }), and
+ *  one the reader points at (an .app or a program). */
+export const browsersFound = () => invoke("browsers_found", {}, "Finding browsers");
+export const browserAt = (path) => invoke("browser_resolve", { path }, "That browser");
+
+/** End every computer session on this Mac -- the browser changed: each
+ *  starts again with the new one on its next task. */
+export function stopHostComputers() {
+  for (const chatId of [...live.keys()]) {
+    live.delete(chatId);
+    disconnect(serverId(chatId, "host"));
+  }
 }
 
 /** End the chat's computer session: its shell and browser go; its files stay. */

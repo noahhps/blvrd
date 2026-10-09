@@ -8,7 +8,7 @@ import { runTurn } from "./lib/run.js";
 import { ADAPTERS } from "./lib/providers.js";
 import { discover, getProfile, usableWindow } from "./lib/profile.js";
 import { computerTaskTool } from "./lib/computer/task.js";
-import { openComputer, stopComputer, whereOf } from "./lib/computer/connection.js";
+import { openComputer, stopComputer, stopHostComputers, whereOf } from "./lib/computer/connection.js";
 import { watched } from "./lib/computer/watch.js";
 import { load, newId, providersOf, save } from "./lib/store.js";
 import { loadFiles, withFiles } from "./lib/fileStore.js";
@@ -280,7 +280,7 @@ export default function App() {
   const computerTool = useMemo(
     () =>
       computerTaskTool({
-        open: (chatId, options) => openComputer(chatId, whereOf(stateRef.current.computers, chatId), options),
+        open: (chatId, options) => openComputer(chatId, whereOf(stateRef.current.computers, chatId), { ...options, browser: stateRef.current.browser || null }),
         stop: stopComputer,
         modelOf: (agentId) => {
           const agent = stateRef.current.agents.find((a) => a.id === agentId);
@@ -1182,6 +1182,11 @@ export default function App() {
             search={searchOf(state)}
             onSearch={(patch) => update((s) => ({ search: { ...searchOf(s), ...patch } }))}
             inUse={modelsInUse()}
+            browser={state.browser || null}
+            onBrowser={(browser) => {
+              update(() => ({ browser }));
+              stopHostComputers();
+            }}
           />
         ) : selected ? (
           <Chat

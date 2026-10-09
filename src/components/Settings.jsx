@@ -9,6 +9,7 @@ import { DEFAULT_SHORTCUT, shortcutFromKey, shortcutLabel } from "../lib/quick.j
 import { Icon } from "./Icon.jsx";
 import { ModelAccess } from "./ModelAccess.jsx";
 import { SandboxCard } from "./SandboxCard.jsx";
+import { BrowserCard } from "./BrowserCard.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 
 /* Where the models come from.
@@ -32,6 +33,8 @@ export function Settings({
   search,
   onSearch,
   inUse = [],
+  browser = null,
+  onBrowser = () => {},
 }) {
   const [probe, setProbe] = useState({}); // id -> { state, count, error }
   const [probing, setProbing] = useState(false);
@@ -80,6 +83,7 @@ export function Settings({
       </section>
 
       <ModelAccess inUse={inUse} />
+      <BrowserCard browser={browser} onBrowser={onBrowser} />
       <SandboxCard />
 
       <section className="card">

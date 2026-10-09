@@ -4,7 +4,8 @@
 // through `mcp_spawn` like the reader's own local servers. This only says
 // what to run: on this Mac, with a folder for the chat under
 // ~/blvrd/Workspace and a browser profile of its own under ~/blvrd/Browser
-// -- never the reader's own Chrome profile.
+// -- never the reader's own profile -- in whichever Chromium browser the
+// reader picked (src-tauri/src/browsers.rs), or the first one found.
 
 use std::path::PathBuf;
 
@@ -40,10 +41,16 @@ fn server_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-pub fn computer_host(app: AppHandle, chat_id: String) -> Result<Plan, String> {
+pub fn computer_host(app: AppHandle, chat_id: String, browser: Option<String>, show: Option<bool>) -> Result<Plan, String> {
     let base = home()?.join("blvrd");
     let root = base.join("Workspace").join(folder_for(&chat_id));
-    let profile = base.join("Browser");
+    // The browser: the one picked, else the first found. A profile for each,
+    // since browsers can't share one.
+    let chosen = match browser.filter(|b| !b.trim().is_empty()) {
+        Some(path) => Some(crate::browsers::browser_resolve(path)?),
+        None => crate::browsers::browsers_found().into_iter().next(),
+    };
+    let profile = base.join("Browser").join(chosen.as_ref().map(|b| folder_for(&b.name_for_folder())).unwrap_or_else(|| "Default".into()));
     std::fs::create_dir_all(&root).map_err(|e| format!("couldn't make {}: {e}", root.display()))?;
     std::fs::create_dir_all(&profile).map_err(|e| format!("couldn't make {}: {e}", profile.display()))?;
     let server = server_path(&app)?;
@@ -58,7 +65,11 @@ pub fn computer_host(app: AppHandle, chat_id: String) -> Result<Plan, String> {
             root.to_string_lossy().into(),
             "--profile".into(),
             profile.to_string_lossy().into(),
-        ],
+        ]
+        .into_iter()
+        .chain(chosen.iter().flat_map(|b| ["--browser".to_string(), b.program()]))
+        .chain(show.unwrap_or(false).then(|| "--show".to_string()))
+        .collect(),
         root: root.to_string_lossy().into(),
     })
 }

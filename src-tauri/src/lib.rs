@@ -19,6 +19,7 @@
 // open the quickview (the "quick" window) from any app.
 
 mod apple;
+mod browsers;
 mod computer;
 mod machine;
 mod mcp;
@@ -53,6 +54,8 @@ pub fn run() {
             memory::agent_memory_remove,
             schedule::schedule_set,
             computer::computer_host,
+            browsers::browsers_found,
+            browsers::browser_resolve,
             machine::computer_sandbox,
             machine::machine_status,
             machine::machine_stop,
