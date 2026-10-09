@@ -147,12 +147,18 @@ starts, ticked or crossed as it ends, open for what it said -- and **Screen**
 beside the conversation with the computer's browser as it is, refreshed every
 second or so. The pictures are for you; the model never sees them.
 
-**This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, the browser is
-any built on Chromium you pick under **Models → The computer's browser** (Dia,
-Arc, Chrome, Brave, Edge, … or any other `.app`; the first one found if you
-don't), always with a profile of its own (`~/blvrd/Browser/<browser>`), and every command -- and anything
-that reaches outside the folder, or sends a form -- waits for your Allow;
-"Always allow" covers that one command. It needs Node.js on the Mac.
+**This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, and the
+browser is your own -- Dia, Chrome, Arc, Brave, Edge, whichever you use, with
+your logins -- through the blvrd extension: under **Models → The computer's
+browser**, *Show the extension folder*, then in your browser open
+`chrome://extensions`, turn on Developer mode and *Load unpacked* that folder
+(`~/blvrd/Extension`). Each chat's agent then works in a window of its own and
+your tabs are left alone; keep the browser open while it works. If you'd
+rather it didn't use your logins, choose *A separate browser* there: any built
+on Chromium (the first one found, or the one you pick), started with a profile
+of its own (`~/blvrd/Browser/<browser>`). Every command -- and anything that
+reaches outside the folder, or sends a form -- waits for your Allow; "Always
+allow" covers that one command. It needs Node.js on the Mac.
 **Sandbox**: a Linux VM of its own (Lima on Apple's Virtualization
 framework, made the first time a chat uses it), where nothing asks. It holds
 none of your files or keys and sees one folder of yours, `~/blvrd/Shared`;

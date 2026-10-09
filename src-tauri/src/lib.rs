@@ -54,6 +54,7 @@ pub fn run() {
             memory::agent_memory_remove,
             schedule::schedule_set,
             computer::computer_host,
+            computer::extension_reveal,
             browsers::browsers_found,
             browsers::browser_resolve,
             machine::computer_sandbox,

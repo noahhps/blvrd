@@ -811,6 +811,10 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 /* The computer: where a chat's is, and what its worker did. */
 .computer-choice { display: inline-flex; align-items: center; gap: 6px; }
 .browser-show { margin-top: 12px; }
+.browser-modes { display: grid; gap: 8px; margin: 12px 0; }
+.browser-modes .check input { width: 15px; height: 15px; }
+.browser-steps { margin: 0 0 10px; padding-left: 20px; display: grid; gap: 8px; }
+.browser-steps code { overflow-wrap: anywhere; }
 .composer-tray .computer-where {
   width: auto;
   height: 26px;

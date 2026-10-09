@@ -37,13 +37,14 @@ const sessions = new Set(); // sandbox server ids open now
 
 /** Open (or reuse) the chat's computer. `progress` hears what the sandbox
  *  is doing while it starts -- the first time, it is made. `browser`: on
- *  this Mac, the browser the reader picked ({ path, show }); none, the first
- *  one found. */
+ *  this Mac, what the reader chose ({ mode, path, show }): their own browser
+ *  through the blvrd extension (the default), or with mode "separate" one
+ *  the computer starts -- the one at `path`, else the first found. */
 export async function openComputer(chatId, where, { progress = null, browser = null } = {}) {
   if (where === "off") throw new Error("this chat's computer is off");
   // What to start, and where its workspace is, from the desktop shell.
   let plan;
-  if (where === "host") plan = await invoke("computer_host", { chatId, browser: browser?.path || null, show: Boolean(browser?.show) }, "The computer");
+  if (where === "host") plan = await invoke("computer_host", { chatId, own: browser?.mode !== "separate", browser: browser?.path || null, show: Boolean(browser?.show) }, "The computer");
   else {
     const off = await listen("machine-progress", ({ line }) => line?.trim() && progress?.(`Sandbox: ${line.trim().slice(0, 140)}`));
     try {
@@ -108,6 +109,9 @@ export async function resetSandbox() {
  *  one the reader points at (an .app or a program). */
 export const browsersFound = () => invoke("browsers_found", {}, "Finding browsers");
 export const browserAt = (path) => invoke("browser_resolve", { path }, "That browser");
+/** The blvrd extension's folder (~/blvrd/Extension), shown in the Finder for
+ *  the reader to add to their browser; its path. */
+export const revealExtension = () => invoke("extension_reveal", {}, "The extension");
 
 /** End every computer session on this Mac -- the browser changed: each
  *  starts again with the new one on its next task. */

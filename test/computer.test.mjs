@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -19,8 +20,8 @@ const CHROME = [process.env.BLVRD_CHROME, "/opt/pw-browsers/chromium-1194/chrome
 
 // Closed when the test ends, passed or failed: an open pipe would keep the
 // test process waiting on the server.
-function computer(root, t) {
-  const proc = spawn(process.execPath, [SERVER, "--root", root], { stdio: ["pipe", "pipe", "inherit"], env: { ...process.env, ...(CHROME ? { BLVRD_CHROME: CHROME } : {}) } });
+function computer(root, t, extra = []) {
+  const proc = spawn(process.execPath, [SERVER, "--root", root, ...extra], { stdio: ["pipe", "pipe", "inherit"], env: { ...process.env, ...(CHROME ? { BLVRD_CHROME: CHROME } : {}) } });
   const waiting = new Map();
   let n = 0;
   createInterface({ input: proc.stdout }).on("line", (line) => {
@@ -38,7 +39,11 @@ function computer(root, t) {
     const { result } = await rpc("tools/call", { name, arguments: args });
     return { text: result.content[0].text, error: Boolean(result.isError) };
   };
-  const close = () => proc.stdin.end();
+  const gone = new Promise((r) => proc.once("exit", r));
+  const close = () => {
+    proc.stdin.end();
+    return gone;
+  };
   t?.after(close);
   return { rpc, call, close };
 }
@@ -169,56 +174,113 @@ const SITE = {
   "/other": `<!doctype html><title>Other</title><main><h1>The other page</h1><p>Prices: 3 apples for £2.</p></main>`,
 };
 
-test("the browser: a page in a few lines, a form filled in one call, what changed, a new tab followed", { skip: !CHROME && "no Chromium here" }, async (t) => {
+async function serveSite(t) {
   const site = createServer((req, res) => {
     res.writeHead(SITE[req.url] ? 200 : 404, { "Content-Type": "text/html; charset=utf-8" });
     res.end(SITE[req.url] || "not found");
   });
   await new Promise((r) => site.listen(0, "127.0.0.1", r));
-  const base = `http://127.0.0.1:${site.address().port}`;
-  const c = computer(mkdtempSync(join(tmpdir(), "blvrd-c-")), t);
-  try {
-    // The reader's look at the screen: nothing before a browser is open.
-    assert.deepEqual((await c.rpc("blvrd/screen", {})).result, {});
-    let r = await c.call("browser", { steps: `open ${base}/` });
-    const shot = (await c.rpc("blvrd/screen", {})).result;
-    assert.match(shot.image, /^data:image\/jpeg;base64,\/9j\//);
-    assert.equal(shot.title, "Shop");
-    // And it answers while a long command holds the computer.
-    const long = c.call("shell", { script: "sleep 3" });
-    const started = Date.now();
-    assert.ok((await c.rpc("blvrd/screen", {})).result.image);
-    assert.ok(Date.now() - started < 2500, "not kept waiting behind the command");
-    await long;
-    assert.equal(r.error, false, r.text);
-    assert.match(r.text, /^Shop — http:\/\/127\.0\.0\.1:\d+\//);
-    const email = /\[(\d+)\] textbox "Email"/.exec(r.text)?.[1];
-    const button = /\[(\d+)\] button "Sign in"/.exec(r.text)?.[1];
-    assert.ok(email && button, r.text);
-    assert.match(r.text, /Welcome back to the shop/);
-    // The page's own things come before the menu's.
-    assert.ok(r.text.indexOf('"Email"') < r.text.indexOf('"Menu 0"') || !r.text.includes('"Menu 0"'));
+  t.after(() => site.close());
+  return `http://127.0.0.1:${site.address().port}`;
+}
 
-    r = await c.call("browser", { steps: `type ${email} sam@example.com\nclick ${button}` });
-    assert.match(r.text, /✓ type \d+ "sam@example\.com"\n✓ click \d+/);
-    assert.match(r.text, /what changed:/);
-    assert.match(r.text, /Changed: .*textbox "Email" = "sam@example\.com"/);
-    assert.match(r.text, /checkbox "Remember me" ✓/);
-    assert.match(r.text, /New text:\nHello, sam@example\.com/);
-    assert.ok(!r.text.includes("Menu 5"), "an unchanged menu isn't sent again");
+// The same walk through the little site, whichever browser does the steps.
+async function walkThrough(c, base) {
+  // The reader's look at the screen: nothing before a browser is open.
+  assert.deepEqual((await c.rpc("blvrd/screen", {})).result, {});
+  let r = await c.call("browser", { steps: `open ${base}/` });
+  const shot = (await c.rpc("blvrd/screen", {})).result;
+  assert.match(shot.image, /^data:image\/jpeg;base64,\/9j\//);
+  assert.equal(shot.title, "Shop");
+  // And it answers while a long command holds the computer.
+  const long = c.call("shell", { script: "sleep 3" });
+  const started = Date.now();
+  assert.ok((await c.rpc("blvrd/screen", {})).result.image);
+  assert.ok(Date.now() - started < 2500, "not kept waiting behind the command");
+  await long;
+  assert.equal(r.error, false, r.text);
+  assert.match(r.text, /^Shop — http:\/\/127\.0\.0\.1:\d+\//);
+  const email = /\[(\d+)\] textbox "Email"/.exec(r.text)?.[1];
+  const button = /\[(\d+)\] button "Sign in"/.exec(r.text)?.[1];
+  assert.ok(email && button, r.text);
+  assert.match(r.text, /Welcome back to the shop/);
+  // The page's own things come before the menu's.
+  assert.ok(r.text.indexOf('"Email"') < r.text.indexOf('"Menu 0"') || !r.text.includes('"Menu 0"'));
 
-    r = await c.call("browser", { steps: "find apples" });
-    assert.match(r.text, /Nothing with that in it is showing/);
-    r = await c.call("browser", { steps: "click 99" });
-    assert.match(r.text, /✗ step 1 \(click 99\) didn't work: there is no \[99\]/);
+  r = await c.call("browser", { steps: `type ${email} sam@example.com\nclick ${button}` });
+  assert.match(r.text, /✓ type \d+ "sam@example\.com"\n✓ click \d+/);
+  assert.match(r.text, /what changed:/);
+  assert.match(r.text, /Changed: .*textbox "Email" = "sam@example\.com"/);
+  assert.match(r.text, /checkbox "Remember me" ✓/);
+  assert.match(r.text, /New text:\nHello, sam@example\.com/);
+  assert.ok(!r.text.includes("Menu 5"), "an unchanged menu isn't sent again");
 
-    const link = /\[(\d+)\] link "Open the other page"/.exec((await c.call("browser", { steps: "look" })).text)?.[1];
-    r = await c.call("browser", { steps: `click ${link}` });
-    assert.match(r.text, /it opened a new tab; now in it/);
-    assert.match(r.text, /Other — .*\/other/);
-    assert.match(r.text, /3 apples for £2/);
-  } finally {
-    c.close();
-    site.close();
+  r = await c.call("browser", { steps: "find apples" });
+  assert.match(r.text, /Nothing with that in it is showing/);
+  r = await c.call("browser", { steps: "click 99" });
+  assert.match(r.text, /✗ step 1 \(click 99\) didn't work: there is no \[99\]/);
+
+  const link = /\[(\d+)\] link "Open the other page"/.exec((await c.call("browser", { steps: "look" })).text)?.[1];
+  r = await c.call("browser", { steps: `click ${link}` });
+  assert.match(r.text, /it opened a new tab; now in it/);
+  assert.match(r.text, /Other — .*\/other/);
+  assert.match(r.text, /3 apples for £2/);
+}
+
+test("the browser: a page in a few lines, a form filled in one call, what changed, a new tab followed", { skip: !CHROME && "no Chromium here" }, async (t) => {
+  const base = await serveSite(t);
+  await walkThrough(computer(mkdtempSync(join(tmpdir(), "blvrd-c-")), t), base);
+});
+
+// The reader's own browser: a Chromium with the real extension in it, as
+// it would be in Dia or Chrome once added.
+const EXTENSION = new URL("../computer/extension", import.meta.url).pathname;
+async function ownBrowser(t) {
+  const { chromium } = createRequire(new URL("../computer/package.json", import.meta.url))("playwright-core");
+  const context = await chromium.launchPersistentContext(mkdtempSync(join(tmpdir(), "blvrd-own-")), {
+    executablePath: CHROME,
+    headless: true,
+    args: [`--disable-extensions-except=${EXTENSION}`, `--load-extension=${EXTENSION}`],
+  });
+  t.after(() => context.close());
+  return context;
+}
+
+test("the reader's own browser, through the extension: the same walk, in a window of its own", { skip: !CHROME && "no Chromium here" }, async (t) => {
+  const base = await serveSite(t);
+  const own = await ownBrowser(t);
+  const mine = await own.newPage();
+  await mine.goto(`${base}/other`);
+  const c = computer(mkdtempSync(join(tmpdir(), "blvrd-c-")), t, ["--own-browser"]);
+  await walkThrough(c, base);
+  // The reader's own tab was left as it was.
+  assert.equal(mine.url(), `${base}/other`);
+  // And when the computer goes, so does its window.
+  const pages = own.pages().length;
+  c.close();
+  for (let i = 0; i < 40 && own.pages().length >= pages; i++) await new Promise((r) => setTimeout(r, 100));
+  assert.ok(own.pages().length < pages, "its window closed");
+  assert.ok(!mine.isClosed());
+});
+
+test("only an extension may connect to the computer's browser port", async (t) => {
+  const c = computer(mkdtempSync(join(tmpdir(), "blvrd-c-")), t, ["--own-browser"]);
+  await c.rpc("ping", {});
+  const { WebSocket } = createRequire(new URL("../computer/package.json", import.meta.url))("ws");
+  const tryWith = (origin) =>
+    new Promise((resolve) => {
+      const ws = new WebSocket("ws://127.0.0.1:47861/blvrd", { origin });
+      ws.on("open", () => {
+        ws.close();
+        resolve("open");
+      });
+      ws.on("error", () => resolve("refused"));
+    });
+  let extension = "refused";
+  for (let i = 0; i < 30 && extension !== "open"; i++) {
+    extension = await tryWith("chrome-extension://abc");
+    if (extension !== "open") await new Promise((r) => setTimeout(r, 100));
   }
+  assert.equal(extension, "open");
+  assert.equal(await tryWith("https://evil.example"), "refused");
 });

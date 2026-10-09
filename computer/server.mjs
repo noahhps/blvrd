@@ -4,8 +4,12 @@
  * runs on this Mac and in the sandbox VM (docs/computer.md §2); the app
  * decides what needs the reader's Allow, this does what it's asked.
  *
- *   node server.mjs --root <workspace> [--profile <browser profile>]
- *                   [--browser <a Chromium browser's program>] [--show]
+ *   node server.mjs --root <workspace> [--own-browser]
+ *                   [--profile <browser profile>] [--browser <program>] [--show]
+ *
+ * --own-browser: steps happen in the reader's own browser, through the blvrd
+ * extension (drivers/extension.mjs). Otherwise it starts one, any built on
+ * Chromium, with a profile of its own (drivers/launched.mjs).
  *
  * Every tool takes `_limit`, the characters its answer may use, set by the
  * app from the model's window; what doesn't fit is kept in a file under the
@@ -16,6 +20,8 @@ import { join, resolve } from "node:path";
 import { createInterface } from "node:readline";
 
 import { Browser } from "./browser.mjs";
+import { ExtensionBrowser } from "./drivers/extension.mjs";
+import { LaunchedBrowser } from "./drivers/launched.mjs";
 import { DEFAULT_LIMIT } from "./cut.mjs";
 import { edit, read, setRoot, write } from "./files.mjs";
 import { Shell, report } from "./shell.mjs";
@@ -29,9 +35,13 @@ mkdirSync(ROOT, { recursive: true });
 setRoot(ROOT);
 const shell = new Shell(ROOT);
 const browser = new Browser({
-  profileDir: resolve(arg("profile", join(ROOT, ".blvrd", "browser"))),
-  headless: !process.argv.includes("--show"),
-  executable: arg("browser", process.env.BLVRD_CHROME || null),
+  driver: process.argv.includes("--own-browser")
+    ? new ExtensionBrowser()
+    : new LaunchedBrowser({
+        profileDir: resolve(arg("profile", join(ROOT, ".blvrd", "browser"))),
+        headless: !process.argv.includes("--show"),
+        executable: arg("browser", process.env.BLVRD_CHROME || null),
+      }),
 });
 
 const str = (description) => ({ type: "string", description });

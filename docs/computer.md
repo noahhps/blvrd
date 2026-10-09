@@ -312,8 +312,30 @@ case is a wrecked VM and a wrong report.
 | `browser` | no for reading; yes for a step that submits a form |
 | `look`, screen control | phase 4, behind macOS Accessibility and Screen Recording permission |
 
-The host browser is a separate Chrome profile with no saved logins unless the
-reader signs in to it on purpose. Approvals reach the reader from inside the
+The host browser is the reader's own, through the blvrd extension
+(`computer/extension`, below), so it is signed in as them -- which is why a
+step that sends a form asks first. Choosing "a separate browser" instead gives
+one the computer starts, with a profile of its own and no saved logins unless
+the reader signs in to it on purpose.
+
+**The reader's own browser.** A browser already running can't be driven from
+outside: Chromium opens its debugging port only when started with it, and no
+longer on the profile someone actually uses. So it comes the other way. Each
+host computer (`--own-browser`) listens on `127.0.0.1`, on the first free port
+from 47861 (one a chat, ten at most), for a WebSocket whose `Origin` is a
+`chrome-extension://` one, and only one at a time
+(`computer/drivers/extension.mjs`). The extension -- Manifest V3, loaded
+unpacked from `~/blvrd/Extension`, which the app keeps up to date -- looks for
+computers on those ports every few seconds (every half minute when the browser
+has put it to sleep; the computer's pings keep it awake while connected) and
+does each step in an unfocused window of its own: the same `COLLECT` read of
+the page as Playwright's (`extension/collect.js`), actions through the
+element's own setters and events (`extension/act.js`), pictures for the
+screen panel from `captureVisibleTab`. The window closes when the computer
+does. `computer/browser.mjs` is the same over either driver
+(`drivers/launched.mjs` is Playwright), so the model sees the same pages,
+diffs and errors either way; `test/computer.test.mjs` walks the same site
+through both, the extension loaded into a real Chromium. Approvals reach the reader from inside the
 worker the same way they do now: the worker's `approve` is the chat's. Stop
 kills the daemon's whole process group.
 
