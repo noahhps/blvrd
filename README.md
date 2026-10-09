@@ -150,9 +150,10 @@ second or so. The pictures are for you; the model never sees them.
 **This Mac**: the work happens in `~/blvrd/Workspace/<chat>`, and the
 browser is your own -- Dia, Chrome, Arc, Brave, Edge, whichever you use, with
 your logins -- through the blvrd extension: under **Models → The computer's
-browser**, *Show the extension folder*, then in your browser open
-`chrome://extensions`, turn on Developer mode and *Load unpacked* that folder
-(`~/blvrd/Extension`). Each chat's agent then works in a window of its own and
+browser**, *Add blvrd to Dia* (or whichever) opens the browser's extensions
+page and the extension's folder (`~/blvrd/Extension`); turn on Developer mode
+there and drag the folder onto the page, and the card turns green when the
+browser connects. Each chat's agent then works in a window of its own and
 your tabs are left alone; keep the browser open while it works. If you'd
 rather it didn't use your logins, choose *A separate browser* there: any built
 on Chromium (the first one found, or the one you pick), started with a profile

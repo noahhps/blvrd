@@ -109,9 +109,37 @@ export async function resetSandbox() {
  *  one the reader points at (an .app or a program). */
 export const browsersFound = () => invoke("browsers_found", {}, "Finding browsers");
 export const browserAt = (path) => invoke("browser_resolve", { path }, "That browser");
-/** The blvrd extension's folder (~/blvrd/Extension), shown in the Finder for
- *  the reader to add to their browser; its path. */
-export const revealExtension = () => invoke("extension_reveal", {}, "The extension");
+/** Adding the blvrd extension to the reader's browser (the one at `path`;
+ *  none, the first found): its extensions page opened, the folder shown in
+ *  the Finder and its path copied. { folder, browser }. */
+export const installExtension = (path) => invoke("extension_install", { browser: path || null }, "The extension");
+
+/** Whether the reader's own browser is connected through the extension: any
+ *  chat's computer on this Mac can say, else a small one started just to
+ *  ask (stopBrowserCheck ends it). */
+const CHECK_ID = "computer:browser-check";
+let checker = null;
+export async function browserConnected() {
+  for (const session of live.values()) {
+    const status = await session.request("blvrd/browser", {}, 3000).catch(() => null);
+    if (status?.connected) return true;
+  }
+  if (!checker) {
+    checker = (async () => {
+      const plan = await invoke("extension_check", {}, "The extension");
+      const server = { id: CHECK_ID, name: "Browser check", transport: "stdio", command: plan.command, args: plan.args, env: {} };
+      return clientFor(server, { get: () => server, patch: () => {} });
+    })();
+    checker.catch(() => (checker = null));
+  }
+  const status = await (await checker).request("blvrd/browser", {}, 3000);
+  return Boolean(status?.connected);
+}
+export function stopBrowserCheck() {
+  if (!checker) return;
+  checker = null;
+  disconnect(CHECK_ID);
+}
 
 /** End every computer session on this Mac -- the browser changed: each
  *  starts again with the new one on its next task. */

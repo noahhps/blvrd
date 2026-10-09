@@ -335,7 +335,23 @@ screen panel from `captureVisibleTab`. The window closes when the computer
 does. `computer/browser.mjs` is the same over either driver
 (`drivers/launched.mjs` is Playwright), so the model sees the same pages,
 diffs and errors either way; `test/computer.test.mjs` walks the same site
-through both, the extension loaded into a real Chromium. Approvals reach the reader from inside the
+through both, the extension loaded into a real Chromium.
+
+**Adding it.** Chromium browsers install an extension at one click only from
+the Chrome Web Store; on a Mac nothing else can add one for the reader (the
+"external extensions" files and command-line loading are Web-Store-only or
+gone from Chrome). So the Models screen gets as close as it can:
+`extension_install` copies the extension to `~/blvrd/Extension`, opens
+`chrome://extensions` in the chosen browser, shows the folder in the Finder to
+drag onto that page, and copies its path for Load unpacked; then it asks a
+small computer started only for that (`extension_check`, `blvrd/browser`)
+every two seconds whether the browser has connected, and says so. Once the
+extension is listed in the Web Store, set `EXTENSION_STORE_URL`
+(`src/lib/computer/extension.js`) and the button opens its page instead --
+one click, "Add to Chrome", in Dia, Arc, Brave and Edge too. `npm run
+extension:pack` makes `release/blvrd-extension.zip` to upload; the listing needs
+a short privacy note (the extension talks only to `127.0.0.1` and sends
+nothing anywhere else). Approvals reach the reader from inside the
 worker the same way they do now: the worker's `approve` is the chat's. Stop
 kills the daemon's whole process group.
 

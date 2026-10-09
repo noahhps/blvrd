@@ -252,6 +252,13 @@ test("the reader's own browser, through the extension: the same walk, in a windo
   const mine = await own.newPage();
   await mine.goto(`${base}/other`);
   const c = computer(mkdtempSync(join(tmpdir(), "blvrd-c-")), t, ["--own-browser"]);
+  // The Models screen's question: is the reader's browser there yet?
+  let status = (await c.rpc("blvrd/browser", {})).result;
+  for (let i = 0; i < 50 && !status.connected; i++) {
+    await new Promise((r) => setTimeout(r, 200));
+    status = (await c.rpc("blvrd/browser", {})).result;
+  }
+  assert.equal(status.connected, true);
   await walkThrough(c, base);
   // The reader's own tab was left as it was.
   assert.equal(mine.url(), `${base}/other`);

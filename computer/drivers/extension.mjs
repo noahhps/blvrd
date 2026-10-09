@@ -130,6 +130,13 @@ export class ExtensionBrowser {
     await new Promise((r) => (this.server ? this.server.close(() => r()) : r()));
   }
 
+  /** Whether the reader's browser is connected now -- for the Models screen,
+   *  which waits for it after the extension is added. */
+  async status() {
+    await this.ready;
+    return { connected: Boolean(this.socket), ...(this.problem ? { problem: this.problem } : {}) };
+  }
+
   get started() {
     return Boolean(this.socket && this.hasPage);
   }

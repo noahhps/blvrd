@@ -11,6 +11,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "test": "node --test test/*.test.mjs",
+    "extension:pack": "mkdir -p release && rm -f release/blvrd-extension.zip && cd computer/extension && zip -qr ../../release/blvrd-extension.zip . -x '.*'",
     "postinstall": "npm --prefix computer install --no-audit --no-fund"
   },
   "dependencies": {

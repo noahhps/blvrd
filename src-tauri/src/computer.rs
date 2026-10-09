@@ -64,19 +64,75 @@ fn extension_copy(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(to)
 }
 
-/// The extension's folder, shown in the Finder for the reader to add to
-/// their browser (Load unpacked on its extensions page).
+// A program's path as a pattern matching just itself (pgrep).
+fn regex_quote(text: &str) -> String {
+    text.chars().fold(String::new(), |mut out, c| {
+        if "\\.+*?()|[]{}^$".contains(c) {
+            out.push('\\');
+        }
+        out.push(c);
+        out
+    })
+}
+
+#[derive(Serialize)]
+pub struct Installing {
+    folder: String,
+    browser: Option<String>,
+}
+
+/// Adding the extension to the reader's browser, as far as can be done from
+/// here: browsers built on Chromium only install from their store at a
+/// click, so this puts the extension in ~/blvrd/Extension, opens the
+/// browser's extensions page, shows the folder in the Finder to drag onto it,
+/// and copies its path for Load unpacked (⌘⇧G, ⌘V). `browser`: its program;
+/// none, the first one found.
 #[tauri::command]
-pub fn extension_reveal(app: AppHandle) -> Result<String, String> {
+pub fn extension_install(app: AppHandle, browser: Option<String>) -> Result<Installing, String> {
     let dir = extension_copy(&app)?;
+    let chosen = match browser.filter(|b| !b.trim().is_empty()) {
+        Some(path) => Some(crate::browsers::browser_resolve(path)?),
+        None => crate::browsers::browsers_found().into_iter().next(),
+    };
+    // Its extensions page. A browser already running takes the page from its
+    // own program, as a new tab; one that isn't is started with it.
+    if let Some(b) = &chosen {
+        let running = std::process::Command::new("/usr/bin/pgrep").arg("-f").arg(format!("^{}( |$)", regex_quote(&b.program()))).status().map(|s| s.success()).unwrap_or(false);
+        let quiet = || std::process::Stdio::null();
+        let _ = if running || !cfg!(target_os = "macos") {
+            std::process::Command::new(b.program()).arg("chrome://extensions").stdout(quiet()).stderr(quiet()).spawn()
+        } else {
+            std::process::Command::new("/usr/bin/open").arg("-a").arg(b.app()).arg("--args").arg("chrome://extensions").stdout(quiet()).stderr(quiet()).spawn()
+        };
+    }
     #[cfg(target_os = "macos")]
-    let result = std::process::Command::new("/usr/bin/open").arg(&dir).status();
+    {
+        let _ = std::process::Command::new("/usr/bin/open").arg("-R").arg(&dir).status();
+        if let Ok(mut copy) = std::process::Command::new("/usr/bin/pbcopy").stdin(std::process::Stdio::piped()).spawn() {
+            use std::io::Write;
+            let _ = copy.stdin.take().map(|mut i| i.write_all(dir.to_string_lossy().as_bytes()));
+            let _ = copy.wait();
+        }
+    }
     #[cfg(target_os = "windows")]
-    let result = std::process::Command::new("explorer").arg(&dir).status();
+    let _ = std::process::Command::new("explorer").arg(format!("/select,{}", dir.display())).status();
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    let result = std::process::Command::new("xdg-open").arg(&dir).status();
-    result.map_err(|e| e.to_string())?;
-    Ok(dir.to_string_lossy().into())
+    let _ = std::process::Command::new("xdg-open").arg(dir.parent().unwrap_or(&dir)).status();
+    Ok(Installing { folder: dir.to_string_lossy().into(), browser: chosen.map(|b| b.name_for_folder()) })
+}
+
+/// A computer only for seeing whether the reader's browser has the extension
+/// and is connected (Models screen): no chat, a scratch folder.
+#[tauri::command]
+pub fn extension_check(app: AppHandle) -> Result<Plan, String> {
+    let server = computer_dir(&app)?.join("server.mjs");
+    let root = std::env::temp_dir().join("blvrd-browser-check");
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    Ok(Plan {
+        command: "node".into(),
+        args: vec![server.to_string_lossy().into(), "--root".into(), root.to_string_lossy().into(), "--own-browser".into()],
+        root: root.to_string_lossy().into(),
+    })
 }
 
 #[tauri::command]

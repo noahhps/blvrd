@@ -120,6 +120,13 @@ lines.on("line", (line) => {
   } catch {
     return;
   }
+  // And whether the reader's own browser is connected (Models screen).
+  if (msg.method === "blvrd/browser") {
+    Promise.resolve(browser.driver.status?.() || { connected: false, own: false })
+      .then((status) => send({ jsonrpc: "2.0", id: msg.id, result: status }))
+      .catch((problem) => send({ jsonrpc: "2.0", id: msg.id, error: { code: -32603, message: String(problem.message || problem) } }));
+    return;
+  }
   if (msg.method === "blvrd/screen") {
     browser
       .screen()

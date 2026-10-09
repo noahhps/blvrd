@@ -44,6 +44,9 @@ impl Found {
     pub fn program(&self) -> String {
         self.path.clone()
     }
+    pub fn app(&self) -> String {
+        self.app.clone()
+    }
 }
 
 /// The program inside an app (`…/Name.app`), or the path itself when it is
