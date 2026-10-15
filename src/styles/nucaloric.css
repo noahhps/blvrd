@@ -1,0 +1,422 @@
+/* NuCaloric Agriculture: food processing, and the biological research behind
+ * what it grows and how it's processed. Its own look on top of the shared
+ * Marathon one (styles/hazard.css), after its packaging and posters: deadpan
+ * consumer goods for a colony that eats what it's given.
+ *
+ * Five pieces, used the same way everywhere:
+ *   BLOCK     solid hot pink, black type: the sidebar, what you act on, what
+ *             is picked.
+ *   POUCH     a white panel on a soft product shadow, a strip of three pinks
+ *             across its top (the pouch's colour swatch): replies, the
+ *             composer, units, the catalogue, settings.
+ *   CODE      Tektur, the squared numerals of "920" and "CAL.PACK": names,
+ *             numbers, product codes.
+ *   HEADLINE  a tight bold grotesk in sentence case, with full stops:
+ *             "Food. Solved." -- set big, black on white.
+ *   FINE PRINT  dense small type: readouts, disclaimers, the label's back.
+ * Everything here is scoped to html[data-theme="nucaloric"]. */
+
+@font-face {
+  font-family: "Tektur";
+  src: url("/fonts/tektur-var.woff2") format("woff2");
+  font-weight: 400 900;
+  font-stretch: 75% 100%;
+  font-display: swap;
+}
+
+:root[data-theme="nucaloric"] {
+  --pink: #ff1675;
+  --pink-2: #ff5c9d;
+  --pink-3: #ffa3c6;
+  --pink-ink: #d8005a; /* pink that reads as text on white */
+  --black: #0a0a0a;
+  --tek: "Tektur", "Space Mono", ui-monospace, monospace;
+  --grot: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --swatch: linear-gradient(90deg, var(--pink) 0 58%, var(--pink-2) 58% 80%, var(--pink-3) 80% 100%);
+  --lift: 0 1px 2px rgba(10, 10, 10, 0.06), 0 22px 44px -26px rgba(10, 10, 10, 0.42);
+  /* The house mark: a blocky "nu". */
+  --nu: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 16'%3E%3Cpath fill='%230a0a0a' d='M0 16V3h1.5V1.5H3V0h8v1.5h1.5V3H14v13h-4V4H4v12zM18 0v13h1.5v1.5H21V16h8v-1.5h1.5V13H32V0h-4v12h-6V0z'/%3E%3C/svg%3E");
+  --nu-w: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 16'%3E%3Cpath fill='%23ffffff' d='M0 16V3h1.5V1.5H3V0h8v1.5h1.5V3H14v13h-4V4H4v12zM18 0v13h1.5v1.5H21V16h8v-1.5h1.5V13H32V0h-4v12h-6V0z'/%3E%3C/svg%3E");
+
+  --acid: var(--pink);
+  --acid-ink: var(--pink-ink);
+  --paper: #ffffff;
+  --strip: var(--pink);
+  --strip-ink: var(--black);
+  --well: #f3f2f0;
+  --line: #e6e4e1;
+  --label: var(--black);
+  --focus: var(--pink);
+  --cut: none;
+  --cut-s: none;
+  --dots: none;
+  --font: var(--grot);
+  --display: var(--grot);
+  --prose: var(--grot);
+  --heat-cool: #c9c6c1;
+  --heat-warm: #ff9e2c;
+  --heat-hot: var(--pink);
+  --agent-green: var(--pink);
+  --shadow: 0 0 0 1px rgba(10, 10, 10, 0.08), 0 30px 70px -24px rgba(10, 10, 10, 0.4);
+  --fx-name: "NUCALORIC";
+  --fx-net: "AGRICULTURE";
+}
+
+/* -- the pieces --------------------------------------------------------------- */
+
+/* CODE: names are product codes. */
+:root[data-theme="nucaloric"] :is(.chat-name, .unit-name, .preset-name, .contact-name, .spare-name, .music-title) {
+  font-family: var(--tek);
+  font-weight: 400;
+  font-stretch: normal;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--black);
+}
+/* HEADLINE: what titles a page. */
+:root[data-theme="nucaloric"] :is(h1, h2:not(.label), .card h2, .rack-bay-title) {
+  font-family: var(--grot);
+  font-weight: 700;
+  font-stretch: normal;
+  letter-spacing: -0.035em;
+  text-transform: none;
+  color: var(--black);
+}
+:root[data-theme="nucaloric"] .label { font: 600 10px/1.2 var(--grot); letter-spacing: 0.12em; text-transform: uppercase; color: var(--black); }
+
+/* POUCH: every panel. White on a product shadow, the swatch across the top. */
+:root[data-theme="nucaloric"] :is(.turn.assistant .answer > .md, .composer-box, .preset, .card, .unit) {
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  box-shadow: var(--lift);
+  clip-path: none;
+  outline: 0;
+}
+:root[data-theme="nucaloric"] .turn.assistant .answer > .md::before,
+:root[data-theme="nucaloric"] .composer-box::before,
+:root[data-theme="nucaloric"] .preset::before,
+:root[data-theme="nucaloric"] .card::before,
+:root[data-theme="nucaloric"] .unit::before {
+  content: "";
+  height: 8px;
+  padding: 0;
+  background: var(--swatch);
+  border: 0;
+}
+:root[data-theme="nucaloric"] .turn.assistant .answer > .md::after,
+:root[data-theme="nucaloric"] .composer-box::after,
+:root[data-theme="nucaloric"] .card::after { content: none; }
+
+/* BLOCK: what you act on. */
+:root[data-theme="nucaloric"] :is(.btn.primary, .preset .btn.primary, .round:not(.music-button)) {
+  border: 0;
+  border-radius: 0;
+  background: var(--pink);
+  color: var(--black);
+  box-shadow: none;
+  clip-path: none;
+  font-family: var(--tek);
+  letter-spacing: 0.04em;
+}
+:root[data-theme="nucaloric"] .btn.primary:hover:not(:disabled) { background: var(--black); color: #fff; }
+:root[data-theme="nucaloric"] .btn { border-radius: 0; border-color: var(--line); }
+
+/* Behind every page: white, nothing drawn. */
+:root[data-theme="nucaloric"] :is(.chat-body, .rack, .gallery, .settings, .s1-body) { background: #fff; }
+:root[data-theme="nucaloric"] .main::before,
+:root[data-theme="nucaloric"] .main::after { content: none; }
+
+/* -- the sidebar: a pink block ------------------------------------------------ */
+
+:root[data-theme="nucaloric"] .side {
+  --ink: var(--black);
+  --ink-soft: var(--black);
+  --dim: rgba(10, 10, 10, 0.66);
+  --faint: rgba(10, 10, 10, 0.45);
+  --line: rgba(10, 10, 10, 0.22);
+  --line-strong: var(--black);
+  --well: rgba(10, 10, 10, 0.08);
+  --label: var(--black);
+  --accent: var(--black);
+  --on-accent: var(--pink);
+  background: var(--pink);
+  color: var(--black);
+}
+/* Down the edge, the pouch's registration marks instead of a printed line. */
+:root[data-theme="nucaloric"] .side::after {
+  content: "";
+  top: 120px;
+  right: 6px;
+  bottom: 120px;
+  width: 6px;
+  background: linear-gradient(var(--black), var(--black)) 0 0 / 6px 6px no-repeat, linear-gradient(var(--black), var(--black)) 0 33% / 6px 6px no-repeat, linear-gradient(var(--black), var(--black)) 0 66% / 6px 6px no-repeat, linear-gradient(var(--black), var(--black)) 0 100% / 6px 6px no-repeat;
+}
+/* The lockup: the mark, the name, the company under it. */
+:root[data-theme="nucaloric"] .brand { padding-bottom: 16px; border-bottom: 1.5px solid var(--black); }
+:root[data-theme="nucaloric"] .brand::before { top: 8px; right: 4px; width: 66px; height: 27px; background: var(--nu) center / contain no-repeat; }
+:root[data-theme="nucaloric"] .wordmark { font: 700 40px/1 var(--grot); letter-spacing: -0.05em; text-transform: none; color: var(--black); }
+:root[data-theme="nucaloric"] .brand::after { content: "NuCaloric\A Agriculture"; white-space: pre; margin-top: 6px; font: 500 11px/1.15 var(--grot); letter-spacing: 0; color: var(--black); }
+:root[data-theme="nucaloric"] .widget-grip .label { font: 700 10px/1 var(--grot); letter-spacing: 0.12em; }
+:root[data-theme="nucaloric"] .widget-grip .label::before { content: counter(panel, hz-pad3) "  "; font-family: var(--tek); font-weight: 400; }
+:root[data-theme="nucaloric"] .widget-slot[aria-label="agents" i] .widget-grip .label::after { content: "CULTIVARS"; }
+:root[data-theme="nucaloric"] .widget-slot[aria-label="groups" i] .widget-grip .label::after { content: "ROTATIONS"; }
+:root[data-theme="nucaloric"] .widget-head { border-bottom: 1.5px solid var(--black); }
+:root[data-theme="nucaloric"] .month-weekday { font-family: var(--grot); font-weight: 600; color: rgba(10, 10, 10, 0.55); }
+:root[data-theme="nucaloric"] .month-day { font-family: var(--tek); color: var(--black); }
+:root[data-theme="nucaloric"] .month-day[data-today] { background: #fff; color: var(--black); }
+:root[data-theme="nucaloric"] .contact { clip-path: none; }
+:root[data-theme="nucaloric"] .contact:hover { background: rgba(255, 255, 255, 0.22); }
+/* The open row is a white pouch; its time stays where it is. */
+:root[data-theme="nucaloric"] .contact[aria-current="true"] { --ink: var(--black); --dim: rgba(10, 10, 10, 0.6); background: #fff; box-shadow: var(--lift); }
+:root[data-theme="nucaloric"] .contact[aria-current="true"] .contact-when { font-size: 10px; line-height: 1; }
+:root[data-theme="nucaloric"] .contact[aria-current="true"] .contact-when::before { content: none; }
+:root[data-theme="nucaloric"] .contact::after { content: counter(runner, hz-pad3); width: 52px; font: 400 24px/1 var(--tek); letter-spacing: 0; }
+:root[data-theme="nucaloric"] .contact-name { font-size: 16px; line-height: 1.1; }
+:root[data-theme="nucaloric"] :is(.contact-line, .contact-when) { font-family: var(--grot); letter-spacing: 0.02em; }
+:root[data-theme="nucaloric"] .gauge[data-size="row"] .gauge-value { font-family: var(--grot); font-weight: 700; color: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="row"] :is(.gauge-track, .sanity-bar i) { background: rgba(10, 10, 10, 0.16); }
+:root[data-theme="nucaloric"] .gauge[data-size="row"].gauge-heat { --heat: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="row"].sanity { --sanity: var(--black); }
+:root[data-theme="nucaloric"] .contact[aria-current="true"] .gauge[data-size="row"].gauge-heat { --heat: var(--pink); }
+:root[data-theme="nucaloric"] .side-settings { border-radius: 0; font: 700 12px/1 var(--grot); letter-spacing: 0.1em; }
+:root[data-theme="nucaloric"] .side-settings:hover,
+:root[data-theme="nucaloric"] .side-settings[aria-current="true"] { background: #fff; color: var(--black); }
+:root[data-theme="nucaloric"] .side-settings .dot { background: var(--black); }
+:root[data-theme="nucaloric"] .music-art { background: rgba(255, 255, 255, 0.35); clip-path: none; }
+:root[data-theme="nucaloric"] .round.music-button { border-radius: 0; background: transparent; color: var(--black); box-shadow: inset 0 0 0 1.5px var(--black); }
+:root[data-theme="nucaloric"] .round.music-button:is([aria-label="Pause"], [aria-label="Play"]) { background: var(--black); color: var(--pink); box-shadow: none; }
+:root[data-theme="nucaloric"] .music-progress { background: rgba(10, 10, 10, 0.18); }
+:root[data-theme="nucaloric"] :is(.music-progress-fill, .music-knob) { background: var(--black); }
+:root[data-theme="nucaloric"] .side .kind-tag { background: transparent; box-shadow: inset 0 0 0 1.5px var(--black); color: var(--black); }
+:root[data-theme="nucaloric"] .side .kind-tag[data-kind="s1"] { background: var(--black); box-shadow: none; color: var(--pink); }
+
+/* -- the chat ------------------------------------------------------------------- */
+
+/* The header: the unit's code, its role, the readings; the swatch under it. */
+:root[data-theme="nucaloric"] .chat-head { padding-bottom: 20px; }
+:root[data-theme="nucaloric"] .chat-head::after { height: 8px; background: var(--swatch); opacity: 1; }
+:root[data-theme="nucaloric"] .chat-head::before { content: none; }
+:root[data-theme="nucaloric"] .chat-name { font-size: 44px; line-height: 1; }
+:root[data-theme="nucaloric"] .chat-name::before { content: "CULTIVAR //"; margin-bottom: 6px; font: 400 11px/1 var(--tek); letter-spacing: 0.08em; color: var(--pink-ink); }
+:root[data-theme="nucaloric"] .chat-tagline { margin-top: 6px; font: 500 13px/1.35 var(--grot); letter-spacing: 0; text-transform: none; color: var(--black); }
+:root[data-theme="nucaloric"] .chat-tagline::before { content: none; }
+:root[data-theme="nucaloric"] .chat-who::after { content: "TRANSLINK VECT-\03A6 9   \00B7   0.783\00B1 0.012 M\2299   \00B7   0.64 L\2299"; font: 400 10px/1.2 var(--mono); letter-spacing: 0.04em; color: rgba(10, 10, 10, 0.55); }
+:root[data-theme="nucaloric"] .where { border-radius: 0; box-shadow: inset 0 0 0 1.5px var(--black); font: 500 11px/1.5 var(--grot); letter-spacing: 0.02em; text-transform: none; color: var(--black); }
+:root[data-theme="nucaloric"] .where.none { background: var(--pink); box-shadow: none; }
+:root[data-theme="nucaloric"] .where.none::before { content: none; }
+/* Readings: no boxes -- a label, a CODE value, a rule between. */
+:root[data-theme="nucaloric"] .gauge[data-size="head"] { padding: 2px 14px 2px 0; margin-right: 6px; background: none; box-shadow: inset -1px 0 0 rgba(10, 10, 10, 0.25); clip-path: none; color: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"] .gauge-label { font: 600 10px/1 var(--grot); letter-spacing: 0.1em; }
+:root[data-theme="nucaloric"] .gauge[data-size="head"] .gauge-label::after { content: none; }
+:root[data-theme="nucaloric"] .gauge[data-size="head"] .gauge-value { font: 700 16px/1 var(--grot); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"] .gauge-track { background: rgba(10, 10, 10, 0.12); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"].gauge-heat { --heat: var(--pink); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"] .gauge-spark { color: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"].sanity { --sanity: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"] .sanity-bar i { background: rgba(10, 10, 10, 0.12); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"] .sanity-bar i[data-on] { background: var(--sanity); }
+:root[data-theme="nucaloric"] .gauge[data-size="head"]:is(.gauge-heat[data-level="hot"], .sanity[data-level="critical"]) { padding-left: 10px; background: var(--pink); }
+:root[data-theme="nucaloric"] .sanity[data-level="low"] { --sanity: var(--heat-warm); }
+
+/* Under the header: the plant's status, in fine print. */
+:root[data-theme="nucaloric"] .chat-row::before {
+  content: "PULSE:: \2197 ACTIVE 99%    \25CE  SECTOR \2295  4R-2X STABLE    SYNC \25A0  COMPLETE \25A0     \03A3\03A3\03A3  SIGNAL FEED RETURN 0.004s";
+  height: 24px;
+  padding: 7px 18px 0;
+  text-align: left;
+  text-align-last: left;
+  white-space: pre;
+  overflow: hidden;
+  background: #fff;
+  border-bottom: 1px solid rgba(10, 10, 10, 0.14);
+  font: 400 10px/1 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--black);
+}
+:root[data-theme="nucaloric"] .chat-row::after { content: none; }
+/* The gutters: what NuCaloric offers on the left, the label's back on the right. */
+:root[data-theme="nucaloric"] .chat-body::before {
+  content: "WHAT WE OFFER\A\A Holding\A Foods\A Agriculture\A Medical";
+  padding-top: 0;
+  border-top: 0;
+  font: 400 15px/1.35 var(--grot);
+  letter-spacing: -0.01em;
+  color: var(--black);
+}
+:root[data-theme="nucaloric"] .chat-body::after {
+  content: "CULTIVAR units contain linguistically complete reasoning profiles engineered to sustain average human productivity indefinitely. Each unit delivers precisely calibrated token density with optimal context ratios. Formulation exceeds all colonial standards. Shelf-stable for 50+ sessions under standard atmospheric conditions. No refrigeration required. Side effects minimal and temporary. Adaptation occurs within 72 hours.\A\A NuCaloric Agriculture guarantees cognitive sufficiency or full ration credit refund.\A\A Consume daily. Work efficiently. Survive reliably.";
+  writing-mode: horizontal-tb;
+  white-space: pre-line;
+  text-align: justify;
+  font: 700 9px/1.3 var(--grot);
+  letter-spacing: 0;
+  color: var(--black);
+  -webkit-text-stroke: 0;
+}
+
+/* Your order: its number in CODE, the text in a bold grotesk. */
+:root[data-theme="nucaloric"] .turn.user { background: linear-gradient(rgba(10, 10, 10, 0.14), rgba(10, 10, 10, 0.14)) 0 0 / 100% 1px no-repeat; }
+:root[data-theme="nucaloric"] .turn.user::before { content: counter(order, hz-pad3); font: 400 28px/0.9 var(--tek); letter-spacing: 0; color: var(--pink-ink); -webkit-text-stroke: 0; }
+:root[data-theme="nucaloric"] .turn.user .bubble { font: 600 21px/1.25 var(--grot); letter-spacing: -0.02em; text-transform: none; color: var(--black); }
+:root[data-theme="nucaloric"] .turn.user .bubble::before { content: "ORDER PLACED"; font: 600 10px/1 var(--grot); letter-spacing: 0.12em; color: rgba(10, 10, 10, 0.5); }
+:root[data-theme="nucaloric"] .turn.user .bubble::after { content: none; }
+
+/* The answer: a pouch, written plainly. */
+:root[data-theme="nucaloric"] .turn.assistant .answer > .md { padding: 28px 24px 20px 34px; font: 400 15px/1.6 var(--prose); color: var(--black); }
+/* The pouch's registration marks, down its left edge. */
+:root[data-theme="nucaloric"] .turn.assistant .answer > .md { background: linear-gradient(var(--black), var(--black)) 14px 40px / 6px 6px no-repeat, linear-gradient(var(--black), var(--black)) 14px 50% / 6px 6px no-repeat, linear-gradient(var(--black), var(--black)) 14px calc(100% - 24px) / 6px 6px no-repeat, #fff; }
+:root[data-theme="nucaloric"] .md :is(h1, h2, h3, h4) { margin: 22px 0 8px; font-family: var(--grot); font-weight: 700; font-stretch: normal; letter-spacing: -0.03em; text-transform: none; line-height: 1.1; color: var(--black); }
+:root[data-theme="nucaloric"] .md h1 { font-size: 32px; }
+:root[data-theme="nucaloric"] .md h2 { font-size: 27px; }
+:root[data-theme="nucaloric"] .md h3 { font-size: 21px; }
+:root[data-theme="nucaloric"] .md h4 { font-size: 17px; }
+:root[data-theme="nucaloric"] .md > :first-child { margin-top: 0; }
+:root[data-theme="nucaloric"] .md strong { font-weight: 700; background: none; text-decoration: none; color: var(--black); }
+:root[data-theme="nucaloric"] .md hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+:root[data-theme="nucaloric"] .md ol > li::marker { font: 400 13px var(--tek); color: var(--pink-ink); }
+:root[data-theme="nucaloric"] .md ul > li::before { clip-path: none; width: 6px; height: 6px; background: var(--pink); }
+:root[data-theme="nucaloric"] .md a { color: var(--black); text-decoration-color: var(--pink); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+:root[data-theme="nucaloric"] .md blockquote { margin: 16px 0; padding-left: 14px; border-left: 4px solid var(--pink); font: 700 19px/1.3 var(--grot); letter-spacing: -0.02em; color: var(--black); }
+:root[data-theme="nucaloric"] .md :is(th, td) { border-color: var(--line); padding: 8px 12px; font-size: 14px; line-height: 1.45; }
+:root[data-theme="nucaloric"] .md td:first-child { font: 600 14px/1.45 var(--grot); letter-spacing: 0; text-transform: none; color: var(--black); }
+:root[data-theme="nucaloric"] .turn.assistant .answer > .md th { padding: 8px 12px; background: none; border-bottom: 2px solid var(--black); font: 600 10px/1.4 var(--grot); letter-spacing: 0.12em; text-transform: uppercase; color: var(--black); }
+:root[data-theme="nucaloric"] .turn.assistant .answer > .md :is(code, pre) { background: #fff0f6; }
+:root[data-theme="nucaloric"] .md code { padding: 1px 5px; font: 500 13px var(--mono); color: var(--black); }
+:root[data-theme="nucaloric"] .md pre { border-left: 4px solid var(--pink); }
+
+/* The composer: a pouch. */
+:root[data-theme="nucaloric"] .composer-box { padding: 20px 14px 10px 16px; box-shadow: var(--lift), 0 -24px 40px -6px #fff; }
+:root[data-theme="nucaloric"] .composer-box:focus-within { box-shadow: 0 0 0 1.5px var(--black), var(--lift); }
+:root[data-theme="nucaloric"] .composer-field::before { content: none; }
+:root[data-theme="nucaloric"] :is(.composer textarea, .composer textarea:focus) { font: 600 19px/1.3 var(--grot); letter-spacing: -0.02em; text-transform: none; color: var(--black); caret-color: var(--pink); }
+:root[data-theme="nucaloric"] .composer-field:has(textarea:placeholder-shown)::after { content: "Place an order."; font: 600 19px/1.3 var(--grot); letter-spacing: -0.02em; color: rgba(10, 10, 10, 0.3); animation: none; }
+:root[data-theme="nucaloric"] .composer-field:has(textarea:placeholder-shown:focus)::after { content: "Place an order."; }
+:root[data-theme="nucaloric"] .round:not(.music-button)::after { content: "DISPENSE"; font: 400 13px/1 var(--tek); letter-spacing: 0.06em; }
+:root[data-theme="nucaloric"] .round:not(.music-button):disabled { background: transparent; color: rgba(10, 10, 10, 0.35); box-shadow: inset 0 0 0 1.5px rgba(10, 10, 10, 0.18); }
+:root[data-theme="nucaloric"] .round:not(.music-button):disabled::after { content: "DISPENSE"; }
+:root[data-theme="nucaloric"] .round.stop:not(.music-button) { background: var(--black); color: #fff; animation: none; }
+:root[data-theme="nucaloric"] .round.stop:not(.music-button)::after { content: "HALT \25A0"; }
+:root[data-theme="nucaloric"] .composer-tray { border: 0; background: #fff; box-shadow: var(--lift); }
+:root[data-theme="nucaloric"] :is(.tray-label, .tray-note) { font: 600 10px/1 var(--grot); letter-spacing: 0.12em; color: var(--black); }
+:root[data-theme="nucaloric"] .effort { border-radius: 0; background: var(--well); }
+:root[data-theme="nucaloric"] .effort button { border-radius: 0; font: 600 11px/1 var(--grot); letter-spacing: 0.04em; }
+:root[data-theme="nucaloric"] .effort button:is([aria-pressed="true"], [aria-checked="true"]) { background: var(--pink); color: var(--black); box-shadow: none; }
+
+/* An empty chat: a slogan. */
+:root[data-theme="nucaloric"] .greeting::before { content: "TOKEN.PACK  2600//DAILY"; padding: 0; background: none; font: 400 13px/1 var(--tek); letter-spacing: 0.06em; color: var(--pink-ink); clip-path: none; transform: none; }
+:root[data-theme="nucaloric"] .greeting h2 { font: 700 64px/0.98 var(--grot); letter-spacing: -0.045em; text-transform: none; }
+:root[data-theme="nucaloric"] .greeting p::before { content: "Tastes like thinking. Isn\2019t."; font: 700 24px/1.1 var(--grot); letter-spacing: -0.03em; text-transform: none; color: var(--pink-ink); }
+
+/* -- the rack: work, solved ---------------------------------------------------- */
+
+:root[data-theme="nucaloric"] .rack-title h1::before { content: ""; display: block; width: 92px; height: 37px; margin-bottom: 22px; padding: 0; background: var(--nu) left center / contain no-repeat; clip-path: none; }
+:root[data-theme="nucaloric"] .rack-title h1::after { content: "Work.\A Solved."; white-space: pre; font: 700 104px/0.9 var(--grot); letter-spacing: -0.055em; text-transform: none; color: var(--black); }
+:root[data-theme="nucaloric"] .rack-lede { padding-left: 0; border-left: 0; font: 500 15px/1.4 var(--grot); color: var(--black); }
+/* The totals: CAL.PACK boxes -- pink, a white frame inside, white CODE. */
+:root[data-theme="nucaloric"] .rack-totals div,
+:root[data-theme="nucaloric"] .rack-totals div:first-child { padding: 12px 16px; background: var(--pink); box-shadow: inset 0 0 0 5px var(--pink), inset 0 0 0 6.5px #fff; clip-path: none; }
+:root[data-theme="nucaloric"] .rack-totals dt { font: 600 9px/1 var(--grot); letter-spacing: 0.14em; color: #fff; }
+:root[data-theme="nucaloric"] .rack-totals dd { margin-top: 6px; font: 700 22px/1 var(--grot); letter-spacing: -0.02em; text-transform: none; color: #fff; }
+:root[data-theme="nucaloric"] .rack-bay-head { padding-bottom: 10px; border-bottom: 1.5px solid var(--black); background: none; }
+:root[data-theme="nucaloric"] :is(.rack-bay-title, .rack-bay[data-kind] .rack-bay-title) { padding: 0; background: none; clip-path: none; font-size: 30px; }
+:root[data-theme="nucaloric"] .rack-bay-note { font: 500 12px/1.3 var(--grot); letter-spacing: 0; text-transform: none; color: rgba(10, 10, 10, 0.6); }
+:root[data-theme="nucaloric"] .rack-bay-count { font: 400 34px/1 var(--tek); color: var(--black); }
+:root[data-theme="nucaloric"] .rack-bay-count::after { content: none; }
+/* A unit: a pouch; its number in CODE on the swatch. */
+:root[data-theme="nucaloric"] .unit { padding-top: 40px; }
+:root[data-theme="nucaloric"] .unit::before { height: 26px; }
+:root[data-theme="nucaloric"] .unit:hover { box-shadow: 0 0 0 1.5px var(--black), var(--lift); }
+:root[data-theme="nucaloric"] :is(.unit-no, .unit-state) { font: 400 12px/26px var(--tek); letter-spacing: 0.04em; animation: none; }
+:root[data-theme="nucaloric"] .unit .unit-no { left: 14px; right: auto; color: var(--black); }
+:root[data-theme="nucaloric"] .unit-no::before { content: "UNIT "; }
+:root[data-theme="nucaloric"] .unit .unit-state { left: auto; right: 12px; color: var(--black); }
+:root[data-theme="nucaloric"] .unit[data-answering] { box-shadow: 0 0 0 2px var(--pink), var(--lift); }
+:root[data-theme="nucaloric"] .unit[data-heat="hot"] { box-shadow: var(--lift), inset 0 -4px 0 var(--pink); }
+:root[data-theme="nucaloric"] .unit-name { font-size: 28px; line-height: 1; }
+:root[data-theme="nucaloric"] .unit-task { font-family: var(--grot); color: rgba(10, 10, 10, 0.66); }
+:root[data-theme="nucaloric"] .gauges[data-size="card"] { border-top: 1.5px solid var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"] .gauge-label { font: 600 9px/1 var(--grot); letter-spacing: 0.14em; color: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"] .gauge-value { font: 700 19px/1 var(--grot); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"] .gauge-track { background: rgba(10, 10, 10, 0.1); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"].gauge-heat { --heat: var(--pink); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"] .gauge-spark { color: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"].sanity { --sanity: var(--black); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"].sanity[data-level="critical"] { --sanity: var(--pink); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"] .sanity-bar i { background: rgba(10, 10, 10, 0.1); }
+:root[data-theme="nucaloric"] .gauge[data-size="card"] .sanity-bar i[data-on] { background: var(--sanity); }
+/* LLM is a black block; System 1 a pink one. */
+:root[data-theme="nucaloric"] .kind-badge { font-family: var(--grot); }
+:root[data-theme="nucaloric"] .kind-name { padding: 5px 8px; border-radius: 0; clip-path: none; font: 700 10.5px/1 var(--grot); letter-spacing: 0.06em; }
+:root[data-theme="nucaloric"] .kind-badge[data-kind="llm"] .kind-name,
+:root[data-theme="nucaloric"] .unit .kind-badge[data-kind="llm"] .kind-name { background: var(--black); color: #fff; }
+:root[data-theme="nucaloric"] .kind-badge[data-kind="s1"] .kind-name { background: var(--pink); color: var(--black); }
+:root[data-theme="nucaloric"] .kind-badge[data-kind="none"] { border-radius: 0; background: var(--pink); color: var(--black); }
+:root[data-theme="nucaloric"] .kind-task { font: 600 10px/1 var(--grot); letter-spacing: 0.1em; text-transform: uppercase; color: var(--black); }
+:root[data-theme="nucaloric"] .kind-model { font-family: var(--mono); color: rgba(10, 10, 10, 0.6); }
+:root[data-theme="nucaloric"] .kind-tag { border-radius: 0; padding: 0 6px; font: 700 9px/16px var(--grot); letter-spacing: 0.06em; background: var(--black); color: #fff; }
+:root[data-theme="nucaloric"] .kind-tag[data-kind="s1"] { background: var(--pink); color: var(--black); }
+:root[data-theme="nucaloric"] .spare { background: #fff; box-shadow: var(--lift); }
+:root[data-theme="nucaloric"] .spare-model { color: var(--pink-ink); }
+
+/* -- the catalogue: essentially, everywhere -------------------------------------- */
+
+:root[data-theme="nucaloric"] .gallery-head { padding-bottom: 20px; border-bottom: 1.5px solid var(--black); }
+:root[data-theme="nucaloric"] .gallery-head h1::before { content: ""; display: block; width: 92px; height: 37px; padding: 0; background: var(--nu) left center / contain no-repeat; clip-path: none; }
+:root[data-theme="nucaloric"] .gallery-head h1::after { content: "Essentially.\A Everywhere."; margin-top: 22px; font: 700 104px/0.9 var(--grot); letter-spacing: -0.055em; text-transform: none; color: var(--black); }
+:root[data-theme="nucaloric"] .gallery-head p { padding-left: 0; border-left: 0; font: 500 15px/1.4 var(--grot); color: var(--black); }
+/* What NuCaloric offers, beside the headline. */
+:root[data-theme="nucaloric"] .gallery-head::before {
+  content: "WHAT WE OFFER\A\A Research\A Code\A Writing\A Decisions";
+  top: 60px;
+  right: 0;
+  width: auto;
+  padding: 0;
+  background: none;
+  clip-path: none;
+  white-space: pre;
+  font: 500 17px/1.3 var(--grot);
+  letter-spacing: -0.01em;
+  color: var(--black);
+}
+:root[data-theme="nucaloric"] .gallery-head::after { content: none; }
+:root[data-theme="nucaloric"] .gallery section > .label::after { content: "IN STOCK"; }
+:root[data-theme="nucaloric"] .preset { padding-top: 26px; }
+:root[data-theme="nucaloric"] .preset:hover { box-shadow: 0 0 0 1.5px var(--black), var(--lift); }
+/* Its number in CODE, as big as the "920" on the pouch. */
+:root[data-theme="nucaloric"] .preset::after { content: counter(shell, hz-pad3); top: 22px; right: 16px; font: 400 34px/1 var(--tek); letter-spacing: 0; color: var(--pink-3); -webkit-text-stroke: 0; }
+:root[data-theme="nucaloric"] .preset-name { font-size: 24px; line-height: 1; }
+:root[data-theme="nucaloric"] .preset-tagline { color: rgba(10, 10, 10, 0.7); }
+:root[data-theme="nucaloric"] .preset .btn.primary::after { content: "ORDER"; font: 400 12px/1 var(--tek); letter-spacing: 0.06em; }
+:root[data-theme="nucaloric"] .preset .btn:not(.primary) { color: var(--black); }
+
+/* -- settings ------------------------------------------------------------------- */
+
+:root[data-theme="nucaloric"] .settings > header { padding-bottom: 16px; border-bottom: 1.5px solid var(--black); }
+:root[data-theme="nucaloric"] .settings > header h1 { font: 700 72px/0.95 var(--grot); letter-spacing: -0.05em; }
+:root[data-theme="nucaloric"] .settings > header h1::before { content: "CONFIG.PACK  001//ADMIN"; margin-bottom: 14px; padding: 0; background: none; clip-path: none; font: 400 13px/1 var(--tek); letter-spacing: 0.06em; color: var(--pink-ink); }
+:root[data-theme="nucaloric"] .settings > header h1::after { content: none; }
+:root[data-theme="nucaloric"] .settings > header::after { content: ""; top: 4px; padding: 0; width: 92px; height: 37px; background: var(--nu) center / contain no-repeat; clip-path: none; }
+:root[data-theme="nucaloric"] .settings-tabs-bar { background: #fff; }
+:root[data-theme="nucaloric"] .settings-tabs { box-shadow: inset 0 -1.5px 0 var(--black); }
+:root[data-theme="nucaloric"] .settings-tabs [role="tab"] { border-radius: 0; font: 600 12px/1 var(--grot); letter-spacing: 0.06em; color: rgba(10, 10, 10, 0.6); }
+:root[data-theme="nucaloric"] .settings-tabs [role="tab"][aria-selected="true"] { background: var(--pink); color: var(--black); clip-path: none; box-shadow: none; }
+:root[data-theme="nucaloric"] .card:not(.s1-panel) { padding-top: 28px; }
+:root[data-theme="nucaloric"] .card h2 { font-size: 26px; }
+:root[data-theme="nucaloric"] .card :is(input[type="text"], input[type="password"], textarea, select) { border-radius: 0; }
+:root[data-theme="nucaloric"] .theme-choice input:checked + .theme-thumb { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--pink); }
+:root[data-theme="nucaloric"] .theme-choice input:checked ~ .theme-label { text-decoration-color: var(--pink); }
+
+/* -- the System 1 screen: pouches, a label above each ----------------------------- */
+
+:root[data-theme="nucaloric"] .card.s1-panel { padding-top: 46px; }
+:root[data-theme="nucaloric"] .card.s1-panel::before { content: attr(data-title); height: 30px; padding: 0 14px; background: var(--swatch); font: 400 11px/30px var(--tek); letter-spacing: 0.06em; text-transform: uppercase; color: var(--black); }
+:root[data-theme="nucaloric"] .s1-tasks button { border-radius: 0; font: 600 11px/1 var(--grot); letter-spacing: 0.04em; }
+:root[data-theme="nucaloric"] .s1-tasks button[aria-checked="true"] { background: var(--pink); border-color: var(--pink); color: var(--black); }
+:root[data-theme="nucaloric"] .s1-question { border-radius: 0; }
+:root[data-theme="nucaloric"] .s1-panel :is(input[type="text"], textarea, select) { border-radius: 0; }
+:root[data-theme="nucaloric"] .s1-lead strong { font: 400 34px/1 var(--tek); letter-spacing: 0; text-transform: uppercase; color: var(--black); }
+:root[data-theme="nucaloric"] .s1-scores li { border-radius: 0; }
+:root[data-theme="nucaloric"] .s1-bar { border-radius: 0; background: rgba(10, 10, 10, 0.1); }
+:root[data-theme="nucaloric"] .s1-bar i { background: var(--black); }
+:root[data-theme="nucaloric"] .s1-num { font-family: var(--grot); font-weight: 600; font-variant-numeric: tabular-nums; }

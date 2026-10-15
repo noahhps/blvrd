@@ -1388,7 +1388,7 @@
 .thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) { --t-main: #0a0a0a; --t-line: #4a4a46; --t-accent: #0a0a0a; }
 .thumb[data-look="hazard"] { --t-side: #c8ff00; }
 .thumb[data-look="cyberacme"] { --t-side: #00f0b0; }
-.thumb[data-look="nucaloric"] { --t-side: #ff4f9a; --t-main: #ffffff; --t-line: #ffc2dc; }
+.thumb[data-look="nucaloric"] { --t-side: #ff1675; --t-main: #ffffff; --t-line: #ffa3c6; }
 .thumb[data-look="traxus"] { --t-side: #0e0e0e; --t-main: #151515; --t-line: #ff5a1f; }
 .thumb[data-look="mida"] { --t-side: #ff3b30; }
 .thumb[data-look="arachne"] { --t-side: #b57bff; }

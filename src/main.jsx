@@ -11,6 +11,7 @@ import "./styles/mascot.css";
 import "./styles/hazard.css";
 import "./styles/sekiguchi.css";
 import "./styles/traxus.css";
+import "./styles/nucaloric.css";
 
 // The same page is two windows: the app, and the quickview (lib/quick.js).
 const quick = location.hash === "#quick";
