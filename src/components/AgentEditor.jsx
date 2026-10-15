@@ -8,6 +8,7 @@ import { AgentMemory } from "./AgentMemory.jsx";
 import { BrandLogo } from "./BrandLogo.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
+import { DEFAULT_S1, OLLAMA_EMBEDDERS, TASKS, taskOf } from "../lib/system1.js";
 
 function draftFrom(agent) {
   return {
@@ -20,6 +21,11 @@ function draftFrom(agent) {
     shape: agent?.look?.shape || null,
     image: agent?.look?.image || null,
     model: agent?.model || null,
+    // An LLM, or a System 1 model (an embedding model, lib/system1.js) with
+    // its job.
+    kind: agent?.kind === "s1" ? "s1" : "llm",
+    s1: { ...DEFAULT_S1, ...(agent?.s1 || {}) },
+    labels: (agent?.s1?.labels || []).join("\n"),
   };
 }
 
@@ -74,7 +80,13 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
     const name = draft.name.trim();
     if (!name) return setError("An agent needs a name.");
     if (draft.model && !draft.model.model) return setError("Choose a model, or use the default.");
+    const s1 = draft.kind === "s1";
+    if (s1 && !draft.model?.model) return setError("A System 1 agent needs its own embedding model — the default is an LLM.");
+    const labels = draft.labels.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (s1 && draft.s1.task === "classify" && labels.length < 2) return setError("Give it at least two labels to choose between.");
     onSave({
+      kind: draft.kind,
+      ...(s1 ? { s1: { ...draft.s1, labels } } : {}),
       name,
       instructions: draft.instructions.trim(),
       // Built-in tools by name, connectors as `group:<id>` -- so a connector's
@@ -185,6 +197,42 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
             )}
           </section>
 
+          <section className="field">
+            <span className="label">Kind</span>
+            <div className="kind-choices" role="radiogroup" aria-label="Kind">
+              <button type="button" role="radio" aria-checked={draft.kind === "llm"} onClick={() => set({ kind: "llm" })}>
+                <strong>LLM</strong>
+                <span>A language model. Reads, writes and holds a conversation; follows instructions; uses abilities.</span>
+              </button>
+              <button type="button" role="radio" aria-checked={draft.kind === "s1"} onClick={() => set({ kind: "s1" })}>
+                <strong>System 1</strong>
+                <span>An embedding model. No conversation: one input in, one answer out — embed, classify, rank, match, dedupe.</span>
+              </button>
+            </div>
+          </section>
+
+          {draft.kind === "s1" ? (
+            <section className="field">
+              <span className="label">Task</span>
+              <select value={draft.s1.task} onChange={(e) => set({ s1: { ...draft.s1, task: e.target.value } })}>
+                {TASKS.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label} — {t.hint}
+                  </option>
+                ))}
+              </select>
+              {draft.s1.task === "classify" ? (
+                <label className="field">
+                  <span className="label">Labels, one per line</span>
+                  <textarea value={draft.labels} placeholder={"question\nbug report\nfeature request"} onChange={(e) => set({ labels: e.target.value })} />
+                </label>
+              ) : (
+                <p className="hint">{taskOf(draft.s1.task).hint} More settings are on its own screen.</p>
+              )}
+            </section>
+          ) : null}
+
+          {draft.kind === "llm" ? (
           <label className="field">
             <span className="label">Instructions</span>
             <textarea
@@ -194,8 +242,10 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
             />
           </label>
 
+          ) : null}
+
           {/* Its own MEMORY.md: there once the agent is. */}
-          {agent ? <AgentMemory agent={agent} /> : null}
+          {agent && draft.kind === "llm" ? <AgentMemory agent={agent} /> : null}
 
           <section className="field">
             <span className="label">Model</span>
@@ -203,11 +253,15 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
               providers={providers}
               value={draft.model}
               onChange={(model) => set({ model })}
-              allowDefault
+              allowDefault={draft.kind === "llm"}
               defaultLabel={defaultLabel}
             />
+            {draft.kind === "s1" ? (
+              <p className="hint">An embedding model, run through Ollama's /api/embed. Ollama's own: {OLLAMA_EMBEDDERS.join(", ")} — pull one with <code>ollama pull nomic-embed-text</code>.</p>
+            ) : null}
           </section>
 
+          {draft.kind === "llm" ? (
           <section className="field">
             <span className="label">Abilities</span>
             <label className="check">
@@ -247,6 +301,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
               </p>
             )}
           </section>
+          ) : null}
         </div>
 
         {error ? <p className="error-line">{error}</p> : null}

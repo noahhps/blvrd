@@ -35,11 +35,14 @@ export function paramsOf(model) {
   return plain ? Number(plain[1]) : null;
 }
 
-/* System 1 families, and the input window each reads at once (tokens; for
-   speech, the tokens of one 30-second clip; for vision, none). */
+/* System 1 families, and the input window each reads at once (tokens).
+   Ollama runs the embedding ones; the rest are named so they are recognised
+   on other servers. */
 const S1 = [
-  { re: /nomic-embed|mxbai-embed|snowflake-arctic-embed|bge-m3|jina-embeddings|text-embedding|\bgte-|\be5-|embed/, task: "embed", window: 8192 },
-  { re: /all-minilm|minilm|bge-small|bge-base|bge-large/, task: "embed", window: 512 },
+  { re: /nomic-embed|bge-m3|snowflake-arctic-embed2|jina-embeddings|text-embedding|granite-embedding|qwen3-embedding|embeddinggemma/, task: "embed", window: 8192 },
+  { re: /mxbai-embed|snowflake-arctic-embed|bge-(small|base|large)|\bgte-|\be5-/, task: "embed", window: 512 },
+  { re: /all-minilm|minilm|paraphrase-multilingual/, task: "embed", window: 256 },
+  { re: /embed/, task: "embed", window: 2048 },
   { re: /rerank|cross-encoder|colbert/, task: "rank", window: 512 },
   { re: /gliner|\bner\b|spacy/, task: "tag", window: 512 },
   { re: /bert|roberta|deberta|electra|zeroshot|zero-shot|sst2|\bnli\b|classifier/, task: "classify", window: 512 },
@@ -52,9 +55,11 @@ export function s1Of(model) {
   return S1.find((f) => f.re.test(name)) || null;
 }
 
-/** "llm", "s1", or null when there's no model. */
-export function kindOf(model) {
+/** "llm", "s1", or null when there's no model. `known` -- what the agent
+ *  was set to, or what the server said of the model -- wins over the name. */
+export function kindOf(model, known = null) {
   if (!model) return null;
+  if (known === "s1" || known === "llm") return known;
   return s1Of(model) ? "s1" : "llm";
 }
 
@@ -97,9 +102,9 @@ export function shortTokens(n) {
 
 /** Everything at once, for one agent's chat. `limit` is the LLM's
  *  compaction budget; a System 1 model uses its own window instead. */
-export function readingsOf({ messages = [], model = null, limit = null, live = null, now = Date.now() }) {
-  const kind = kindOf(model);
-  const family = kind === "s1" ? s1Of(model) : null;
+export function readingsOf({ messages = [], model = null, kind: known = null, task = null, window = null, limit = null, live = null, now = Date.now() }) {
+  const kind = kindOf(model, known);
+  const family = kind === "s1" ? { task: "embed", window: 2048, ...(s1Of(model) || {}), ...(task ? { task } : {}), ...(window ? { window } : {}) } : null;
   const liveText = live ? (live.parts?.length ? live.parts.map((p) => p.text || "").join("") : live.text || "") : "";
   const tokens = tokensOf(messages) + Math.ceil(liveText.length / 4);
   const lastInput = [...(messages || [])].reverse().find((m) => m.role === "user");

@@ -21,7 +21,7 @@ import { SwipeRow } from "./SwipeRow.jsx";
 
 const NO_CHAT = [];
 
-function Row({ kind, id, name, title, menuOpen, removing, busy, canCompact, onDelete, onCompact, act, selected, avatar, when, line, gauges = null }) {
+function Row({ kind, id, name, title, menuOpen, removing, busy, canCompact, onDelete, onCompact, act, selected, avatar, when, line, gauges = null, tag = null }) {
   return (
     <SwipeRow
       data-menu={menuOpen ? "" : undefined}
@@ -44,6 +44,11 @@ function Row({ kind, id, name, title, menuOpen, removing, busy, canCompact, onDe
             <span className="contact-name" title={title}>
               {name}
             </span>
+            {tag ? (
+              <span className="kind-tag" data-kind={tag}>
+                {tag === "s1" ? "SYS-1" : "LLM"}
+              </span>
+            ) : null}
             {when ? <span className="contact-when">{when}</span> : null}
           </span>
           <span className="contact-line">{line}</span>
@@ -79,6 +84,7 @@ export const AgentRow = memo(function AgentRow({ agent, chat = NO_CHAT, selected
       when={shortWhen(last?.at)}
       line={answering ? "answering…" : said ? said.text : taglineOf(agent, PRESETS)}
       gauges={readings ? <Gauges r={readings} size="row" /> : null}
+      tag={readings?.kind || null}
     />
   );
 });

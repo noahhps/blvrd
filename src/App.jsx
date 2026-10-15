@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { colourOf, taglineOf } from "./lib/agents.js";
-import { readingsOf } from "./lib/agentMetrics.js";
+import { kindOf, readingsOf } from "./lib/agentMetrics.js";
+import { run as runSystem1 } from "./lib/system1.js";
 import { shortWhen } from "./lib/preview.js";
 import { connectorNote, connectorTools, connectorsOf, groupsOf } from "./lib/connectors/index.js";
 import { MAX_HANDOFFS, groupBrief, mentionsIn, respondersFor, viewFor } from "./lib/group.js";
 import { PRESETS } from "./lib/presets.js";
 import { runTurn } from "./lib/run.js";
 import { ADAPTERS } from "./lib/providers.js";
-import { discover, getProfile, usableWindow } from "./lib/profile.js";
+import { discover, getProfile, onProfiles, usableWindow } from "./lib/profile.js";
 import { computerTaskTool } from "./lib/computer/task.js";
 import { openComputer, stopComputer, stopHostComputers, whereOf } from "./lib/computer/connection.js";
 import { watched } from "./lib/computer/watch.js";
@@ -58,6 +59,7 @@ import { Chat } from "./components/Chat.jsx";
 import { Connectors } from "./components/Connectors.jsx";
 import { Gallery } from "./components/Gallery.jsx";
 import { Rack } from "./components/Rack.jsx";
+import { System1Console } from "./components/System1Console.jsx";
 import { GroupChat } from "./components/GroupChat.jsx";
 import { GroupEditor } from "./components/GroupEditor.jsx";
 import { Icon } from "./components/Icon.jsx";
@@ -461,7 +463,20 @@ export default function App() {
     });
   };
 
-  const fromPreset = ({ name, instructions, look }) => ({ name, instructions, look, tools: null, model: null });
+  // A System 1 preset comes with the embedding model it is meant for, on
+  // Ollama when it's there: the default model (an LLM) can't run it.
+  const fromPreset = ({ name, instructions, look, kind, s1, suggested }) => {
+    const ollama = kind === "s1" ? providers.find((p) => p.kind === "ollama" && p.enabled) : null;
+    return {
+      name,
+      instructions,
+      look,
+      tools: null,
+      model: ollama && suggested ? { provider: ollama.id, model: suggested } : null,
+      ...(kind ? { kind } : {}),
+      ...(s1 ? { s1 } : {}),
+    };
+  };
 
   /* -- talking ------------------------------------------------------------------- */
 
@@ -649,6 +664,53 @@ export default function App() {
     }
   };
 
+  // An LLM or a System 1 model (lib/agentMetrics.js): what Ollama's /api/show
+  // said of its model when it can't chat (no "completion"), else what the
+  // agent was set to, else its model's name.
+  const [, setProfilesSeen] = useState(0);
+  useEffect(() => onProfiles(() => setProfilesSeen((n) => n + 1)), []);
+  const kindFor = (agent) => {
+    const target = agent ? modelFor(agent) : null;
+    const known = target ? getProfile(target.provider, target.model).kind : undefined;
+    if (known === "s1") return "s1";
+    if (agent?.kind === "s1" || agent?.kind === "llm") return agent.kind;
+    if (!target) return null;
+    return kindOf(target.model, known);
+  };
+  // Ask the server what the open agent's model is, so an embedding model is
+  // known before anyone tries to chat with it.
+  const openTarget = view.kind === "agent" ? modelFor(agents.find((a) => a.id === view.id)) : null;
+  useEffect(() => {
+    if (openTarget) discover(openTarget.provider, openTarget.model, { adapters: ADAPTERS }).catch(() => {});
+  }, [openTarget?.provider?.id, openTarget?.model]);
+  // And every agent on a local Ollama model, so the sidebar and the rack label
+  // each one right before it is opened (once per launch: lib/profile.js).
+  const ollamaTargets = agents
+    .map(modelFor)
+    .filter((t) => t?.provider?.kind === "ollama")
+    .map((t) => [t, `${t.provider.id}|${t.model}`]);
+  const ollamaKeys = [...new Set(ollamaTargets.map(([, k]) => k))].join(",");
+  useEffect(() => {
+    for (const [t] of ollamaTargets) discover(t.provider, t.model, { adapters: ADAPTERS }).catch(() => {});
+  }, [ollamaKeys]);
+
+  // A System 1 agent's run: its input and its answer, kept as a pair of
+  // messages so the readings count it.
+  const [s1Busy, setS1Busy] = useState(null);
+  const runS1 = async (agent, input) => {
+    const target = modelFor(agent);
+    if (!target) throw new Error("Choose an embedding model first.");
+    const config = { ...(agent.s1 || {}) };
+    setS1Busy(agent.id);
+    try {
+      const { result, markdown } = await runSystem1({ provider: target.provider, model: target.model, task: config.task || "embed", input, config });
+      append(agent.id, { role: "user", content: input });
+      append(agent.id, { role: "assistant", content: markdown, s1: result, model: target.model, provider: target.provider.id });
+    } finally {
+      setS1Busy(null);
+    }
+  };
+
   // A clock for the readings: heat cools as minutes pass with nothing new.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -661,6 +723,8 @@ export default function App() {
     readingsOf({
       messages: state.chats[chatId] || [],
       model: agent ? modelFor(agent)?.model || null : null,
+      kind: kindFor(agent),
+      task: agent?.s1?.task || null,
       limit: contextLimitFor(agent),
       live: live?.chatId === chatId ? live : null,
       now,
@@ -1340,6 +1404,21 @@ export default function App() {
               update(() => ({ browser }));
               stopHostComputers();
             }}
+          />
+        ) : selected && kindFor(selected) === "s1" ? (
+          <System1Console
+            agent={selected}
+            presets={PRESETS}
+            messages={state.chats[selected.id] || []}
+            providers={providers}
+            readings={readingsFor(selected)}
+            busy={s1Busy === selected.id}
+            onRun={(input) => runS1(selected, input)}
+            onConfig={(patch) => {
+              const id = selected.id;
+              update((s) => ({ agents: s.agents.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));
+            }}
+            onCustomize={() => setEditor({ agent: selected })}
           />
         ) : selected ? (
           <Chat

@@ -104,7 +104,7 @@
 :root[data-theme="sekiguchi"] .month-day[data-today] { background: var(--mint); color: var(--black); }
 :root[data-theme="sekiguchi"] .contact:hover { background: rgba(151, 245, 195, 0.08); }
 :root[data-theme="sekiguchi"] .contact[aria-current="true"] { --ink: var(--black); --dim: rgba(11, 11, 11, 0.62); background: var(--mint); }
-:root[data-theme="sekiguchi"] .contact[aria-current="true"]::before { background: var(--lav); color: var(--black); }
+:root[data-theme="sekiguchi"] .contact[aria-current="true"] .contact-when::before { background: var(--lav); color: var(--black); }
 :root[data-theme="sekiguchi"] .contact::after { font-family: var(--serif); font-weight: 300; font-stretch: normal; font-size: 30px; letter-spacing: -0.02em; }
 :root[data-theme="sekiguchi"] .contact-name { font-size: 18px; line-height: 1.05; }
 :root[data-theme="sekiguchi"] .gauge[data-size="row"] .gauge-track,
@@ -337,3 +337,11 @@
 :root[data-theme="sekiguchi"] .card::after { width: 26px; height: 15px; top: 4px; background: var(--mark) center / contain no-repeat; }
 :root[data-theme="sekiguchi"] .card h2 { font-size: 34px; }
 :root[data-theme="sekiguchi"] .theme-choice input:checked ~ .theme-label { text-decoration-color: var(--peri); }
+
+/* -- LLM / System 1 labels and console ---------------------------------------- */
+:root[data-theme="sekiguchi"] .kind-tag { background: var(--black); color: var(--mint); }
+:root[data-theme="sekiguchi"] .kind-tag[data-kind="s1"] { background: var(--lav); color: var(--black); }
+:root[data-theme="sekiguchi"] .side .kind-tag { box-shadow: inset 0 0 0 1px var(--mint-dim); background: transparent; color: var(--mint); }
+:root[data-theme="sekiguchi"] .s1-lead strong { font: 300 34px/1 var(--serif); text-transform: none; }
+:root[data-theme="sekiguchi"] .s1-scores li[data-best] .s1-bar i { background: var(--peri); }
+:root[data-theme="sekiguchi"] .s1-body { background: none; }

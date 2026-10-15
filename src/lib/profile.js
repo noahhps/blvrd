@@ -199,6 +199,9 @@ async function askOllama(provider, model) {
     vision: caps ? caps.includes("vision") : undefined,
     // No "tools" capability: its template has no way to make a call.
     tools: caps && !caps.includes("tools") ? "prompted" : undefined,
+    // An embedding model has "embedding" and no "completion": a System 1
+    // model, which /api/chat refuses (lib/system1.js runs it).
+    kind: caps ? (caps.includes("completion") ? "llm" : caps.includes("embedding") ? "s1" : undefined) : undefined,
   };
 }
 

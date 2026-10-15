@@ -315,22 +315,19 @@
   box-shadow: none;
   clip-path: var(--cut);
 }
-:root[data-marathon] .contact[aria-current="true"]::before {
-  content: "DEPLOYED";
-  left: auto;
-  right: 34px;
-  top: 7px;
-  bottom: auto;
-  width: auto;
-  height: auto;
+/* The open row's status stands where its time was, in the row's own flow,
+ * so a long name is cut short before it rather than run under it. */
+:root[data-marathon] .contact[aria-current="true"]::before { content: none; }
+:root[data-marathon] .contact[aria-current="true"] .contact-when { font-size: 0; line-height: 0; }
+:root[data-marathon] .contact[aria-current="true"] .contact-when::before {
+  content: var(--deployed, "DEPLOYED");
+  display: inline-block;
   padding: 2px 5px;
-  border-radius: 0;
   background: var(--pink);
   color: #000;
   font: 800 8px/1.2 var(--mono);
   letter-spacing: 0.12em;
 }
-:root[data-marathon] .contact[aria-current="true"] .contact-when { visibility: hidden; }
 :root[data-marathon] .side-empty { font: 600 10.5px/1.5 var(--mono); color: var(--dim); text-transform: uppercase; }
 
 :root[data-marathon] .side-settings {
@@ -1255,6 +1252,28 @@
 :root[data-marathon] .sheet { border-radius: 0; border: 0; box-shadow: var(--shadow); }
 :root[data-marathon] .sheet-name { font-family: var(--display); font-stretch: 125%; font-weight: 900; text-transform: uppercase; }
 :root[data-marathon] .notice { border-radius: 0; font-family: var(--mono); font-size: 12px; }
+
+/* -- LLM / System 1, and the System 1 console ------------------------------- */
+
+:root[data-marathon] .kind-tag { border-radius: 0; padding: 0 5px; font: 800 8.5px/15px var(--mono); letter-spacing: 0.1em; background: var(--paper); color: #000; }
+:root[data-marathon] .kind-tag[data-kind="s1"] { background: var(--acid); color: #000; }
+:root[data-marathon] .side .kind-tag { background: transparent; box-shadow: inset 0 0 0 1px currentColor; color: var(--ink); }
+:root[data-marathon] .card.s1-panel::before { content: attr(data-title); text-transform: uppercase; }
+:root[data-marathon] .s1-panel h2 { font-size: 22px; }
+:root[data-marathon] .s1-tasks button { border-radius: 0; border-color: var(--line-strong); color: var(--ink); font: 700 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+:root[data-marathon] .s1-tasks button[aria-checked="true"] { background: var(--acid); border-color: var(--acid); color: #000; }
+:root[data-marathon] .s1-bar { border-radius: 0; background: rgba(10, 10, 10, 0.12); }
+:root[data-marathon] .s1-bar i { background: var(--ink); }
+:root[data-marathon] .s1-scores li[data-best] .s1-bar i { background: var(--acid-ink); }
+:root[data-marathon] .s1-lead strong { font: 900 30px/1 var(--display); font-stretch: 125%; text-transform: uppercase; }
+:root[data-marathon] .s1-vector { border-radius: 0; }
+:root[data-marathon] .kind-choices button { border-radius: 0; }
+:root[data-marathon] .s1-body { background: var(--dots); }
+/* The console is wider than a chat's reading column, so it has no gutters for
+ * the readouts either side; and it starts below the strip over the chat. */
+:root[data-marathon] .s1-body { padding-top: 46px; }
+:root[data-marathon] .chat-body.s1-body::before,
+:root[data-marathon] .chat-body.s1-body::after { content: none; }
 
 /* -- the factions ----------------------------------------------------------- */
 

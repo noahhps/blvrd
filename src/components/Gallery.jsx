@@ -31,7 +31,12 @@ export function Gallery({ presets, onNew, onAdd, onCustomize, firstRun, mood = "
             <div key={preset.id} className="preset">
               <AgentAvatar look={preset.look} name={preset.name} size={42} />
               <span className="preset-text">
-                <span className="preset-name">{call(preset.name)}</span>
+                <span className="preset-top">
+                  <span className="preset-name">{call(preset.name)}</span>
+                  <span className="kind-tag" data-kind={preset.kind === "s1" ? "s1" : "llm"}>
+                    {preset.kind === "s1" ? "SYS-1" : "LLM"}
+                  </span>
+                </span>
                 <span className="preset-tagline">{preset.tagline}</span>
               </span>
               <span className="preset-actions">

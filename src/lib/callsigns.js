@@ -15,7 +15,7 @@ const ROLES = [
   "researcher", "coder", "writer", "planner", "analyst", "designer", "organizer", "tutor",
   // The specialists (lib/presets.js).
   "tagger", "fixer", "translator", "summarizer", "extractor", "commit scribe", "regex smith", "titler",
-  "indexer", "ranker", "transcriber", "spotter",
+  "indexer", "ranker", "matcher", "deduper",
 ];
 
 // Per faction: a callsign for each ready-made role, in ROLES order, then
@@ -27,8 +27,8 @@ export const FACTIONS = {
   // stars; the blunted sword of mercy; Hypatia; Ptolemy's compendium;
   // Messier's catalogue; Turpin, Roland's chronicler; Wayland the smith;
   // Bayer, who named the stars. The System 1 units: Flamsteed's star
-  // catalogue, Pickering's ranked plates, Olivier (Roland's companion, who
-  // heard the horn), and Tombaugh, who spotted Pluto.
+  // catalogue, Pickering's ranked plates, Olivier (Roland's match), and
+  // Tombaugh, who found Pluto by comparing near-identical plates.
   hazard: {
     roles: ["KEPLER", "HAUTECLAIRE", "OLIPHANT", "HALLEY", "LEAVITT", "JOYEUSE", "HERSCHEL", "ALCUIN",
       "CANNON", "CURTANA", "HYPATIA", "PTOLEMY", "MESSIER", "TURPIN", "WAYLAND", "BAYER",
@@ -40,12 +40,12 @@ export const FACTIONS = {
   // Operations Planning, Analytical eXamination, Image Rendering, Ordered
   // Records, Educational Directive; then Tagging, Revision, Language
   // eXchange, Summarization, EXtraction, Version Control, Pattern Matching,
-  // Naming; EMbedding, RAnking, Speech Recognition, Object Detection --
+  // Naming; EMbedding, RAnking, Similarity Matching, De-Duplication --
   // each an Intelligence.
   cyberacme: {
     roles: ["ARI", "KAI", "LEXI", "OPI", "AXI", "IRI", "ORI", "EDI",
       "TAI", "REI", "LXI", "SUMI", "EXI", "VCI", "PMI", "NAI",
-      "EMI", "RAI", "SRI", "ODI"],
+      "EMI", "RAI", "SMI", "DDI"],
     spares: ["UNI", "AMI", "ELI", "ZOI"],
   },
   // NuCaloric's is Gaius: a plain Roman name. Romans who wrote on the land
