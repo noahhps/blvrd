@@ -5,9 +5,9 @@
  *
  *   kind     "llm" (a language model: it reads and writes, and holds a
  *            conversation) or "s1" (a System 1 model: fast and reflexive,
- *            no conversation -- it embeds, ranks, classifies, tags,
- *            transcribes or detects, one input at a time), read from the
- *            model's family. Null when no model is chosen.
+ *            no conversation -- on Ollama, a decision model that answers
+ *            typed questions about one input at a time; lib/system1.js),
+ *            read from the model's family. Null when no model is chosen.
  *   tokens   every token the chat has used, summarized parts included --
  *            estimated, four characters a token (lib/compact.js sizeOf).
  *   heat     load: tokens through the chat in the last ten minutes against
@@ -36,9 +36,11 @@ export function paramsOf(model) {
 }
 
 /* System 1 families, and the input window each reads at once (tokens).
-   Ollama runs the embedding ones; the rest are named so they are recognised
-   on other servers. */
+   Ollama's decision models come first -- they are what its System One
+   endpoint runs; the rest can't chat either, and are named so they are
+   recognised (and told apart from LLMs) wherever they turn up. */
 const S1 = [
+  { re: /\bnimble\b|\btev1?\b|\blaya\b|\bclef(-flash)?\b|systemone|solar-decide|decider/, task: "decide", window: 2048 },
   { re: /nomic-embed|bge-m3|snowflake-arctic-embed2|jina-embeddings|text-embedding|granite-embedding|qwen3-embedding|embeddinggemma/, task: "embed", window: 8192 },
   { re: /mxbai-embed|snowflake-arctic-embed|bge-(small|base|large)|\bgte-|\be5-/, task: "embed", window: 512 },
   { re: /all-minilm|minilm|paraphrase-multilingual/, task: "embed", window: 256 },
@@ -104,7 +106,7 @@ export function shortTokens(n) {
  *  compaction budget; a System 1 model uses its own window instead. */
 export function readingsOf({ messages = [], model = null, kind: known = null, task = null, window = null, limit = null, live = null, now = Date.now() }) {
   const kind = kindOf(model, known);
-  const family = kind === "s1" ? { task: "embed", window: 2048, ...(s1Of(model) || {}), ...(task ? { task } : {}), ...(window ? { window } : {}) } : null;
+  const family = kind === "s1" ? { task: "decide", window: 2048, ...(s1Of(model) || {}), ...(task ? { task } : {}), ...(window ? { window } : {}) } : null;
   const liveText = live ? (live.parts?.length ? live.parts.map((p) => p.text || "").join("") : live.text || "") : "";
   const tokens = tokensOf(messages) + Math.ceil(liveText.length / 4);
   const lastInput = [...(messages || [])].reverse().find((m) => m.role === "user");

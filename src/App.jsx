@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { colourOf, taglineOf } from "./lib/agents.js";
 import { kindOf, readingsOf } from "./lib/agentMetrics.js";
-import { run as runSystem1 } from "./lib/system1.js";
+import { run as runSystem1, s1Of, summaryOf } from "./lib/system1.js";
 import { shortWhen } from "./lib/preview.js";
 import { connectorNote, connectorTools, connectorsOf, groupsOf } from "./lib/connectors/index.js";
 import { MAX_HANDOFFS, groupBrief, mentionsIn, respondersFor, viewFor } from "./lib/group.js";
@@ -463,7 +463,7 @@ export default function App() {
     });
   };
 
-  // A System 1 preset comes with the embedding model it is meant for, on
+  // A System 1 preset comes with the decision model it is meant for, on
   // Ollama when it's there: the default model (an LLM) can't run it.
   const fromPreset = ({ name, instructions, look, kind, s1, suggested }) => {
     const ollama = kind === "s1" ? providers.find((p) => p.kind === "ollama" && p.enabled) : null;
@@ -697,13 +697,12 @@ export default function App() {
   // A System 1 agent's run: its input and its answer, kept as a pair of
   // messages so the readings count it.
   const [s1Busy, setS1Busy] = useState(null);
-  const runS1 = async (agent, input) => {
+  const runS1 = async (agent, input, config = s1Of(agent)) => {
     const target = modelFor(agent);
-    if (!target) throw new Error("Choose an embedding model first.");
-    const config = { ...(agent.s1 || {}) };
+    if (!target) throw new Error("Choose a decision model first.");
     setS1Busy(agent.id);
     try {
-      const { result, markdown } = await runSystem1({ provider: target.provider, model: target.model, task: config.task || "embed", input, config });
+      const { result, markdown } = await runSystem1({ provider: target.provider, model: target.model, input, config });
       append(agent.id, { role: "user", content: input });
       append(agent.id, { role: "assistant", content: markdown, s1: result, model: target.model, provider: target.provider.id });
     } finally {
@@ -724,7 +723,7 @@ export default function App() {
       messages: state.chats[chatId] || [],
       model: agent ? modelFor(agent)?.model || null : null,
       kind: kindFor(agent),
-      task: agent?.s1?.task || null,
+      task: kindFor(agent) === "s1" ? summaryOf(s1Of(agent)) : null,
       limit: contextLimitFor(agent),
       live: live?.chatId === chatId ? live : null,
       now,
@@ -1413,7 +1412,7 @@ export default function App() {
             providers={providers}
             readings={readingsFor(selected)}
             busy={s1Busy === selected.id}
-            onRun={(input) => runS1(selected, input)}
+            onRun={(input, config) => runS1(selected, input, config)}
             onConfig={(patch) => {
               const id = selected.id;
               update((s) => ({ agents: s.agents.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));

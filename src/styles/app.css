@@ -2856,7 +2856,7 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 
 /* The console: setup on the left, input and output on the right. */
 .s1-body { overflow-y: auto; padding: 24px; }
-.s1-grid { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 16px; width: 100%; max-width: 1180px; margin: 0 auto; align-items: start; }
+.s1-grid { display: grid; grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); gap: 16px; width: 100%; max-width: 1180px; margin: 0 auto; align-items: start; }
 .s1-work { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .s1-panel { margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .s1-panel > .label { margin-top: 8px; }
@@ -2876,7 +2876,24 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .s1-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--dim); }
 .s1-bar { position: relative; display: block; height: 6px; border-radius: 3px; background: var(--well); overflow: hidden; }
 .s1-bar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
-.s1-vector { display: block; padding: 8px 10px; border-radius: var(--r-control); background: var(--well); font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
+/* The questions: one block each -- its kind, its name, the question, what
+   its answers mean. */
+.s1-questions { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.s1-question { display: flex; flex-direction: column; gap: 8px; min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-control); }
+.s1-question .hint { margin: 0; }
+.s1-question-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.s1-question-top .s1-tasks { flex: 1; flex-wrap: nowrap; min-width: 0; }
+.s1-question-top .s1-tasks button { white-space: nowrap; }
+.s1-question .s1-key { font: 12px/1.2 var(--mono); }
+.s1-ask { min-height: 0; resize: vertical; }
+.s1-criteria { display: flex; flex-direction: column; gap: 6px; }
+.s1-crit { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); }
+.s1-crit > span:first-child:not(.s1-level) { flex: none; width: 70px; }
+.s1-crit input { flex: 1; min-width: 0; }
+.s1-crit .s1-option-key { flex: 0 0 110px; font-family: var(--mono); font-size: 12.5px; }
+.s1-level { flex: none; width: 18px; text-align: center; font: 600 12px var(--mono); color: var(--faint); }
+.s1-add { align-self: flex-start; }
+.s1-q { margin: 0; color: var(--dim); font-size: 13.5px; }
 .s1-foot { margin: 0; color: var(--faint); font: 11px/1.4 var(--mono); }
 .s1-log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .s1-log li { display: flex; gap: 12px; justify-content: space-between; font-size: 13px; color: var(--dim); }

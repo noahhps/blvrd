@@ -15,7 +15,7 @@ const ROLES = [
   "researcher", "coder", "writer", "planner", "analyst", "designer", "organizer", "tutor",
   // The specialists (lib/presets.js).
   "tagger", "fixer", "translator", "summarizer", "extractor", "commit scribe", "regex smith", "titler",
-  "indexer", "ranker", "matcher", "deduper",
+  "router", "sentinel", "grader", "triager",
 ];
 
 // Per faction: a callsign for each ready-made role, in ROLES order, then
@@ -26,13 +26,14 @@ export const FACTIONS = {
   // Charlemagne's teacher. The specialists: Annie Cannon, who sorted the
   // stars; the blunted sword of mercy; Hypatia; Ptolemy's compendium;
   // Messier's catalogue; Turpin, Roland's chronicler; Wayland the smith;
-  // Bayer, who named the stars. The System 1 units: Flamsteed's star
-  // catalogue, Pickering's ranked plates, Olivier (Roland's match), and
-  // Tombaugh, who found Pluto by comparing near-identical plates.
+  // Bayer, who named the stars. The System 1 units: Mercator, whose chart
+  // ships steered by; Roland, the rearguard who kept the pass; Hipparchus,
+  // who graded the stars by brightness; and Pickering, who ran the sorting
+  // of the Harvard plates.
   hazard: {
     roles: ["KEPLER", "HAUTECLAIRE", "OLIPHANT", "HALLEY", "LEAVITT", "JOYEUSE", "HERSCHEL", "ALCUIN",
       "CANNON", "CURTANA", "HYPATIA", "PTOLEMY", "MESSIER", "TURPIN", "WAYLAND", "BAYER",
-      "FLAMSTEED", "PICKERING", "OLIVIER", "TOMBAUGH"],
+      "MERCATOR", "ROLAND", "HIPPARCHUS", "PICKERING"],
     spares: ["TIZONA", "COLADA", "HUBBLE", "GALILEO"],
   },
   // CyberAcme's is ONI, Onboard Navigational Intelligence: a system
@@ -40,12 +41,11 @@ export const FACTIONS = {
   // Operations Planning, Analytical eXamination, Image Rendering, Ordered
   // Records, Educational Directive; then Tagging, Revision, Language
   // eXchange, Summarization, EXtraction, Version Control, Pattern Matching,
-  // Naming; EMbedding, RAnking, Similarity Matching, De-Duplication --
-  // each an Intelligence.
+  // Naming; RouTing, SCreening, GRading, TRiage -- each an Intelligence.
   cyberacme: {
     roles: ["ARI", "KAI", "LEXI", "OPI", "AXI", "IRI", "ORI", "EDI",
       "TAI", "REI", "LXI", "SUMI", "EXI", "VCI", "PMI", "NAI",
-      "EMI", "RAI", "SMI", "DDI"],
+      "RTI", "SCI", "GRI", "TRI"],
     spares: ["UNI", "AMI", "ELI", "ZOI"],
   },
   // NuCaloric's is Gaius: a plain Roman name. Romans who wrote on the land
@@ -54,47 +54,50 @@ export const FACTIONS = {
   // Vitruvius's buildings, Cato's farm manual, Quintilian's schooling; and
   // for the specialists Festus's dictionary, Priscian's grammar, Cicero the
   // translator, Eutropius's short history, Gellius's notebooks, Tiro's
-  // shorthand, a faber (a smith), and Titus for the titler; Verrius's
-  // lexicon, Censorinus, Asconius who wrote down Cicero's speeches, and
-  // Agrippa who mapped the world.
+  // shorthand, a faber (a smith), and Titus for the titler; Agrippa, who
+  // mapped the roads of the world; Vegetius, who wrote the watch rota;
+  // Verrius, the schoolmaster who ranked his pupils; and Celsus, who wrote
+  // on medicine.
   nucaloric: {
     roles: ["PLINY", "FRONTINUS", "VIRGIL", "COLUMELLA", "VARRO", "VITRUVIUS", "CATO", "QUINTILIAN",
       "FESTUS", "PRISCIAN", "CICERO", "EUTROPIUS", "GELLIUS", "TIRO", "FABER", "TITUS",
-      "VERRIUS", "CENSORINUS", "ASCONIUS", "AGRIPPA"],
+      "AGRIPPA", "VEGETIUS", "VERRIUS", "CELSUS"],
     spares: ["SEXTUS", "GNAEUS", "MARCUS", "DECIMUS"],
   },
   // Traxus's is Vulcan: the god of the forge. The pantheon of craft and
   // commerce -- wisdom, the inventor, the messenger, the god of beginnings,
   // the mint, the woman Vulcan made, the god of boundary stones, the tutor;
   // then order, healing, the rainbow messenger, the god of silence, wealth
-  // dug up, the muse of record, Vulcan's thunder-smith, and fame; memory,
-  // justice with her scales, Echo, and hundred-eyed Argus. Traxus ships
-  // freight between worlds, so its spares are the gods of harbours, the
-  // sea, doorways and crossroads.
+  // dug up, the muse of record, Vulcan's thunder-smith, and fame; the
+  // goddess of crossroads, hundred-eyed Argus the watchman, justice with
+  // her scales, and Salus, safety. Traxus ships freight between worlds, so
+  // its spares are the gods of harbours, the sea, doorways and setting out.
   traxus: {
     roles: ["MINERVA", "DAEDALUS", "MERCURY", "JANUS", "MONETA", "PANDORA", "TERMINUS", "CHIRON",
       "THEMIS", "ASCLEPIUS", "IRIS", "HARPOCRATES", "PLUTUS", "CLIO", "BRONTES", "FAMA",
-      "MNEMOSYNE", "JUSTITIA", "ECHO", "ARGUS"],
-    spares: ["PORTUNUS", "NEPTUNE", "CARDEA", "TRIVIA"],
+      "TRIVIA", "ARGUS", "JUSTITIA", "SALUS"],
+    spares: ["PORTUNUS", "NEPTUNE", "CARDEA", "ABEONA"],
   },
   // MIDA's is Gantry: a piece of hard industry. The machine shop and the
   // print shop of an insurgency -- down to the label punch, the grinder,
   // the relay, the compressor, the drill, the ticker tape, the jig, and the
-  // placard; and the sorter, the sieve, the wiretap and the searchlight.
+  // placard; and the rail switch, the searchlight, the sieve that grades
+  // by size, and the sorter.
   mida: {
     roles: ["PERISCOPE", "LATHE", "PRESS", "SCAFFOLD", "GAUGE", "STENCIL", "DEPOT", "BULLHORN",
       "PUNCH", "GRINDER", "RELAY", "COMPRESSOR", "DRILL", "TICKER", "JIG", "PLACARD",
-      "SORTER", "SIEVE", "WIRETAP", "SEARCHLIGHT"],
+      "SWITCH", "SEARCHLIGHT", "SIEVE", "SORTER"],
     spares: ["GIRDER", "RIVET", "CRANE", "PYLON"],
   },
   // Arachne's is Charter: a founding document. The cult's paperwork --
   // its books, laws, oaths, seals and rolls; its index, errata, vulgate,
   // breviary, book of excerpts, chronicle, formulary, and the rubrics in
-  // red; its concordance, ordinal, transcripts and inventory.
+  // red; its itinerary, interdicts, ordinal of rank, and the docket of what
+  // is heard first.
   arachne: {
     roles: ["CODEX", "CANON", "TESTAMENT", "COVENANT", "TALLY", "SIGIL", "ROLL", "CATECHISM",
       "INDEX", "ERRATA", "VULGATE", "BREVIARY", "FLORILEGIUM", "CHRONICLE", "FORMULARY", "RUBRIC",
-      "CONCORDANCE", "ORDINAL", "TRANSCRIPT", "INVENTORY"],
+      "ITINERARY", "INTERDICT", "ORDINAL", "DOCKET"],
     spares: ["WRIT", "EDICT", "DECREE", "VERDICT"],
   },
   // Sekiguchi's is Nona: the Fate who spins the thread of life, whose name
@@ -102,11 +105,12 @@ export const FACTIONS = {
   // her, Decima and Morta, the other two Fates. The specialists are the
   // Fates of the Greeks and the Norns: who allots, who spins, who is
   // becoming, who cuts short, what shall be, what was, Necessity, and Parca;
-  // wyrd, Fortuna, Moira and Nemesis.
+  // Moira, one's allotted path; Nemesis, who sees a line crossed;
+  // Fortuna, whose wheel raises and lowers; and wyrd, what comes next.
   sekiguchi: {
     roles: ["PRIMA", "SECUNDA", "TERTIA", "QUARTA", "QUINTA", "SEXTA", "SEPTIMA", "OCTAVIA",
       "LACHESIS", "CLOTHO", "VERDANDI", "ATROPOS", "SKULD", "URD", "ANANKE", "PARCA",
-      "WYRD", "FORTUNA", "MOIRA", "NEMESIS"],
+      "MOIRA", "NEMESIS", "FORTUNA", "WYRD"],
     spares: ["DECIMA", "MORTA", "UNDECIMA", "DUODECIMA"],
   },
 };

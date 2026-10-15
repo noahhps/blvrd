@@ -68,7 +68,7 @@ export function Sanity({ context, size = "card" }) {
 }
 
 /** LLM or System 1, and -- for a System 1 model -- what it does. */
-const TASKS = { embed: "Embeds", rank: "Ranks", classify: "Classifies", match: "Matches", dedupe: "Dedupes", tag: "Tags", listen: "Transcribes", see: "Detects" };
+const TASKS = { decide: "Decides", embed: "Embeds", rank: "Ranks", classify: "Classifies", match: "Matches", dedupe: "Dedupes", tag: "Tags", listen: "Transcribes", see: "Detects" };
 
 export function KindBadge({ kind, task = null, model, size = "card" }) {
   if (!kind) return <span className="kind-badge" data-kind="none" data-size={size}>No model</span>;
@@ -79,7 +79,7 @@ export function KindBadge({ kind, task = null, model, size = "card" }) {
   return (
     <span className="kind-badge" data-kind={kind} data-size={size} title={title}>
       <span className="kind-name">{kind === "s1" ? "SYS-1" : "LLM"}</span>
-      {task && size !== "row" ? <span className="kind-task">{TASKS[task]}</span> : null}
+      {task && size !== "row" ? <span className="kind-task">{TASKS[task] || task}</span> : null}
       {model && size !== "row" ? <span className="kind-model">{model}</span> : null}
     </span>
   );

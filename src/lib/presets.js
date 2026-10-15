@@ -8,10 +8,10 @@
  * `look` is the character it is drawn as and its colour (lib/agents.js).
  * `kind` is the kind of model it is meant for (lib/agentMetrics.js): "llm"
  * for a language model, "s1" for a System 1 model -- fast and reflexive, no
- * conversation: it embeds, ranks, classifies, tags, transcribes or detects.
- * The specialists after the first eight do one narrow job each; `suggested`
- * names a model built for it. A System 1 specialist's instructions are what
- * an LLM standing in for it is told, until it runs on its own kind of model. */
+ * conversation: one of Ollama's decision models, answering typed questions
+ * (yes/no, a choice, a score) about each input (lib/system1.js); `s1` holds
+ * those questions. The specialists after the first eight do one narrow job
+ * each; `suggested` names a model built for it. */
 
 export const PRESETS = [
   {
@@ -164,13 +164,28 @@ export const PRESETS = [
     instructions:
       "You extract structured data. From the text you are given, reply with one JSON object in a fenced block: `people`, `organizations`, `dates` (ISO 8601), `amounts` (number and currency) and `places`, each an array, empty when there are none. Never invent a value that is not in the text.",
   },
-  // -- Specialists on System 1 models: embedding models, as Ollama runs them
-  //    (lib/system1.js). No instructions: they don't read any. --
+  // -- Specialists on System 1 models: Ollama's decision models, through
+  //    /v1/systemone (lib/system1.js). No instructions: they don't read
+  //    any -- their questions are their job. --
   {
     id: "tagger",
     kind: "s1",
-    s1: { task: "classify", labels: ["question", "bug report", "feature request", "praise"] },
-    suggested: "nomic-embed-text",
+    s1: {
+      questions: [
+        {
+          name: "label",
+          type: "choice",
+          instructions: "Which label fits this message?",
+          criteria: [
+            { key: "question", description: "Asks how to do something" },
+            { key: "bug", description: "Reports something broken" },
+            { key: "feature", description: "Asks for something new" },
+            { key: "praise", description: "Says something is good" },
+          ],
+        },
+      ],
+    },
+    suggested: "tev1:0.8b",
     specialist: true,
     look: { colour: "yellow", shape: "chart" },
     name: "Tagger",
@@ -178,47 +193,99 @@ export const PRESETS = [
     instructions: "",
   },
   {
-    id: "indexer",
+    id: "router",
     kind: "s1",
-    s1: { task: "embed" },
-    suggested: "nomic-embed-text",
+    s1: {
+      questions: [
+        {
+          name: "agent",
+          type: "choice",
+          instructions: "Which agent should take this request?",
+          criteria: [
+            { key: "researcher", description: "Needs facts looked up and sourced" },
+            { key: "coder", description: "Code to write, read or fix" },
+            { key: "writer", description: "Prose to draft or edit" },
+            { key: "planner", description: "A goal to break into steps" },
+          ],
+        },
+      ],
+    },
+    suggested: "tev1:0.8b",
     specialist: true,
     look: { colour: "blue", shape: "briefcase" },
-    name: "Indexer",
-    tagline: "Turns text into embeddings for search and memory.",
+    name: "Router",
+    tagline: "Says which agent a request should go to.",
     instructions: "",
   },
   {
-    id: "ranker",
+    id: "sentinel",
     kind: "s1",
-    s1: { task: "rank", topK: 5 },
-    suggested: "mxbai-embed-large",
-    specialist: true,
-    look: { colour: "violet", shape: "chart" },
-    name: "Ranker",
-    tagline: "Orders passages by how well they answer a query.",
-    instructions: "",
-  },
-  {
-    id: "matcher",
-    kind: "s1",
-    s1: { task: "match" },
-    suggested: "nomic-embed-text",
-    specialist: true,
-    look: { colour: "green", shape: "book" },
-    name: "Matcher",
-    tagline: "Says how alike two texts are.",
-    instructions: "",
-  },
-  {
-    id: "deduper",
-    kind: "s1",
-    s1: { task: "dedupe", threshold: 0.88 },
-    suggested: "all-minilm",
+    s1: {
+      questions: [
+        {
+          name: "personal",
+          type: "noul",
+          instructions: "Does this text contain personal information?",
+          criteria: { false: "No names, emails, phone numbers or addresses", true: "It has a name, email, phone number or address" },
+        },
+      ],
+    },
+    suggested: "tev1:0.8b",
     specialist: true,
     look: { colour: "red", shape: "magnifier" },
-    name: "Deduper",
-    tagline: "Finds the lines in a list that say the same thing.",
+    name: "Sentinel",
+    tagline: "Flags text with personal information in it.",
+    instructions: "",
+  },
+  {
+    id: "grader",
+    kind: "s1",
+    s1: {
+      questions: [
+        {
+          name: "quality",
+          type: "score",
+          instructions: "How well does this answer the question it was asked?",
+          criteria: ["Wrong or off-topic", "Partly answers it", "Answers it", "Answers it clearly and completely"],
+        },
+      ],
+    },
+    suggested: "nimble",
+    specialist: true,
+    look: { colour: "violet", shape: "chart" },
+    name: "Grader",
+    tagline: "Scores an answer from wrong to complete.",
+    instructions: "",
+  },
+  {
+    id: "triager",
+    kind: "s1",
+    s1: {
+      questions: [
+        {
+          name: "urgency",
+          type: "score",
+          instructions: "How urgently does this need a response?",
+          criteria: ["Routine: no time pressure", "Soon: someone is inconvenienced", "Immediate: something critical is down"],
+        },
+        { name: "refund", type: "noul", instructions: "Is a refund being requested?", criteria: { false: "", true: "" } },
+        {
+          name: "team",
+          type: "choice",
+          instructions: "Which team should handle this?",
+          criteria: [
+            { key: "billing", description: "Payments and refunds" },
+            { key: "technical", description: "Software problems" },
+            { key: "account", description: "Login and account access" },
+          ],
+        },
+      ],
+    },
+    suggested: "tev1:0.8b",
+    specialist: true,
+    look: { colour: "green", shape: "book" },
+    name: "Triager",
+    tagline: "Reads a ticket: how urgent, a refund or not, and whose it is.",
     instructions: "",
   },
 ];

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { cosine, embed, inputsFor, run } from "../src/lib/system1.js";
+import { lineOf, problemWithAll, questionsBody, run, s1Of, stateOf, summaryOf } from "../src/lib/system1.js";
 
 const ollama = { id: "o", kind: "ollama", name: "Ollama", base: "http://localhost:11434/" };
 
@@ -13,98 +13,114 @@ function serve(reply) {
     const body = JSON.parse(init.body);
     asked.push({ url, body });
     const [status, json] = reply(url, body);
-    return new Response(JSON.stringify(json), { status, headers: { "Content-Type": "application/json" } });
+    return new Response(typeof json === "string" ? json : JSON.stringify(json), { status, headers: { "Content-Type": "application/json" } });
   };
   return { asked, done: () => (globalThis.fetch = real) };
 }
 
-test("Ollama is asked at /api/embed, with every text in one input array", async () => {
-  const s = serve(() => [200, { embeddings: [[1, 0], [0, 1]], prompt_eval_count: 7, total_duration: 3_000_000 }]);
+const triage = {
+  questions: [
+    { name: "urgency", type: "score", instructions: "How urgent is this?", criteria: ["Routine", "Soon", "Immediate", ""] },
+    { name: "refund", type: "noul", instructions: "Is a refund being requested?", criteria: { false: "", true: "The customer asks for money back" } },
+    {
+      name: "team",
+      type: "choice",
+      instructions: "Which team should handle this?",
+      criteria: [
+        { key: "billing", description: "Payments and refunds" },
+        { key: "technical", description: "" },
+        { key: "", description: "left blank" },
+      ],
+    },
+  ],
+};
+
+test("questions go to Ollama the way /v1/systemone takes them", () => {
+  assert.deepEqual(questionsBody(triage.questions), {
+    urgency: { type: "score", instructions: "How urgent is this?", criteria: ["Routine", "Soon", "Immediate"] },
+    refund: { type: "noul", instructions: "Is a refund being requested?", criteria: { true: "The customer asks for money back" } },
+    team: { type: "choice", instructions: "Which team should handle this?", criteria: { billing: "Payments and refunds", technical: null } },
+  });
+  // A yes/no question with no descriptions sends no criteria at all.
+  assert.deepEqual(questionsBody([{ name: "q", type: "noul", instructions: "Is it?", criteria: { false: "", true: "" } }]), { q: { type: "noul", instructions: "Is it?" } });
+});
+
+test("a run asks /v1/systemone once, and gives back each answer in order", async () => {
+  const s = serve(() => [
+    200,
+    {
+      model: "tev1:0.8b",
+      answers: {
+        urgency: { type: "score", score: 1.2, legend: { 0: "Routine", 1: "Soon", 2: "Immediate" }, probabilities: { 0: 0.2, 1: 0.4, 2: 0.4 }, confidence: 0.1 },
+        refund: { type: "noul", noul: 0.97 },
+        team: { type: "choice", choice: "billing", probabilities: { billing: 0.9, technical: 0.1 }, confidence: 0.6 },
+      },
+      usage: { input_tokens: 174, output_tokens: 1 },
+    },
+  ]);
   try {
-    const out = await embed({ provider: ollama, model: "all-minilm", texts: ["a", "b"] });
-    assert.equal(s.asked[0].url, "http://localhost:11434/api/embed");
-    assert.deepEqual(s.asked[0].body, { model: "all-minilm", input: ["a", "b"], truncate: true });
-    assert.deepEqual(out, { vectors: [[1, 0], [0, 1]], tokens: 7, ms: 3 });
+    const { result, markdown } = await run({ provider: ollama, model: "tev1:0.8b", input: "I was charged twice.", config: triage });
+    assert.equal(s.asked.length, 1);
+    assert.equal(s.asked[0].url, "http://localhost:11434/v1/systemone");
+    assert.equal(s.asked[0].body.model, "tev1:0.8b");
+    assert.equal(s.asked[0].body.state, "I was charged twice.");
+    assert.deepEqual(Object.keys(s.asked[0].body.questions), ["urgency", "refund", "team"]);
+    assert.deepEqual(result.answers.map((a) => a.name), ["urgency", "refund", "team"]);
+    assert.equal(lineOf(result.answers[1]), "yes · 97%");
+    assert.equal(lineOf(result.answers[2]), "billing · 90%");
+    assert.match(lineOf(result.answers[0]), /^Soon · 1\.20 \/ 2$/);
+    assert.match(markdown, /174 tokens in/);
   } finally {
     s.done();
   }
 });
 
-test("dimensions are only sent when asked for", async () => {
-  const s = serve(() => [200, { embeddings: [[1]] }]);
-  try {
-    await embed({ provider: ollama, model: "nomic-embed-text", texts: ["a"], dimensions: 256 });
-    assert.equal(s.asked[0].body.dimensions, 256);
-  } finally {
-    s.done();
+test("JSON input is sent as a JSON state, anything else as text", () => {
+  assert.deepEqual(stateOf('{"ticket": "refund please"}'), { ticket: "refund please" });
+  assert.equal(stateOf("{not json"), "{not json");
+  assert.equal(stateOf("  plain words  "), "plain words");
+});
+
+test("Ollama's refusals come back as what to do about them", async () => {
+  const cases = [
+    [400, { error: 'model "llama3.2" does not support System One scoring; use a local decision model with a scoring-capable runner' }, /isn't a decision model/],
+    [404, { error: "model 'nimble' not found" }, /ollama pull nimble/],
+    [404, "404 page not found", /Ollama 0\.35/],
+    [413, { error: "text and schema must not exceed 64 KiB" }, /64 KiB/],
+    [400, { error: "rendered prompt exceeds the loaded context" }, /never cut short/],
+  ];
+  for (const [status, body, expected] of cases) {
+    const s = serve(() => [status, body]);
+    try {
+      await assert.rejects(run({ provider: ollama, model: "nimble", input: "x", config: { questions: [{ name: "q", type: "noul", instructions: "Is it?" }] } }), expected);
+    } finally {
+      s.done();
+    }
   }
 });
 
-test("an OpenAI-compatible server is asked at /embeddings, and its answer put back in order", async () => {
-  const s = serve(() => [200, { data: [{ index: 1, embedding: [0, 1] }, { index: 0, embedding: [1, 0] }], usage: { prompt_tokens: 4 } }]);
-  try {
-    const out = await embed({ provider: { kind: "openai", base: "http://x/v1", key: "k" }, model: "m", texts: ["a", "b"] });
-    assert.equal(s.asked[0].url, "http://x/v1/embeddings");
-    assert.deepEqual(out.vectors, [[1, 0], [0, 1]]);
-    assert.equal(out.tokens, 4);
-  } finally {
-    s.done();
-  }
+test("questions are checked before anything is sent", () => {
+  assert.match(problemWithAll({ questions: [] }), /at least one/);
+  assert.match(problemWithAll({ questions: [{ name: "q", type: "noul", instructions: " " }] }), /written out/);
+  assert.match(problemWithAll({ questions: [{ name: "q", type: "choice", instructions: "Which?", criteria: [{ key: "a", description: "" }] }] }), /2–26 options/);
+  assert.match(problemWithAll({ questions: [{ name: "q", type: "score", instructions: "How?", criteria: ["low"] }] }), /2–10 levels/);
+  assert.match(
+    problemWithAll({
+      questions: [
+        { name: "q", type: "noul", instructions: "A?" },
+        { name: "q", type: "noul", instructions: "B?" },
+      ],
+    }),
+    /same name/,
+  );
+  assert.equal(problemWithAll(triage), null);
 });
 
-test("a chat model is turned away with a reason, and a missing one with the pull command", async () => {
-  let s = serve(() => [400, { error: '"qwen3:0.6b" does not support embeddings' }]);
-  try {
-    await assert.rejects(embed({ provider: ollama, model: "qwen3:0.6b", texts: ["a"] }), /isn't an embedding model/);
-  } finally {
-    s.done();
-  }
-  s = serve(() => [404, { error: 'model "nomic-embed-text" not found, try pulling it first' }]);
-  try {
-    await assert.rejects(embed({ provider: ollama, model: "nomic-embed-text", texts: ["a"] }), /ollama pull nomic-embed-text/);
-  } finally {
-    s.done();
-  }
-});
-
-test("nomic's task prefixes are added, and other models get the text as it is", () => {
-  const nomic = inputsFor("rank", "what is a cat\n\nA cat is a pet.\nRain is wet.", {}, "nomic-embed-text");
-  assert.deepEqual(nomic.texts, ["search_query: what is a cat", "search_document: A cat is a pet.", "search_document: Rain is wet."]);
-  const plain = inputsFor("dedupe", "a\nb", {}, "all-minilm");
-  assert.deepEqual(plain.texts, ["a", "b"]);
-});
-
-test("each task says what it is missing", () => {
-  assert.throws(() => inputsFor("classify", "hi", { labels: ["one"] }, "m"), /two labels/);
-  assert.throws(() => inputsFor("rank", "just a query", {}, "m"), /blank line/);
-  assert.throws(() => inputsFor("match", "only one text", {}, "m"), /two texts/);
-  assert.throws(() => inputsFor("dedupe", "one line", {}, "m"), /two lines/);
-});
-
-test("classify picks the label nearest the text", async () => {
-  const s = serve(() => [200, { embeddings: [[1, 0.1], [0, 1], [1, 0]] }]);
-  try {
-    const { result, markdown } = await run({ provider: ollama, model: "all-minilm", task: "classify", input: "it crashes", config: { labels: ["praise", "bug report"] } });
-    assert.equal(result.best.label, "bug report");
-    assert.match(markdown, /\*\*bug report\*\*/);
-  } finally {
-    s.done();
-  }
-});
-
-test("dedupe keeps only the pairs above the threshold", async () => {
-  const s = serve(() => [200, { embeddings: [[1, 0], [0.99, 0.05], [0, 1]] }]);
-  try {
-    const { result } = await run({ provider: ollama, model: "all-minilm", task: "dedupe", input: "a\nA\nz", config: { threshold: 0.9 } });
-    assert.equal(result.pairs.length, 1);
-    assert.deepEqual([result.pairs[0].a, result.pairs[0].b], ["a", "A"]);
-  } finally {
-    s.done();
-  }
-});
-
-test("cosine similarity", () => {
-  assert.equal(cosine([1, 0], [1, 0]), 1);
-  assert.equal(cosine([1, 0], [0, 1]), 0);
-  assert.equal(cosine([0, 0], [1, 0]), 0);
+test("an agent from when System 1 meant embeddings keeps its labels as a choice", () => {
+  const { questions } = s1Of({ s1: { task: "classify", labels: ["question", "bug report"] } });
+  assert.equal(questions[0].type, "choice");
+  assert.deepEqual(questions[0].criteria.map((o) => o.key), ["question", "bug report"]);
+  assert.equal(s1Of({}).questions[0].type, "noul");
+  assert.equal(summaryOf(triage), "3 questions");
+  assert.equal(summaryOf({ questions: [triage.questions[2]] }), "Chooses");
 });

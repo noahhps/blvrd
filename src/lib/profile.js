@@ -201,7 +201,7 @@ async function askOllama(provider, model) {
     tools: caps && !caps.includes("tools") ? "prompted" : undefined,
     // An embedding model has "embedding" and no "completion": a System 1
     // model, which /api/chat refuses (lib/system1.js runs it).
-    kind: caps ? (caps.includes("completion") ? "llm" : caps.includes("embedding") ? "s1" : undefined) : undefined,
+    kind: caps ? (caps.includes("completion") ? "llm" : caps.includes("decision") || caps.includes("embedding") ? "s1" : undefined) : undefined,
   };
 }
 
