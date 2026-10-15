@@ -151,7 +151,7 @@ export function System1Console({ agent, presets, messages, providers, readings, 
         </span>
         {readings ? (
           <span className="chat-readings">
-            <KindBadge kind="s1" task={config.task} model={null} size="head" />
+            <KindBadge kind="s1" task={config.task} model={agent.model?.model || null} size="head" />
             <Gauges r={readings} size="head" />
           </span>
         ) : null}

@@ -2856,7 +2856,7 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 
 /* The console: setup on the left, input and output on the right. */
 .s1-body { overflow-y: auto; padding: 24px; }
-.s1-grid { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 16px; max-width: 1180px; margin: 0 auto; align-items: start; }
+.s1-grid { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 16px; width: 100%; max-width: 1180px; margin: 0 auto; align-items: start; }
 .s1-work { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .s1-panel { margin: 0; display: flex; flex-direction: column; gap: 8px; }
 .s1-panel > .label { margin-top: 8px; }

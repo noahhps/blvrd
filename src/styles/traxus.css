@@ -3,15 +3,14 @@
  * derivatives). Its own look on top of the shared Marathon one
  * (styles/hazard.css), after its interplanetary-corporation material.
  *
- * One system, used the same way everywhere, so the parts read as one thing:
- *   PANEL  charcoal, a thin white outline, a header row: an orange square,
- *          a white capitals label, a hairline under it.
- *   PILL   an outlined capsule, white capitals: the name, tags, readings,
- *          badges, tabs.
- *   ORANGE solid only for what you act on or have selected; as ornament,
- *          the thin crosses in the glass and one strip of piano keys.
+ * The most utilitarian of the looks: nothing is drawn that doesn't carry
+ * information, and what matters (the agent, its model and kind, heat,
+ * tokens, sanity; the fleet's totals) sits in the header of its page.
+ *   PANEL  charcoal with a thin white outline; a header row (an orange
+ *          square, a capitals label) only where the label says something.
+ *   PILL   an outlined capsule, white capitals: tags, readings, badges, tabs.
+ *   ORANGE solid only for what you act on or have selected. No ornament.
  *   TYPE   Space Grotesk for everything that reads; Space Mono for data.
- * Its words are freight: consignments, manifests, dispatch, the fleet.
  * Everything here is scoped to html[data-theme="traxus"]. */
 
 @font-face {
@@ -77,18 +76,8 @@
   --shadow: 0 0 0 1px var(--rule), 0 24px 60px -20px #000;
   /* The panel's header: an orange square, then the label. */
   --head-mark: linear-gradient(var(--orange), var(--orange)) 14px 50% / 7px 7px no-repeat;
-  --cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M20 0v40M0 20h40' stroke='%23ff5a1f' stroke-width='1'/%3E%3C/svg%3E");
-  --crosses:
-    var(--cross) 4% 30% / 40px 40px no-repeat,
-    var(--cross) 96% 30% / 40px 40px no-repeat,
-    var(--cross) 4% 88% / 40px 40px no-repeat,
-    var(--cross) 96% 88% / 40px 40px no-repeat;
   /* The house mark: a bar over a stem, legs out. */
   --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 24'%3E%3Cpath fill='%23ff5a1f' d='M2 0h36v4H2zM9 8h22v4H22v4h-4v-4H9zM4 24l9-9h6l-9 9zM36 24l-9-9h-6l9 9z'/%3E%3C/svg%3E");
-  --keys:
-    repeating-linear-gradient(180deg, var(--orange) 0 46px, transparent 46px 58px) 0 0 / 14px 100% no-repeat,
-    repeating-linear-gradient(180deg, transparent 0 22px, var(--orange) 22px 60px, transparent 60px 72px) 22px 0 / 14px 100% no-repeat,
-    repeating-linear-gradient(180deg, var(--orange) 0 30px, transparent 30px 40px) 44px 0 / 14px 100% no-repeat;
   color-scheme: dark;
 }
 
@@ -137,14 +126,13 @@
   color: var(--white);
 }
 :root[data-theme="traxus"] :is(.turn.assistant .answer > .md, .card)::after { content: none; }
+:root[data-theme="traxus"] :is(.turn.assistant .answer > .md, .composer-box, .preset, .card:not(.s1-panel))::before { content: none; }
 
 /* PILL: every small label. */
-:root[data-theme="traxus"] :is(.rack-title h1, .gallery-head h1, .settings > header h1, .greeting, .chat-head)::before,
 :root[data-theme="traxus"] .gauge[data-size="head"],
 :root[data-theme="traxus"] .where,
 :root[data-theme="traxus"] .kind-name,
-:root[data-theme="traxus"] .kind-badge[data-kind="none"],
-:root[data-theme="traxus"] .main::after {
+:root[data-theme="traxus"] .kind-badge[data-kind="none"] {
   padding: 5px 12px;
   border: 0;
   border-radius: 999px;
@@ -172,10 +160,10 @@
 :root[data-theme="traxus"] .btn { border-color: var(--hair); font-family: var(--grot); letter-spacing: 0.12em; }
 :root[data-theme="traxus"] .label { font: 700 10px/1.2 var(--grot); letter-spacing: 0.16em; color: var(--label); }
 
-/* The glass behind every page: the same thin crosses. */
-:root[data-theme="traxus"] :is(.chat-body, .rack, .gallery, .settings) { background: var(--crosses); background-attachment: local; }
-:root[data-theme="traxus"] .main::before { content: none; }
-:root[data-theme="traxus"] .main::after { background: var(--ground); color: var(--dim); }
+/* Behind every page: nothing. */
+:root[data-theme="traxus"] :is(.chat-body, .rack, .gallery, .settings) { background: var(--ground); }
+:root[data-theme="traxus"] .main::before,
+:root[data-theme="traxus"] .main::after { content: none; }
 
 /* -- the sidebar ------------------------------------------------------------ */
 
@@ -203,8 +191,8 @@
 :root[data-theme="traxus"] .brand::after { content: none; }
 /* Section heads: the panel's header row. */
 :root[data-theme="traxus"] .widget-head { border-bottom: 1px solid var(--hair); }
+:root[data-theme="traxus"] .widget-slot .widget-grip .label::before { content: none; }
 :root[data-theme="traxus"] .widget-grip { padding-left: 16px; background: linear-gradient(var(--orange), var(--orange)) 0 50% / 7px 7px no-repeat; }
-:root[data-theme="traxus"] .widget-grip .label::before { content: counter(panel, decimal-leading-zero) "  "; color: var(--dim); }
 :root[data-theme="traxus"] .widget-slot[aria-label="agents" i] .widget-grip .label::after { content: "FLEET"; }
 :root[data-theme="traxus"] .widget-slot[aria-label="groups" i] .widget-grip .label::after { content: "CONVOYS"; }
 :root[data-theme="traxus"] .month-weekday { font-family: var(--grot); color: var(--faint); }
@@ -213,9 +201,9 @@
 :root[data-theme="traxus"] .contact { clip-path: none; }
 :root[data-theme="traxus"] .contact:hover { background: rgba(242, 242, 238, 0.05); }
 :root[data-theme="traxus"] .contact[aria-current="true"] { --ink: var(--black); --dim: rgba(10, 10, 10, 0.68); background: var(--orange); }
-:root[data-theme="traxus"] .contact[aria-current="true"] { --deployed: "IN TRANSIT"; }
-:root[data-theme="traxus"] .contact[aria-current="true"] .contact-when::before { padding: 2px 8px; border-radius: 999px; background: transparent; box-shadow: inset 0 0 0 1px var(--black); font: 700 8px/1.3 var(--grot); letter-spacing: 0.12em; color: var(--black); }
-:root[data-theme="traxus"] .contact::after { font: 300 30px/0.95 var(--grot); letter-spacing: -0.02em; }
+:root[data-theme="traxus"] .contact[aria-current="true"] .contact-when { font-size: 9.5px; line-height: 1; }
+:root[data-theme="traxus"] .contact[aria-current="true"] .contact-when::before { content: none; }
+:root[data-theme="traxus"] .contact::after { font: 300 24px/1 var(--grot); letter-spacing: -0.02em; }
 :root[data-theme="traxus"] .contact-name { font-size: 14px; line-height: 1.1; color: var(--ink); }
 :root[data-theme="traxus"] :is(.contact-line, .contact-when) { font-family: var(--grot); letter-spacing: 0.04em; }
 :root[data-theme="traxus"] .gauge[data-size="row"] { color: var(--ink); }
@@ -237,15 +225,18 @@
 
 /* -- the chat ------------------------------------------------------------- */
 
-:root[data-theme="traxus"] .chat-head { border-bottom: 0; }
-:root[data-theme="traxus"] .chat-head::before { content: "SENSOR + V.03  \25B8\25B8"; bottom: 14px; }
-:root[data-theme="traxus"] .chat-head::after { height: 1px; background: var(--hair); opacity: 1; }
-:root[data-theme="traxus"] .chat-name { font-size: 34px; line-height: 1; }
-:root[data-theme="traxus"] .chat-name::before { content: "UNIT"; padding-left: 14px; background: var(--head-mark); background-position: 0 50%; font: 700 10px/1 var(--grot); letter-spacing: 0.16em; color: var(--white); }
-:root[data-theme="traxus"] .chat-tagline { font-family: var(--grot); letter-spacing: 0.04em; }
-:root[data-theme="traxus"] .chat-tagline::before { content: "ROLE  "; color: var(--white); }
-:root[data-theme="traxus"] .chat-who::after { content: "SYSTEM RESPONSE C3-B-8976   \2022   FREQUENCY ESTB G 05   \2022   " var(--fx-motto); font-family: var(--mono); color: var(--dim); }
+/* The header: who, on what, how hot, how full. Nothing else. */
+:root[data-theme="traxus"] .chat-head { padding: 12px 18px; border-bottom: 1px solid var(--hair); }
+:root[data-theme="traxus"] .chat-head::before,
+:root[data-theme="traxus"] .chat-head::after,
+:root[data-theme="traxus"] .chat-name::before,
+:root[data-theme="traxus"] .chat-tagline::before,
+:root[data-theme="traxus"] .chat-who::after { content: none; }
+:root[data-theme="traxus"] .chat-name { font-size: 22px; line-height: 1.1; }
+:root[data-theme="traxus"] .chat-tagline { margin-top: 2px; font: 400 12px/1.3 var(--grot); letter-spacing: 0.02em; text-transform: none; }
+:root[data-theme="traxus"] .where { font-family: var(--mono); letter-spacing: 0.02em; text-transform: none; }
 :root[data-theme="traxus"] .where.none { box-shadow: inset 0 0 0 1px var(--orange); color: var(--orange); background: transparent; }
+:root[data-theme="traxus"] .where.none::before { content: none; }
 /* Readings: pills. */
 :root[data-theme="traxus"] .gauge[data-size="head"] { gap: 7px; --ink: var(--white); }
 :root[data-theme="traxus"] .gauge[data-size="head"] .gauge-label::after { content: none; }
@@ -259,43 +250,21 @@
 :root[data-theme="traxus"] .gauge[data-size="head"]:is(.gauge-heat[data-level="hot"], .sanity[data-level="critical"]) { background: var(--orange); box-shadow: none; color: var(--black); --sanity: var(--black); --heat: var(--black); }
 :root[data-theme="traxus"] .gauge[data-size="head"]:is(.gauge-heat[data-level="hot"], .sanity[data-level="critical"]) .gauge-value { color: var(--black); }
 :root[data-theme="traxus"] .sanity[data-level="low"] { --sanity: var(--heat-warm); }
-/* The route, as a quiet line under the header. */
-:root[data-theme="traxus"] .chat-row::before {
-  content: "ROUTE  TAU CETI IV \2192  SOL    \2022    CARGO IN TRANSIT    \2022    ALL ASSETS ACCOUNTED FOR";
-  height: 26px;
-  padding: 8px 18px 0;
-  text-align: left;
-  text-align-last: left;
-  white-space: pre;
-  overflow: hidden;
-  background: var(--ground);
-  border-bottom: 1px solid var(--hair);
-  font: 700 10px/1 var(--grot);
-  letter-spacing: 0.16em;
-  color: var(--dim);
-}
-:root[data-theme="traxus"] .chat-row::after { content: none; }
-/* The manifest down the left, in the panel's terms; the piano keys right. */
-:root[data-theme="traxus"] .chat-body::before {
-  content: "MANIFEST\A\A CONSIGNEE   TRAXUS\A ORIGIN      TAU CETI IV\A DEST.       SOL / LUNA\A VESSEL      UESC MARATHON\A\A CARGO       SALVAGE\A WEIGHT      0042.7 T\A INSURED     YES\A\A ETA         00:04:12\A STATUS      IN TRANSIT";
-  padding-top: 12px;
-  border-top: 1px solid var(--rule);
-  font: 400 10.5px/1.7 var(--mono);
-  letter-spacing: 0.04em;
-  color: var(--dim);
-}
-:root[data-theme="traxus"] .chat-body::after { content: ""; width: 58px; right: 40px; writing-mode: horizontal-tb; background: var(--keys); -webkit-text-stroke: 0; }
+/* Under the header: nothing but the conversation. */
+:root[data-theme="traxus"] .chat-row::before,
+:root[data-theme="traxus"] .chat-row::after,
+:root[data-theme="traxus"] .chat-body::before,
+:root[data-theme="traxus"] .chat-body::after { content: none; }
 
-/* Your consignment: the number, the text, in the same voice. */
+/* Your message: its number, then the text. */
 :root[data-theme="traxus"] .turn.user { background: linear-gradient(var(--hair), var(--hair)) 0 0 / 100% 1px no-repeat; }
-:root[data-theme="traxus"] .turn.user::before { font: 300 34px/0.9 var(--grot); letter-spacing: -0.02em; color: var(--orange); }
-:root[data-theme="traxus"] .turn.user .bubble { font: 500 20px/1.3 var(--grot); letter-spacing: 0; text-transform: none; color: var(--white); }
-:root[data-theme="traxus"] .turn.user .bubble::before { content: "CONSIGNMENT FILED"; font: 700 10px/1 var(--grot); letter-spacing: 0.16em; color: var(--dim); }
-:root[data-theme="traxus"] .turn.user .bubble::after { content: "ROUTED TO UNIT   \2022   PRIORITY FREIGHT   \2022   ETA 00:04:12"; font: 700 9px/1 var(--grot); letter-spacing: 0.16em; color: var(--faint); }
+:root[data-theme="traxus"] .turn.user::before { font: 700 12px/1.6 var(--mono); letter-spacing: 0; color: var(--orange); }
+:root[data-theme="traxus"] .turn.user .bubble { font: 500 16px/1.45 var(--grot); letter-spacing: 0; text-transform: none; color: var(--white); }
+:root[data-theme="traxus"] .turn.user .bubble::before,
+:root[data-theme="traxus"] .turn.user .bubble::after { content: none; }
 
 /* The answer: a panel. */
-:root[data-theme="traxus"] .turn.assistant .answer > .md { padding: 42px 20px 16px; font: 400 14.5px/1.6 var(--prose); }
-:root[data-theme="traxus"] .turn.assistant .answer > .md::before { content: "MANIFEST " counter(order, hz-pad3) "   \2022   RE: CONSIGNMENT " counter(order, hz-pad3) "   \2022   DELIVERED"; }
+:root[data-theme="traxus"] .turn.assistant .answer > .md { padding: 16px 20px; font: 400 14.5px/1.6 var(--prose); }
 :root[data-theme="traxus"] .md :is(h1, h2, h3, h4) { margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--hair); font-family: var(--grot); font-weight: 600; font-stretch: normal; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.2; color: var(--white); }
 :root[data-theme="traxus"] .md h1 { font-size: 19px; }
 :root[data-theme="traxus"] .md h2 { font-size: 16px; }
@@ -314,20 +283,19 @@
 :root[data-theme="traxus"] .md a { color: var(--white); text-decoration-color: var(--orange); text-underline-offset: 3px; }
 
 /* The composer: a panel. */
-:root[data-theme="traxus"] .composer-box { padding: 42px 14px 10px 16px; box-shadow: inset 0 0 0 1px var(--rule), 0 -24px 40px -6px var(--ground); }
+:root[data-theme="traxus"] .composer-box { padding: 12px 14px 10px 16px; box-shadow: inset 0 0 0 1px var(--rule), 0 -24px 40px -6px var(--ground); }
 :root[data-theme="traxus"] .composer-box:focus-within { box-shadow: inset 0 0 0 1px var(--orange), 0 -24px 40px -6px var(--ground); }
-:root[data-theme="traxus"] .composer-box::before { content: "NEW CONSIGNMENT " counter(order, hz-pad3) "   \2022   " var(--fx-name) "   \2022   " var(--fx-net); }
 :root[data-theme="traxus"] .composer-box::after { content: none; }
-:root[data-theme="traxus"] .composer-field::before { content: "\25B8"; top: 4px; color: var(--orange); }
-:root[data-theme="traxus"] :is(.composer textarea, .composer textarea:focus) { font: 500 19px/1.3 var(--grot); text-transform: none; color: var(--white); caret-color: var(--orange); }
-:root[data-theme="traxus"] .composer-field:has(textarea:placeholder-shown)::after { content: "Describe the consignment"; font: 400 19px/1.3 var(--grot); color: var(--faint); }
-:root[data-theme="traxus"] .composer-field:has(textarea:placeholder-shown:focus)::after { content: "Describe the consignment_"; }
+:root[data-theme="traxus"] .composer-field::before { content: none; }
+:root[data-theme="traxus"] :is(.composer textarea, .composer textarea:focus) { font: 500 16px/1.4 var(--grot); text-transform: none; color: var(--white); caret-color: var(--orange); }
+:root[data-theme="traxus"] .composer-field:has(textarea:placeholder-shown)::after { content: "Message"; font: 400 16px/1.4 var(--grot); color: var(--faint); animation: none; }
+:root[data-theme="traxus"] .composer-field:has(textarea:placeholder-shown:focus)::after { content: "Message"; }
 :root[data-theme="traxus"] .composer-row .chip.icon { color: var(--white); }
-:root[data-theme="traxus"] .round:not(.music-button)::after { content: "DISPATCH \2192"; font: 700 11px/1 var(--grot); letter-spacing: 0.14em; }
+:root[data-theme="traxus"] .round:not(.music-button)::after { content: "SEND"; font: 700 11px/1 var(--grot); letter-spacing: 0.14em; }
 :root[data-theme="traxus"] .round:not(.music-button):disabled { background: transparent; color: var(--faint); box-shadow: inset 0 0 0 1px var(--hair); }
-:root[data-theme="traxus"] .round:not(.music-button):disabled::after { content: "STANDBY"; }
+:root[data-theme="traxus"] .round:not(.music-button):disabled::after { content: "SEND"; }
 :root[data-theme="traxus"] .round.stop:not(.music-button) { background: var(--white); color: var(--black); animation: none; }
-:root[data-theme="traxus"] .round.stop:not(.music-button)::after { content: "RECALL \25A0"; }
+:root[data-theme="traxus"] .round.stop:not(.music-button)::after { content: "STOP"; }
 :root[data-theme="traxus"] .composer-tray { border: 1px solid var(--rule); border-top: 0; background: var(--panel); }
 :root[data-theme="traxus"] :is(.tray-label, .tray-note) { font: 700 10px/1 var(--grot); letter-spacing: 0.14em; color: var(--dim); }
 :root[data-theme="traxus"] .effort { border-radius: 999px; background: transparent; box-shadow: inset 0 0 0 1px var(--hair); }
@@ -335,22 +303,26 @@
 :root[data-theme="traxus"] .effort button:is([aria-pressed="true"], [aria-checked="true"]) { background: var(--orange); color: var(--black); box-shadow: none; }
 
 /* An empty chat. */
-:root[data-theme="traxus"] .greeting::before { content: "UNIT STATUS + DOCKED"; display: inline-block; }
-:root[data-theme="traxus"] .greeting h2 { font-size: 80px; line-height: 0.92; letter-spacing: 0.01em; }
-:root[data-theme="traxus"] .greeting p::before { content: "READY FOR CONSIGNMENT"; font: 600 20px/1 var(--grot); letter-spacing: 0.08em; color: var(--orange); }
+:root[data-theme="traxus"] .greeting::before,
+:root[data-theme="traxus"] .greeting p::before { content: none; }
+:root[data-theme="traxus"] .greeting h2 { font-size: 28px; line-height: 1.1; letter-spacing: 0.04em; }
 
 /* -- the rack: the fleet --------------------------------------------------- */
 
-:root[data-theme="traxus"] .rack-title h1::before { content: "TRAXUS OFFWORLD  \2022  FLEET MANIFEST  \2022  V.03"; display: inline-block; margin-bottom: 18px; }
-:root[data-theme="traxus"] .rack-title h1::after { content: "The Fleet"; font: 600 96px/0.9 var(--grot); letter-spacing: 0.01em; text-transform: uppercase; color: var(--white); }
-:root[data-theme="traxus"] .rack-lede { border-left: 1px solid var(--rule); }
+/* One header row: the title, then the fleet's totals beside it. */
+:root[data-theme="traxus"] .rack { padding-top: 18px; }
+:root[data-theme="traxus"] .rack-head { align-items: center; margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid var(--hair); }
+:root[data-theme="traxus"] .rack-title h1::before { content: none; }
+:root[data-theme="traxus"] .rack-title h1::after { content: "Fleet"; font: 600 22px/1 var(--grot); letter-spacing: 0.08em; text-transform: uppercase; color: var(--white); }
+:root[data-theme="traxus"] .rack-lede { display: none; }
+:root[data-theme="traxus"] .rack-totals div { padding: 6px 12px; }
 :root[data-theme="traxus"] .rack-totals div:first-child { background: var(--panel); }
 :root[data-theme="traxus"] :is(.rack-totals div:first-child dt, .rack-totals dt) { font: 700 9px/1 var(--grot); letter-spacing: 0.16em; color: var(--dim); }
 :root[data-theme="traxus"] .rack-totals dd { font-size: 19px; }
 :root[data-theme="traxus"] .rack-totals div:first-child dd { color: var(--orange); }
 :root[data-theme="traxus"] .rack-bay-head { padding-bottom: 10px; border-bottom: 1px solid var(--hair); background: none; }
 :root[data-theme="traxus"] :is(.rack-bay-title, .rack-bay[data-kind] .rack-bay-title) { padding: 0 0 0 16px; background: var(--head-mark); background-position: 0 50%; clip-path: none; font-size: 20px; letter-spacing: 0.08em; color: var(--white); }
-:root[data-theme="traxus"] .rack-bay-note { font: 700 10px/1.3 var(--grot); letter-spacing: 0.14em; color: var(--dim); }
+:root[data-theme="traxus"] .rack-bay-note { display: none; }
 :root[data-theme="traxus"] .rack-bay-count { font: 300 30px/1 var(--grot); color: var(--white); }
 :root[data-theme="traxus"] .unit { padding-top: 42px; }
 :root[data-theme="traxus"] .unit::before { content: ""; height: 30px; }
@@ -378,53 +350,41 @@
 :root[data-theme="traxus"] .kind-badge { font-family: var(--grot); }
 :root[data-theme="traxus"] .kind-name { padding: 4px 10px; }
 :root[data-theme="traxus"] .kind-badge[data-kind="s1"] .kind-name { background: transparent; box-shadow: inset 0 0 0 1px var(--orange); color: var(--orange); }
-:root[data-theme="traxus"] .unit .kind-badge[data-kind="llm"] .kind-name { background: transparent; color: var(--white); }
+:root[data-theme="traxus"] .kind-badge[data-kind="llm"] .kind-name { background: transparent; color: var(--white); }
 :root[data-theme="traxus"] .kind-badge[data-kind="none"] { box-shadow: inset 0 0 0 1px var(--orange); color: var(--orange); }
 :root[data-theme="traxus"] .kind-model { font-family: var(--mono); color: var(--dim); }
 :root[data-theme="traxus"] .spare { box-shadow: inset 0 0 0 1px var(--hair); }
 :root[data-theme="traxus"] .spare-model { color: var(--orange); }
 
-/* -- the gallery: we build worlds ---------------------------------------------- */
+/* -- the gallery: the catalogue ----------------------------------------------- */
 
-:root[data-theme="traxus"] .gallery-head h1::before { content: "TRAXUS INTERPLANETARY CORPORATION  \2022  REQUISITIONS"; display: inline-block; margin-bottom: 18px; }
-:root[data-theme="traxus"] .gallery-head h1::after { content: "We Build\A Worlds"; font: 600 104px/0.9 var(--grot); letter-spacing: 0; text-transform: uppercase; color: var(--white); }
-:root[data-theme="traxus"] .gallery-head p { border-left: 1px solid var(--rule); }
-:root[data-theme="traxus"] .gallery-head::before {
-  content: "REQUISITION A UNIT READY FOR LIMITLESS DEPLOYMENT. EVERY ASSET ACCOUNTED FOR.";
-  top: 220px;
-  right: 0;
-  width: min(26%, 280px);
-  padding: 44px 16px 16px;
-  background: var(--head-mark) 16px 15px / 7px 7px no-repeat, linear-gradient(var(--hair), var(--hair)) 0 30px / 100% 1px no-repeat, var(--panel);
-  box-shadow: inset 0 0 0 1px var(--rule);
-  clip-path: none;
-  white-space: normal;
-  font: 600 13px/1.45 var(--grot);
-  letter-spacing: 0.04em;
-  color: var(--white);
-}
-:root[data-theme="traxus"] .gallery-head::after { content: none; }
-:root[data-theme="traxus"] .gallery section > .label::after { content: "FLEET AVAILABLE FOR REQUISITION"; }
-:root[data-theme="traxus"] .preset { padding-top: 42px; }
-:root[data-theme="traxus"] .preset::before { content: "UNIT " counter(shell, decimal-leading-zero) "   \2022   ASSET CLASS: FREIGHT"; }
-:root[data-theme="traxus"] .preset::after { top: 40px; font: 300 40px/0.8 var(--grot); color: var(--hair); -webkit-text-stroke: 0; }
+:root[data-theme="traxus"] .gallery-head { padding-bottom: 14px; border-bottom: 1px solid var(--hair); }
+:root[data-theme="traxus"] .gallery-head h1::before,
+:root[data-theme="traxus"] .gallery-head::before,
+:root[data-theme="traxus"] .gallery-head::after,
+:root[data-theme="traxus"] .gallery section > .label::after { content: none; }
+:root[data-theme="traxus"] .gallery-head h1::after { content: "Catalogue"; margin-top: 0; font: 600 22px/1 var(--grot); letter-spacing: 0.08em; text-transform: uppercase; color: var(--white); }
+:root[data-theme="traxus"] .gallery-head p { margin-top: 8px; max-width: 640px; padding-left: 0; border-left: 0; font-size: 13px; }
+:root[data-theme="traxus"] .preset { padding-top: 16px; }
+:root[data-theme="traxus"] .preset::after { content: none; }
 :root[data-theme="traxus"] .preset:hover { background: #222220; }
 :root[data-theme="traxus"] .preset-name { font-size: 20px; line-height: 1.05; }
 :root[data-theme="traxus"] .preset-tagline { color: var(--dim); }
-:root[data-theme="traxus"] .preset .btn.primary::after { content: "REQUISITION \2192"; font: 700 11px/1 var(--grot); letter-spacing: 0.12em; }
+:root[data-theme="traxus"] .preset .btn.primary::after { content: "ADD"; font: 700 11px/1 var(--grot); letter-spacing: 0.12em; }
 :root[data-theme="traxus"] .preset .btn:not(.primary) { color: var(--white); }
 
 /* -- settings ----------------------------------------------------------------- */
 
-:root[data-theme="traxus"] .settings > header h1 { font-size: 76px; letter-spacing: 0.01em; }
-:root[data-theme="traxus"] .settings > header h1::before { content: "SYSTEM CONFIG + V.03"; display: table; margin-bottom: 14px; }
-:root[data-theme="traxus"] .settings > header::after { content: "ACCESS GRANTED"; padding: 7px 16px; background: transparent; box-shadow: inset 0 0 0 1px var(--rule); border-radius: 999px; clip-path: none; font: 700 11px/1 var(--grot); letter-spacing: 0.14em; color: var(--white); }
+:root[data-theme="traxus"] .settings > header { padding-bottom: 14px; border-bottom: 1px solid var(--hair); }
+:root[data-theme="traxus"] .settings > header h1 { font-size: 22px; line-height: 1; letter-spacing: 0.08em; }
+:root[data-theme="traxus"] .settings > header h1::before,
+:root[data-theme="traxus"] .settings > header h1::after,
+:root[data-theme="traxus"] .settings > header::after { content: none; }
 :root[data-theme="traxus"] .settings-tabs-bar { background: var(--ground); }
 :root[data-theme="traxus"] .settings-tabs { gap: 6px; box-shadow: none; }
 :root[data-theme="traxus"] .settings-tabs [role="tab"] { border-radius: 999px; box-shadow: inset 0 0 0 1px var(--hair); font: 700 11px/1 var(--grot); letter-spacing: 0.14em; color: var(--dim); }
 :root[data-theme="traxus"] .settings-tabs [role="tab"][aria-selected="true"] { background: var(--orange); color: var(--black); box-shadow: none; clip-path: none; }
-:root[data-theme="traxus"] .card { padding-top: 46px; }
-:root[data-theme="traxus"] .card::before { content: "MODULE " counter(module, decimal-leading-zero) "   \2022   TRAXUS SYS-9001"; }
+:root[data-theme="traxus"] .card:not(.s1-panel) { padding-top: 20px; }
 :root[data-theme="traxus"] .card h2 { font-size: 20px; }
 :root[data-theme="traxus"] .card :is(input[type="text"], input[type="password"], textarea, select) { background-color: var(--ground); border-color: var(--hair); color: var(--white); }
 :root[data-theme="traxus"] .theme-choice input:checked + .theme-thumb { box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--orange); }
@@ -433,7 +393,7 @@
 /* -- LLM / System 1, and the System 1 console: the same panels and pills ---- */
 
 :root[data-theme="traxus"] .kind-tag { padding: 0 7px; border-radius: 999px; background: transparent; box-shadow: inset 0 0 0 1px var(--rule); font: 700 8.5px/15px var(--grot); letter-spacing: 0.12em; color: var(--white); }
-:root[data-theme="traxus"] .kind-tag[data-kind="s1"] { box-shadow: inset 0 0 0 1px var(--orange); color: var(--orange); }
+:root[data-theme="traxus"] .kind-tag[data-kind="s1"] { background: transparent; box-shadow: inset 0 0 0 1px var(--orange); color: var(--orange); }
 :root[data-theme="traxus"] .contact[aria-current="true"] .kind-tag { box-shadow: inset 0 0 0 1px var(--black); color: var(--black); }
 :root[data-theme="traxus"] .s1-panel { padding-top: 46px; }
 :root[data-theme="traxus"] .s1-panel h2 { font-size: 20px; }
@@ -445,6 +405,5 @@
 :root[data-theme="traxus"] .s1-lead strong { font: 600 30px/1 var(--grot); letter-spacing: 0.04em; color: var(--white); }
 :root[data-theme="traxus"] .s1-vector { background: rgba(242, 242, 238, 0.07); color: var(--white); }
 :root[data-theme="traxus"] .s1-panel :is(input[type="text"], textarea, select) { background-color: var(--ground); border-color: var(--hair); color: var(--white); font-family: var(--grot); }
-:root[data-theme="traxus"] .s1-body { background: var(--crosses); }
+:root[data-theme="traxus"] .s1-body { background: var(--ground); padding-top: 20px; }
 :root[data-theme="traxus"] .s1-panel .label { margin-top: 6px; }
-/* (the rack card's number and time, each in its own corner) */
