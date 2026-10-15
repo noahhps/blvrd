@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { taglineOf } from "../lib/agents.js";
+import { useCallsign } from "../lib/callsigns.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
 import { Icon } from "./Icon.jsx";
@@ -10,6 +11,7 @@ import { Icon } from "./Icon.jsx";
  * Members answer in the order they're listed here.
  */
 export function GroupEditor({ group, agents, presets, onSave, onDelete, onClose }) {
+  const call = useCallsign();
   const [name, setName] = useState(group?.name || "");
   const [members, setMembers] = useState(() => (group?.members || []).filter((id) => agents.some((a) => a.id === id)));
   const [error, setError] = useState("");
@@ -66,7 +68,7 @@ export function GroupEditor({ group, agents, presets, onSave, onDelete, onClose 
                       <input type="checkbox" checked={on} onChange={() => toggle(agent.id)} />
                       <AgentAvatar look={agent.look} name={agent.name} size={30} />
                       <span className="member-text">
-                        <span className="member-name">{agent.name}</span>
+                        <span className="member-name">{call(agent.name)}</span>
                         <span className="member-line">{taglineOf(agent, presets)}</span>
                       </span>
                       {on ? <span className="member-order">{members.indexOf(agent.id) + 1}</span> : null}

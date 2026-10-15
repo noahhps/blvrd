@@ -1,0 +1,1321 @@
+/* The Marathon looks: blvrd as a runner terminal -- the UESC's acid graphic
+ * language, played straight.
+ *   The agents are runners; the ready-made ones are shells to deploy; groups
+ *   are crews. What you send is a contract; what comes back is an exfil
+ *   report, printed on a slip. The composer drafts the next contract and
+ *   DEPLOYs it.
+ *   No mascots: runners wear shells, not faces.
+ * Black glass, acid green and off-white paper in flat blocks, hot pink for
+ * alarms. Extra-wide heavy capitals for anything that names a thing, tiny
+ * monospaced micro-text for everything that doesn't. Sharp corners, cut
+ * corners, barcodes, crosshairs, hatching, dot grids.
+ * Everything is scoped to html[data-marathon] (lib/theme.js), set for the
+ * UESC look ("hazard") and each faction's; the factions change only the
+ * tokens and words at the end of this file. It all sits
+ * on top of app.css: tokens first, then the parts that change shape. */
+
+@font-face {
+  font-family: "Archivo";
+  src: url("/fonts/archivo-var.woff2") format("woff2");
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-var.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+/* Milliseconds, three digits: "000.007". */
+@counter-style hz-pad3 { system: extends decimal; pad: 3 "0"; }
+@property --hz-s { syntax: "<integer>"; inherits: false; initial-value: 0; }
+@property --hz-ms { syntax: "<integer>"; inherits: false; initial-value: 0; }
+
+:root[data-marathon] {
+  --acid: #c8ff00;
+  --pink: #ff2a6d;
+  /* The faction's own words, for the micro-text and stickers. */
+  --fx-name: "UESC";
+  --fx-net: "RUNNER NET 0451";
+  --fx-class: "STANDARD";
+  --fx-code: "0451";
+  --fx-motto: "UPLINK STABLE";
+  --blue: #2f6bff;
+  --paper: #ebe9e2;
+  --black: #0a0a0a;
+  --ground: #0a0a0a;
+  --side: var(--acid);
+  --surface: #141414;
+  --well: #1d1d1c;
+  --line: #2c2c2a;
+  --line-strong: #4a4a46;
+  --ink: #efeee9;
+  --ink-soft: #d6d5cf;
+  --dim: #a3a29c;
+  --faint: #6e6d68;
+  --on-ink: #0a0a0a;
+  --accent: var(--acid);
+  --on-accent: #000000;
+  --label: var(--acid);
+  --focus: var(--acid);
+  --ok: var(--acid);
+  --warn: #ffb000;
+  --danger: var(--pink);
+  --r-control: 0px;
+  --r-card: 0px;
+  --font: "Archivo", "Helvetica Neue", Helvetica, sans-serif;
+  --display: "Archivo", "Helvetica Neue", Helvetica, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --prose: "Archivo", "Helvetica Neue", Helvetica, sans-serif;
+  --nb-font-text: var(--prose);
+  --nb-font-section: var(--font);
+  --nb-font-widget: var(--font);
+  /* Agents in the UESC's inks. */
+  --agent-red: #ff2a6d;
+  --agent-orange: #ff6a1a;
+  --agent-yellow: #ffd400;
+  --agent-green: #c8ff00;
+  --agent-blue: #2f6bff;
+  --agent-violet: #8a5cff;
+  --shadow: 0 0 0 2px var(--acid), 0 24px 60px -20px #000;
+  /* Barcodes, in black and in paper. 40px repeats. */
+  --barcode-k: linear-gradient(90deg, #000 0 2px, transparent 2px 4px, #000 4px 5px, transparent 5px 7px, #000 7px 10px, transparent 10px 11px, #000 11px 12px, transparent 12px 15px, #000 15px 17px, transparent 17px 18px, #000 18px 19px, transparent 19px 22px, #000 22px 25px, transparent 25px 26px, #000 26px 27px, transparent 27px 29px, #000 29px 30px, transparent 30px 33px, #000 33px 36px, transparent 36px 37px, #000 37px 38px, transparent 38px 40px);
+  --barcode-p: linear-gradient(90deg, #ebe9e2 0 2px, transparent 2px 4px, #ebe9e2 4px 5px, transparent 5px 7px, #ebe9e2 7px 10px, transparent 10px 11px, #ebe9e2 11px 12px, transparent 12px 15px, #ebe9e2 15px 17px, transparent 17px 18px, #ebe9e2 18px 19px, transparent 19px 22px, #ebe9e2 22px 25px, transparent 25px 26px, #ebe9e2 26px 27px, transparent 27px 29px, #ebe9e2 29px 30px, transparent 30px 33px, #ebe9e2 33px 36px, transparent 36px 37px, #ebe9e2 37px 38px, transparent 38px 40px);
+  --cross-p: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%23ebe9e2' stroke-width='1.5'/%3E%3Cpath d='M14 0v28M0 14h28' stroke='%23ebe9e2' stroke-width='1.5'/%3E%3C/svg%3E");
+  --cross-k: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28'%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='%230a0a0a' stroke-width='1.5'/%3E%3Cpath d='M14 0v28M0 14h28' stroke='%230a0a0a' stroke-width='1.5'/%3E%3C/svg%3E");
+  --hatch-p: repeating-linear-gradient(-45deg, #ebe9e2 0 3px, transparent 3px 8px);
+  --hatch-k: repeating-linear-gradient(-45deg, #0a0a0a 0 3px, transparent 3px 8px);
+  --dots: radial-gradient(circle, rgba(239, 238, 233, 0.1) 1px, transparent 1.5px) 0 0 / 14px 14px;
+  --cut: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  --cut-s: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+  color-scheme: dark;
+}
+
+/* A paper slip: off-white, black ink. Everything inside takes its tokens. */
+:root[data-marathon] :is(.turn.assistant .answer > .md, .composer-box, .preset, .card) {
+  --ground: #f6f5f0;
+  --side: #dcdad2;
+  --surface: #f6f5f0;
+  --well: #dcdad2;
+  --line: #c3c1b8;
+  --line-strong: #0a0a0a;
+  --ink: #0a0a0a;
+  --ink-soft: #1d1d1c;
+  --dim: #4a4945;
+  --faint: #7a7972;
+  --on-ink: #ebe9e2;
+  --label: #0a0a0a;
+  --focus: #0a0a0a;
+  color: var(--ink);
+}
+
+:root[data-marathon] body { font-stretch: 100%; }
+:root[data-marathon] ::selection { background: var(--acid); color: #000; }
+:root[data-marathon] :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+:root[data-marathon] h1,
+:root[data-marathon] h2 {
+  font-family: var(--display);
+  font-stretch: 125%;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+/* No mascots. (The agent editor keeps its pickers, which are drawn in them.) */
+:root[data-marathon] svg.mascot:not(.wear *, .avatar-edit *),
+:root[data-marathon] .group-avatar,
+:root[data-marathon] .turn.assistant > .orbit,
+:root[data-marathon] .chat-head > .orbit,
+:root[data-marathon] .greeting > .orbit { display: none; }
+:root[data-marathon] .card:has(.icon-tile) { display: none; }
+
+/* -- controls --------------------------------------------------------------- */
+
+:root[data-marathon] .btn {
+  height: 30px;
+  border: 1.5px solid var(--line-strong);
+  background: transparent;
+  font: 700 11px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+:root[data-marathon] .btn:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+:root[data-marathon] .btn.primary {
+  background: var(--acid);
+  border-color: var(--acid);
+  color: #000;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  padding-right: 18px;
+}
+:root[data-marathon] .btn.primary:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+:root[data-marathon] .btn.icon-only { padding: 0; clip-path: none; }
+
+:root[data-marathon] input[type="text"],
+:root[data-marathon] input[type="password"],
+:root[data-marathon] textarea,
+:root[data-marathon] select {
+  background-color: var(--surface);
+  border: 1.5px solid var(--line-strong);
+  color: var(--ink);
+  font: 500 12.5px/1.4 var(--mono);
+}
+:root[data-marathon] input:focus,
+:root[data-marathon] textarea:focus,
+:root[data-marathon] select:focus { border-color: var(--focus); }
+
+:root[data-marathon] .label {
+  font: 700 10px/1.2 var(--mono);
+  letter-spacing: 0.16em;
+  color: var(--label);
+}
+:root[data-marathon] .hint { font-size: 13px; }
+:root[data-marathon] .tag {
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--on-ink);
+  font: 700 9.5px/1.6 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+:root[data-marathon] .switch span { border-radius: 0; background: var(--well); box-shadow: inset 0 0 0 1.5px var(--line-strong); }
+:root[data-marathon] .switch span::after { border-radius: 0; background: var(--ink); box-shadow: none; }
+:root[data-marathon] .switch input:checked + span { background: var(--acid); box-shadow: inset 0 0 0 1.5px #000; }
+:root[data-marathon] .switch input:checked + span::after { background: #000; }
+:root[data-marathon] .chip { border-radius: 0; font: 600 11px/1 var(--mono); letter-spacing: 0.04em; }
+:root[data-marathon] .chip[role="switch"][aria-checked="true"] { background: var(--acid); border-color: var(--acid); color: #000; }
+
+/* -- the sidebar: one acid block ------------------------------------------ */
+
+:root[data-marathon] .side {
+  --ink: #0a0a0a;
+  --ink-soft: #1d1d1c;
+  --dim: rgba(10, 10, 10, 0.72);
+  --faint: rgba(10, 10, 10, 0.55);
+  --line: rgba(10, 10, 10, 0.22);
+  --line-strong: #0a0a0a;
+  --well: rgba(10, 10, 10, 0.08);
+  --surface: transparent;
+  --on-ink: var(--acid);
+  --accent: #0a0a0a;
+  --on-accent: var(--acid);
+  --label: #0a0a0a;
+  --focus: #0a0a0a;
+  position: relative;
+  background: var(--acid);
+  border-right: 0;
+  color: var(--ink);
+}
+/* Micro-text down its right edge. */
+:root[data-marathon] .side::after {
+  content: var(--fx-name) " \2022  TAU CETI IV \2022  " var(--fx-net) " \2022  SHELL INTEGRITY NOMINAL \2022  PROPERTY OF " var(--fx-name) " \2022  DO NOT REMOVE \2022  " var(--fx-name) " \2022  TAU CETI IV \2022  " var(--fx-net) " \2022  SHELL INTEGRITY NOMINAL \2022  PROPERTY OF " var(--fx-name) " \2022  DO NOT REMOVE \2022  " var(--fx-motto);
+  position: absolute;
+  top: 0;
+  right: 3px;
+  bottom: 0;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  pointer-events: none;
+  white-space: nowrap;
+  font: 700 7.5px/1 var(--mono);
+  letter-spacing: 0.2em;
+  color: rgba(10, 10, 10, 0.6);
+}
+/* The brand: wide black capitals, its tag line and barcode under it. */
+:root[data-marathon] .brand {
+  position: relative;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  margin: 0 0 14px;
+  padding: 0 8px 12px;
+  border-bottom: 3px solid #0a0a0a;
+}
+:root[data-marathon] .wordmark {
+  font: 900 44px/0.9 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: #0a0a0a;
+}
+:root[data-marathon] .brand::after {
+  content: var(--fx-net) " \2014  " var(--fx-name) " TERMINAL";
+  margin-top: 6px;
+  font: 700 9px/1 var(--mono);
+  letter-spacing: 0.16em;
+  color: #0a0a0a;
+}
+:root[data-marathon] .brand::before {
+  content: "";
+  position: absolute;
+  right: 12px;
+  top: 4px;
+  width: 64px;
+  height: 30px;
+  background: var(--barcode-k) 0 0 / 40px 100% repeat-x;
+}
+
+/* Every widget a numbered section: "01 — CALENDAR". */
+:root[data-marathon] .widgets { counter-reset: panel; gap: 12px; }
+:root[data-marathon] .widget-slot { counter-increment: panel; }
+:root[data-marathon] .widget-head { min-height: 24px; margin-bottom: 6px; padding: 0; border-bottom: 1.5px solid #0a0a0a; }
+:root[data-marathon] .widget-grip { padding: 3px 6px 3px 0; }
+:root[data-marathon] .widget-grip .label::before { content: counter(panel, decimal-leading-zero) " \2014  "; }
+:root[data-marathon] .widget-head .btn { height: 22px; width: 22px; }
+:root[data-marathon] .widget:hover,
+:root[data-marathon] .widget-calendar:hover { background: none; }
+/* The agents are runners; groups, crews. */
+:root[data-marathon] .widget-slot:is([aria-label="agents" i], [aria-label="groups" i]) .widget-grip .label { font-size: 0; }
+:root[data-marathon] .widget-slot:is([aria-label="agents" i], [aria-label="groups" i]) .widget-grip .label::before { font-size: 10px; }
+:root[data-marathon] .widget-slot[aria-label="agents" i] .widget-grip .label::after { content: "RUNNERS"; font-size: 10px; }
+:root[data-marathon] .widget-slot[aria-label="groups" i] .widget-grip .label::after { content: "CREWS"; font-size: 10px; }
+
+:root[data-marathon] .month-weekday { font: 700 9px/1 var(--mono); color: var(--faint); padding-bottom: 4px; }
+:root[data-marathon] .month-day { height: 22px; border-radius: 0; font: 600 11px/1 var(--mono); color: #0a0a0a; }
+:root[data-marathon] .month-day[data-today] { background: #0a0a0a; color: var(--acid); box-shadow: none; font-weight: 800; }
+:root[data-marathon] .month-day[data-out] { opacity: 0.3; }
+
+/* Runners: a big number where the mascot was, the name in wide capitals,
+   a shell-integrity meter. The deployed one is inverted, black on acid. */
+:root[data-marathon] .contacts { counter-reset: runner; }
+:root[data-marathon] .contact {
+  counter-increment: runner;
+  align-items: stretch;
+  gap: 10px;
+  padding: 6px 8px 7px;
+  border-radius: 0;
+}
+:root[data-marathon] .contact::after {
+  content: counter(runner, decimal-leading-zero);
+  order: -1;
+  flex: none;
+  width: 48px;
+  font: 900 30px/0.9 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+:root[data-marathon] .contact-text { gap: 3px; }
+:root[data-marathon] .contact-line { order: 3; font: 600 9.5px/1.3 var(--mono); letter-spacing: 0.04em; color: var(--dim); text-transform: uppercase; }
+:root[data-marathon] .contact-name {
+  font: 900 15px/1 var(--display);
+  font-stretch: 118%;
+  letter-spacing: -0.005em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+:root[data-marathon] .contact-when { font: 600 9.5px/1 var(--mono); color: var(--dim); }
+:root[data-marathon] .contact:hover { background: rgba(10, 10, 10, 0.08); }
+:root[data-marathon] .contact[aria-current="true"] {
+  --ink: var(--acid);
+  --dim: color-mix(in srgb, var(--acid) 70%, transparent);
+  background: #0a0a0a;
+  box-shadow: none;
+  clip-path: var(--cut);
+}
+:root[data-marathon] .contact[aria-current="true"]::before {
+  content: "DEPLOYED";
+  left: auto;
+  right: 34px;
+  top: 7px;
+  bottom: auto;
+  width: auto;
+  height: auto;
+  padding: 2px 5px;
+  border-radius: 0;
+  background: var(--pink);
+  color: #000;
+  font: 800 8px/1.2 var(--mono);
+  letter-spacing: 0.12em;
+}
+:root[data-marathon] .contact[aria-current="true"] .contact-when { visibility: hidden; }
+:root[data-marathon] .side-empty { font: 600 10.5px/1.5 var(--mono); color: var(--dim); text-transform: uppercase; }
+
+:root[data-marathon] .side-settings {
+  padding: 8px 8px;
+  border-radius: 0;
+  font: 900 13px/1 var(--display);
+  font-stretch: 118%;
+  text-transform: uppercase;
+}
+:root[data-marathon] .side-settings:hover,
+:root[data-marathon] .side-settings[aria-current="true"] { background: #0a0a0a; color: var(--acid); }
+:root[data-marathon] .side-settings .dot { border-radius: 0; background: var(--pink); }
+:root[data-marathon] .side-settings kbd { font-family: var(--mono); font-size: 10px; color: inherit; }
+:root[data-marathon] .side .btn { border-color: #0a0a0a; }
+
+/* -- the main glass ------------------------------------------------------- */
+
+/* Behind everything, the zone's name in giant outlined capitals; in the
+   corner, the session's uptime on a sticker. */
+:root[data-marathon] .main { position: relative; overflow: hidden; }
+:root[data-marathon] .main::before {
+  content: "TAU CETI IV";
+  position: absolute;
+  right: -30px;
+  bottom: 40px;
+  pointer-events: none;
+  white-space: nowrap;
+  font: 900 210px/0.8 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.05em;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(239, 238, 233, 0.07);
+}
+:root[data-marathon] .main::after {
+  content: "SESSION UPTIME\A" counter(hz-s, hz-pad3) "." counter(hz-ms, hz-pad3) " SEC";
+  counter-reset: hz-s var(--hz-s) hz-ms var(--hz-ms);
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  z-index: 3;
+  padding: 6px 10px 5px 12px;
+  background: var(--acid);
+  pointer-events: none;
+  white-space: pre;
+  text-align: right;
+  font: 800 10px/1.25 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  color: #000;
+  clip-path: var(--cut-s);
+  animation: hz-seconds 1000s steps(1000) infinite, hz-millis 1s steps(1000) infinite;
+}
+@media (max-width: 1240px) {
+  :root[data-marathon] .main::after { display: none; }
+}
+
+/* -- the chat ------------------------------------------------------------- */
+
+:root[data-marathon] .chat-head {
+  position: relative;
+  padding: 12px 18px 22px;
+  border-bottom: 0;
+}
+/* Under the header, a hatched rule with an acid block leading it. */
+:root[data-marathon] .chat-head::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  background:
+    linear-gradient(var(--acid), var(--acid)) 0 0 / 160px 100% no-repeat,
+    linear-gradient(var(--paper), var(--paper)) 0 100% / 100% 2px no-repeat,
+    var(--hatch-p);
+  opacity: 0.9;
+}
+:root[data-marathon] .chat-name {
+  font: 900 34px/0.95 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+:root[data-marathon] .chat-name::before {
+  content: "RUNNER /";
+  display: block;
+  margin-bottom: 4px;
+  font: 700 9px/1 var(--mono);
+  letter-spacing: 0.2em;
+  color: var(--acid);
+}
+:root[data-marathon] .chat-tagline { margin-top: 4px; font: 600 10.5px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--dim); text-transform: uppercase; }
+:root[data-marathon] .chat-tagline::before { content: "ROLE // "; color: var(--ink); }
+:root[data-marathon] .chat-who::after {
+  content: "CONTRACTED TO " var(--fx-name) "   \2022   SHELL INTEGRITY 100%   \2022   ZONE: TAU CETI IV   \2022   " var(--fx-motto);
+  margin-top: 3px;
+  white-space: pre;
+  font: 700 9.5px/1.2 var(--mono);
+  letter-spacing: 0.1em;
+  color: var(--acid);
+}
+/* The extraction sticker, slapped on above the rule. */
+:root[data-marathon] .chat-head::before {
+  content: "EXTRACTION ZONE \25B2  TAU CETI IV";
+  position: absolute;
+  z-index: 2;
+  right: 18px;
+  bottom: 18px;
+  padding: 5px 56px 5px 9px;
+  background: var(--barcode-k) right 7px center / 40px 60% no-repeat, var(--acid);
+  pointer-events: none;
+  font: 900 10px/1 var(--display);
+  font-stretch: 125%;
+  letter-spacing: 0.02em;
+  color: #000;
+  clip-path: var(--cut-s);
+  transform: rotate(-1.5deg);
+}
+:root[data-marathon] .where {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  font: 700 10px/1.5 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+:root[data-marathon] .where.none { background: var(--pink); color: #000; box-shadow: none; }
+:root[data-marathon] .where.none::before { content: "\25B2  SIGNAL LOST \2014 "; }
+
+/* -- readings: heat, tokens, sanity, and the model's class -------------------- */
+
+:root[data-marathon] {
+  --heat-cool: #2f6bff;
+  --heat-warm: #ffb000;
+  --heat-hot: #ff2a6d;
+}
+:root[data-marathon] .gauge { font: 800 9.5px/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+:root[data-marathon] .gauge-value { font: 900 12px/1 var(--display); font-stretch: 125%; letter-spacing: 0; color: var(--ink); }
+:root[data-marathon] .gauge-track,
+:root[data-marathon] .gauge-track i { border-radius: 0; }
+:root[data-marathon] .gauge-track i { -webkit-mask: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 5px); mask: repeating-linear-gradient(90deg, #000 0 4px, transparent 4px 5px); }
+:root[data-marathon] .gauge-heat[data-level="hot"] .gauge-track i { animation: hz-blink 0.8s steps(2, jump-none) infinite; }
+:root[data-marathon] .sanity-bar i { border-radius: 0; }
+:root[data-marathon] .gauge-spark polyline { stroke: currentColor; stroke-width: 1.5; }
+
+/* In a chat's header: each reading a block of the faction's ink, the
+   sanity block turning to the alarm colour, and blinking, as context runs
+   out. */
+:root[data-marathon] .gauge[data-size="head"] {
+  gap: 7px;
+  padding: 5px 9px 5px 8px;
+  border-radius: 0;
+  background: var(--acid);
+  color: #000;
+  clip-path: var(--cut-s);
+  --ink: #000;
+}
+:root[data-marathon] .gauge[data-size="head"] .gauge-track { background: rgba(0, 0, 0, 0.2); }
+:root[data-marathon] .gauge[data-size="head"].gauge-heat { --heat: #000; }
+:root[data-marathon] .gauge[data-size="head"].gauge-heat[data-level="hot"] { background: var(--pink); }
+:root[data-marathon] .gauge[data-size="head"] .gauge-label::after { content: " //"; }
+:root[data-marathon] .gauge[data-size="head"].sanity { --sanity: #000; }
+:root[data-marathon] .gauge[data-size="head"].sanity[data-level="low"] { background: var(--warn); }
+:root[data-marathon] .gauge[data-size="head"].sanity[data-level="critical"] { background: var(--pink); animation: hz-blink 1s steps(2, jump-none) infinite; }
+:root[data-marathon] .gauge[data-size="head"] .sanity-bar i { width: 4px; height: 11px; background: rgba(0, 0, 0, 0.2); }
+:root[data-marathon] .gauge[data-size="head"] .sanity-bar i[data-on] { background: #000; }
+:root[data-marathon] .gauge[data-size="head"] .gauge-spark { color: #000; }
+
+/* The header's strip: under the status line, left-aligned with the name;
+   the hatched rule moves down under it. */
+:root[data-marathon] .chat-readings { padding-left: 0; margin-top: 2px; gap: 6px; }
+:root[data-marathon] .chat-head:has(.chat-readings) { padding-bottom: 24px; }
+
+/* In a sidebar row (black on the faction's ink; the deployed row inverts). */
+:root[data-marathon] .gauges[data-size="row"] { order: 4; gap: 9px; margin-top: 2px; }
+:root[data-marathon] .gauge[data-size="row"] { font-size: 9px; letter-spacing: 0.04em; color: var(--ink); }
+:root[data-marathon] .gauge[data-size="row"] .gauge-value { font: 700 9.5px/1 var(--mono); color: var(--ink); }
+:root[data-marathon] .gauge[data-size="row"] .gauge-track { width: 26px; height: 6px; background: rgba(10, 10, 10, 0.18); }
+:root[data-marathon] .gauge[data-size="row"].gauge-heat { --heat: var(--ink); }
+:root[data-marathon] .gauge[data-size="row"].gauge-heat[data-level="hot"] .gauge-value::after { content: "\25B2"; margin-left: 2px; }
+:root[data-marathon] .gauge[data-size="row"].sanity { --sanity: var(--ink); }
+:root[data-marathon] .gauge[data-size="row"] .sanity-bar i { width: 3px; height: 6px; background: rgba(10, 10, 10, 0.18); }
+:root[data-marathon] .gauge[data-size="row"] .sanity-bar i[data-on] { background: var(--sanity); }
+:root[data-marathon] .contact[aria-current="true"] .gauge[data-size="row"] .gauge-track,
+:root[data-marathon] .contact[aria-current="true"] .gauge[data-size="row"] .sanity-bar i:not([data-on]) { background: color-mix(in srgb, var(--acid) 22%, transparent); }
+:root[data-marathon] .gauge[data-size="row"].gauge-tokens::before { color: var(--ink); }
+
+/* The kind badge: SYS-1 on the faction's ink, LLM on paper. */
+:root[data-marathon] .kind-badge { font: 700 9.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+:root[data-marathon] .kind-name { padding: 5px 8px; border-radius: 0; font: 900 11px/1 var(--display); font-stretch: 125%; letter-spacing: 0; clip-path: var(--cut-s); }
+:root[data-marathon] .kind-badge[data-kind="s1"] .kind-name { background: var(--acid); color: #000; }
+:root[data-marathon] .kind-badge[data-kind="llm"] .kind-name { background: var(--paper); color: #000; }
+:root[data-marathon] .kind-badge[data-kind="none"] { padding: 5px 8px; border-radius: 0; background: var(--pink); color: #000; }
+:root[data-marathon] .kind-task { font: 800 9.5px/1 var(--mono); letter-spacing: 0.12em; color: inherit; }
+:root[data-marathon] .kind-model { font: 600 10px/1 var(--mono); letter-spacing: 0.02em; text-transform: none; }
+
+/* -- the rack: every runner at a glance ------------------------------------ */
+
+:root[data-marathon] .rack { padding: 28px 28px 48px; background: var(--dots); background-attachment: local; }
+:root[data-marathon] .rack > * { max-width: 1240px; }
+:root[data-marathon] .rack-title h1 { font-size: 0; line-height: 0; }
+:root[data-marathon] .rack-title h1::before {
+  content: var(--fx-name) " \25B2  RUNNER ROSTER";
+  display: table;
+  margin-bottom: 14px;
+  padding: 5px 56px 5px 9px;
+  background: var(--barcode-k) right 7px center / 40px 60% no-repeat, var(--acid);
+  font: 900 11px/1 var(--display);
+  font-stretch: 125%;
+  letter-spacing: 0;
+  color: #000;
+  clip-path: var(--cut-s);
+}
+:root[data-marathon] .rack-title h1::after {
+  content: "THE RACK";
+  display: block;
+  font: 900 96px/0.84 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+}
+:root[data-marathon] .rack-lede { margin-top: 14px; padding-left: 12px; border-left: 3px solid var(--acid); font-size: 14px; }
+:root[data-marathon] .rack-totals { gap: 6px; }
+:root[data-marathon] .rack-totals div { min-width: 96px; padding: 8px 12px 9px; border: 0; border-radius: 0; background: var(--paper); clip-path: var(--cut-s); }
+:root[data-marathon] .rack-totals div:first-child { background: var(--acid); }
+:root[data-marathon] .rack-totals dt { font: 800 9px/1 var(--mono); letter-spacing: 0.14em; color: rgba(0, 0, 0, 0.6); }
+:root[data-marathon] .rack-totals dd { margin-top: 5px; font: 900 18px/1 var(--display); font-stretch: 118%; text-transform: uppercase; color: #000; }
+
+/* A bay: a black-and-ink strip with its class, then the units. */
+:root[data-marathon] .rack-bay { margin-bottom: 26px; }
+:root[data-marathon] .rack-bay-head {
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  padding: 0 0 8px;
+  border-bottom: 2px solid var(--paper);
+  background: var(--hatch-p) right bottom / 120px 8px no-repeat;
+}
+:root[data-marathon] .rack-bay-title {
+  padding: 6px 12px 5px;
+  background: var(--acid);
+  font: 900 20px/1 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: #000;
+  clip-path: var(--cut-s);
+}
+:root[data-marathon] .rack-bay[data-kind="llm"] .rack-bay-title { background: var(--paper); }
+:root[data-marathon] .rack-bay[data-kind="none"] .rack-bay-title { background: var(--pink); }
+:root[data-marathon] .rack-bay-note { font: 700 10px/1.3 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+:root[data-marathon] .rack-bay-count { font: 900 28px/1 var(--display); font-stretch: 125%; color: var(--ink); }
+:root[data-marathon] .rack-units { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 10px; }
+
+/* A unit: a paper slip with a black header strip, the readings in black ink
+   along its foot. Answering, its strip turns to the runner's colour. */
+:root[data-marathon] .unit {
+  --surface: #f6f5f0;
+  --well: #dcdad2;
+  --line: #c3c1b8;
+  --line-strong: #0a0a0a;
+  --ink: #0a0a0a;
+  --dim: #4a4945;
+  --faint: #7a7972;
+  position: relative;
+  gap: 9px;
+  padding: 34px 14px 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+:root[data-marathon] .unit::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: var(--barcode-p) right 22px center / 40px 12px no-repeat, #2a2a28;
+}
+:root[data-marathon] .unit[data-answering]::before { background: var(--barcode-k) right 22px center / 40px 12px no-repeat, var(--agent, var(--acid)); }
+:root[data-marathon] .unit[data-heat="hot"] { box-shadow: inset 0 -4px 0 var(--heat-hot); }
+:root[data-marathon] .unit:hover { background: #fffef8; }
+:root[data-marathon] .unit-top { position: static; align-items: center; }
+:root[data-marathon] .unit-no {
+  position: absolute;
+  top: 0;
+  left: 14px;
+  font: 800 9px/22px var(--mono);
+  letter-spacing: 0.16em;
+  color: var(--paper);
+}
+:root[data-marathon] .unit-no::before { content: "UNIT "; }
+:root[data-marathon] .unit[data-answering] .unit-no { color: #000; }
+:root[data-marathon] .unit-name { font: 900 22px/1 var(--display); font-stretch: 125%; letter-spacing: -0.02em; text-transform: uppercase; color: #0a0a0a; }
+:root[data-marathon] .unit-state { position: absolute; top: 0; right: 70px; font: 800 9px/22px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper); }
+:root[data-marathon] .unit[data-answering] .unit-state { color: #000; animation: hz-blink 1s steps(2, jump-none) infinite; }
+:root[data-marathon] .unit-task { font-size: 13px; color: var(--dim); }
+:root[data-marathon] .gauges[data-size="card"] { gap: 7px; padding-top: 10px; border-top: 2px solid #0a0a0a; }
+:root[data-marathon] .gauge[data-size="card"] { grid-template-columns: 58px 1fr 56px; }
+:root[data-marathon] .gauge[data-size="card"] .gauge-label { font: 800 9px/1 var(--mono); letter-spacing: 0.14em; color: #0a0a0a; }
+:root[data-marathon] .gauge[data-size="card"] .gauge-value { font-size: 15px; color: #0a0a0a; }
+:root[data-marathon] .gauge[data-size="card"] .gauge-track { height: 9px; background: rgba(10, 10, 10, 0.12); }
+:root[data-marathon] .gauge[data-size="card"] .gauge-spark { color: #0a0a0a; height: 16px; }
+:root[data-marathon] .gauge[data-size="card"].sanity { --sanity: #0a0a0a; }
+:root[data-marathon] .gauge[data-size="card"].sanity[data-level="low"] { --sanity: #c98a00; }
+:root[data-marathon] .gauge[data-size="card"].sanity[data-level="critical"] { --sanity: var(--heat-hot); }
+:root[data-marathon] .gauge[data-size="card"] .sanity-bar i { height: 9px; background: rgba(10, 10, 10, 0.12); }
+:root[data-marathon] .gauge[data-size="card"] .sanity-bar i[data-on] { background: var(--sanity); }
+:root[data-marathon] .unit .kind-badge[data-kind="llm"] .kind-name { background: #0a0a0a; color: var(--paper); }
+
+/* Spare specialists: hatched slots waiting for a runner. */
+:root[data-marathon] .spare { border: 0; border-radius: 0; background: linear-gradient(#0a0a0a, #0a0a0a) padding-box, var(--hatch-p) border-box; border: 2px dashed transparent; background: transparent; outline: 1.5px dashed var(--line-strong); }
+:root[data-marathon] .spare-name { font: 900 15px/1.1 var(--display); font-stretch: 125%; text-transform: uppercase; color: var(--ink); }
+:root[data-marathon] .spare-task { font: 600 10px/1.4 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+:root[data-marathon] .spare-model { font: 700 9.5px/1.3 var(--mono); letter-spacing: 0.06em; color: var(--acid); }
+
+/* The zone bar along the top of the chat; a crew sticker at bottom left. */
+:root[data-marathon] .chat-row { position: relative; }
+:root[data-marathon] .chat-row::before {
+  content: "Z-01 Z-02 Z-03 Z-04 Z-05 Z-06 Z-07 Z-08 Z-09 Z-10";
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  padding: 4px 14px 0;
+  pointer-events: none;
+  text-align: justify;
+  text-align-last: justify;
+  font: 700 8.5px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  background:
+    linear-gradient(var(--acid), var(--acid)) 31% 100% / 12px 6px no-repeat,
+    repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 10px) 14px 100% / calc(100% - 28px) 5px no-repeat,
+    linear-gradient(#0a0a0a, #0a0a0a);
+  border-bottom: 1px solid var(--line-strong);
+}
+:root[data-marathon] .chat-row::after {
+  content: "CREW CHANNEL \25B2  OPEN\A " var(--fx-name);
+  position: absolute;
+  z-index: 3;
+  left: 14px;
+  bottom: 14px;
+  padding: 6px 60px 5px 10px;
+  background: var(--barcode-k) right 8px center / 40px 60% no-repeat, var(--paper);
+  pointer-events: none;
+  white-space: pre;
+  font: 800 9.5px/1.3 var(--mono);
+  letter-spacing: 0.1em;
+  color: #000;
+  clip-path: var(--cut-s);
+}
+@media (max-width: 1240px) {
+  :root[data-marathon] .chat-row::after { display: none; }
+}
+
+/* The glass: a dot grid, crosshairs in its corners, and the gutters filled
+   -- telemetry down the left, the zone's name down the right. */
+:root[data-marathon] .chat-body {
+  background:
+    var(--cross-p) 10px 30px / 28px 28px no-repeat,
+    var(--cross-p) right 10px top 30px / 28px 28px no-repeat,
+    var(--cross-p) 10px calc(100% - 64px) / 28px 28px no-repeat,
+    var(--cross-p) right 10px bottom 64px / 28px 28px no-repeat,
+    var(--dots);
+}
+:root[data-marathon] .thread { padding-top: 34px; padding-inline: 16px; }
+:root[data-marathon] .chat-body::before,
+:root[data-marathon] .chat-body::after {
+  position: absolute;
+  z-index: 0;
+  top: 70px;
+  bottom: 80px;
+  width: max(0px, calc((100% - var(--read-w)) / 2 - 40px));
+  overflow: hidden;
+  pointer-events: none;
+}
+:root[data-marathon] .chat-body::before {
+  content: "TELEMETRY\A\A LAT  -12.4021\A LON  088.1130\A ALT  0042 M\A TMP  271 K\A SIG  -64 DBM\A\A SHELL\A \2588\2588\2588\2588\2588\2588\2588\2588\2591\2591 82%\A\A UPLINK\A \2588\2588\2588\2588\2588\2588\2588\2588\2588\2591 94%\A\A HOSTILES\A \2588\2588\2591\2591\2591\2591\2591\2591\2591\2591 18%\A\A EXFIL\A 00:04:12\A\A CREDITS\A 0014 220\A\A \25B2\25B2\25B2\25B2\25B2\25B2\25B2\25B2";
+  left: 44px;
+  padding-top: 8px;
+  border-top: 3px solid var(--acid);
+  white-space: pre;
+  font: 600 10px/1.65 var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+:root[data-marathon] .chat-body::after {
+  content: "TAU CETI IV";
+  right: 44px;
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  text-align: left;
+  font: 900 92px/1 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.03em;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(239, 238, 233, 0.3);
+}
+
+/* -- the log: contracts and exfil reports --------------------------------- */
+
+:root[data-marathon] .chat { counter-reset: order; }
+:root[data-marathon] .turns { gap: 14px; font-stretch: 100%; }
+
+/* Your turn is a contract: its number large in acid down the side, the
+   terms in white capitals, a stamp under them. */
+:root[data-marathon] .turn.user {
+  counter-increment: order;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 14px;
+  padding-top: 10px;
+  background: linear-gradient(var(--acid), var(--acid)) 0 0 / 96px 3px no-repeat, linear-gradient(var(--line-strong), var(--line-strong)) 0 0 / 100% 1px no-repeat;
+}
+:root[data-marathon] .turn.user::before {
+  content: counter(order, hz-pad3);
+  grid-row: 1 / span 2;
+  font: 900 34px/0.9 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.04em;
+  color: var(--acid);
+}
+:root[data-marathon] .turn.user > * { grid-column: 2; }
+:root[data-marathon] .turn.user .sent-files { justify-content: flex-start; }
+:root[data-marathon] .turn.user .bubble {
+  max-width: none;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font: 800 19px/1.2 var(--display);
+  font-stretch: 112%;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+:root[data-marathon] .turn.user .bubble::before {
+  content: "CONTRACT ISSUED //";
+  display: block;
+  margin-bottom: 4px;
+  font: 700 9px/1 var(--mono);
+  letter-spacing: 0.2em;
+  color: var(--acid);
+}
+:root[data-marathon] .turn.user .bubble::after {
+  content: "\25B2  ROUTED TO RUNNER   \2022   PRIORITY: HIGH   \2022   EXFIL WINDOW 00:04:12";
+  display: block;
+  margin-top: 6px;
+  white-space: pre;
+  font: 600 9px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--faint);
+}
+
+/* The agent's turn is an exfil report: a paper slip with a black header
+   strip, the runner's colour down its edge, a cut corner, a crosshair. */
+:root[data-marathon] .turn.assistant { gap: 0; padding-left: 110px; }
+:root[data-marathon] .turn.assistant .answer > .md {
+  position: relative;
+  width: 100%;
+  padding: 40px 20px 14px 22px;
+  border: 0;
+  border-left: 8px solid #0a0a0a;
+  border-radius: 0;
+  background: var(--cross-k) right 10px bottom 10px / 22px 22px no-repeat, var(--paper);
+  box-shadow: none;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  font-size: 14.5px;
+}
+:root[data-marathon] .turn.assistant .answer > .md::before {
+  content: "EXFIL REPORT " counter(order, hz-pad3) "   //   RE: CONTRACT " counter(order, hz-pad3) "   //   STATUS: EXTRACTED";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 26px;
+  padding: 8px 90px 0 14px;
+  background: var(--agent, var(--acid));
+  white-space: pre;
+  overflow: hidden;
+  font: 800 9.5px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: #000;
+}
+:root[data-marathon] .turn.assistant .answer > .md::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 26px;
+  width: 56px;
+  height: 16px;
+  background: var(--barcode-k) 0 0 / 40px 100% repeat-x;
+}
+:root[data-marathon] .turn.assistant .answer > .md :is(code, pre) { background: var(--well); }
+:root[data-marathon] .md strong { font-weight: 800; background: linear-gradient(transparent 62%, color-mix(in srgb, var(--agent, var(--acid)) 70%, transparent) 62%); }
+:root[data-marathon] .md code { border-radius: 0; font: 500 12px/1.3 var(--mono); color: var(--ink); }
+:root[data-marathon] .md pre { border-radius: 0; border-left: 3px solid var(--ink); }
+:root[data-marathon] .md ul { list-style: none; padding-left: 18px; }
+:root[data-marathon] .md ul > li { position: relative; }
+:root[data-marathon] .md ul > li::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 0.5em;
+  width: 7px;
+  height: 7px;
+  background: var(--ink);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+:root[data-marathon] .md h2,
+:root[data-marathon] .md h3,
+:root[data-marathon] .md h4 { font-family: var(--display); font-stretch: 118%; font-weight: 900; text-transform: uppercase; }
+:root[data-marathon] .md th,
+:root[data-marathon] .md td { border-color: var(--line); font-size: 13px; }
+:root[data-marathon] .turn.assistant .answer > .md th {
+  background: #0a0a0a;
+  color: var(--paper);
+  font: 700 9.5px/1.4 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+:root[data-marathon] .md td:first-child { font: 700 10.5px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+
+:root[data-marathon] .step { margin-left: 110px; }
+:root[data-marathon] .step summary,
+:root[data-marathon] .step-pill {
+  border-radius: 0;
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  font: 600 10.5px/1.6 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:root[data-marathon] .step pre { border-radius: 0; font-family: var(--mono); }
+:root[data-marathon] .error-box {
+  border: 0;
+  border-radius: 0;
+  background: var(--pink);
+  color: #000;
+  font: 600 12px/1.45 var(--mono);
+  clip-path: var(--cut-s);
+}
+:root[data-marathon] .error-box::before { content: "\25B2  SIGNAL LOST //"; display: block; margin-bottom: 4px; font-weight: 800; letter-spacing: 0.14em; }
+
+/* An empty chat: the runner standing by, in big wide capitals. */
+:root[data-marathon] .greeting { text-align: left; max-width: 760px; margin: 0 auto; padding-top: 6vh; }
+:root[data-marathon] .greeting::before {
+  content: "RUNNER STATUS \25B2  STANDBY";
+  display: inline-block;
+  padding: 5px 56px 5px 9px;
+  background: var(--barcode-k) right 7px center / 40px 60% no-repeat, var(--acid);
+  font: 900 11px/1 var(--display);
+  font-stretch: 125%;
+  color: #000;
+  clip-path: var(--cut-s);
+}
+:root[data-marathon] .greeting h2 {
+  margin-top: 18px;
+  font: 900 92px/0.86 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+}
+:root[data-marathon] .greeting p { margin-top: 18px; font: 600 11px/1.5 var(--mono); letter-spacing: 0.06em; color: var(--dim); text-transform: uppercase; }
+:root[data-marathon] .greeting p::before {
+  content: "SHELL READY \2014  AWAITING CONTRACT";
+  display: block;
+  margin-bottom: 8px;
+  font: 900 22px/1 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.01em;
+  color: var(--acid);
+}
+
+/* -- the composer: drafting the next contract ------------------------------ */
+
+:root[data-marathon] .composer-box {
+  counter-increment: order;
+  padding: 36px 14px 10px 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  box-shadow: 0 -18px 40px -10px #0a0a0a;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+}
+:root[data-marathon] .composer-box::before {
+  content: "NEW CONTRACT " counter(order, hz-pad3) "   //   " var(--fx-name) " " var(--fx-net) "   //   PRIORITY: HIGH";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  padding: 7px 16px 0;
+  background: var(--acid);
+  white-space: pre;
+  font: 800 9.5px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: #000;
+}
+:root[data-marathon] .composer-box::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 30px;
+  width: 56px;
+  height: 16px;
+  background: var(--barcode-k) 0 0 / 40px 100% repeat-x;
+}
+:root[data-marathon] .composer-box:focus-within { box-shadow: 0 0 0 2px var(--acid), 0 -18px 40px -10px #0a0a0a; }
+:root[data-marathon] .composer-field { padding-left: 22px; }
+:root[data-marathon] .composer-field::before {
+  content: "\25B2";
+  position: absolute;
+  left: 0;
+  top: 3px;
+  font-size: 13px;
+  color: #0a0a0a;
+}
+:root[data-marathon] .composer textarea,
+:root[data-marathon] .composer textarea:focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  padding-left: 0;
+  background: transparent;
+  color: #0a0a0a;
+  font: 800 19px/1.25 var(--display);
+  font-stretch: 112%;
+  text-transform: uppercase;
+  caret-color: #0a0a0a;
+}
+:root[data-marathon] .composer textarea::placeholder { color: transparent; }
+:root[data-marathon] .composer-field:has(textarea:placeholder-shown)::after {
+  content: "ENTER CONTRACT TERMS";
+  position: absolute;
+  left: 22px;
+  top: 0;
+  pointer-events: none;
+  font: 800 19px/1.25 var(--display);
+  font-stretch: 112%;
+  color: rgba(10, 10, 10, 0.32);
+}
+:root[data-marathon] .composer-field:has(textarea:placeholder-shown:focus)::after { content: "ENTER CONTRACT TERMS_"; animation: hz-blink 1s steps(2, jump-none) infinite; }
+:root[data-marathon] .composer-row .chip.icon { color: #0a0a0a; }
+:root[data-marathon] .round {
+  width: auto;
+  height: 34px;
+  padding: 0 16px 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--acid);
+  color: #000;
+  box-shadow: inset 0 0 0 1.5px #000;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+:root[data-marathon] .round > * { display: none; }
+:root[data-marathon] .round::after { content: "DEPLOY \25B2"; font: 900 13px/1 var(--display); font-stretch: 125%; }
+:root[data-marathon] .round:disabled { opacity: 1; background: transparent; color: rgba(10, 10, 10, 0.45); box-shadow: inset 0 0 0 1.5px rgba(10, 10, 10, 0.3); }
+:root[data-marathon] .round:disabled::after { content: "STANDBY"; }
+:root[data-marathon] .round.stop { background: var(--pink); color: #000; animation: hz-blink 0.9s steps(2, jump-none) infinite; }
+:root[data-marathon] .round.stop::after { content: "ABORT \25A0"; }
+:root[data-marathon] .composer-tray {
+  border: 1.5px solid var(--line-strong);
+  border-top: 0;
+  border-radius: 0;
+  background: #0a0a0a;
+}
+:root[data-marathon] :is(.tray-label, .tray-note) { font: 700 9.5px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--acid); }
+:root[data-marathon] .composer-tray select { font-size: 11.5px; }
+
+/* -- gallery: select your shell -------------------------------------------- */
+
+:root[data-marathon] :is(.gallery, .settings) {
+  padding: 28px 28px 40px;
+  background: var(--dots);
+  background-attachment: local;
+}
+:root[data-marathon] :is(.gallery, .settings) > * { max-width: 1180px; }
+:root[data-marathon] .gallery-head { position: relative; margin-bottom: 26px; }
+/* The real heading stays for screen readers; the poster type is drawn over. */
+:root[data-marathon] .gallery-head h1 { font-size: 0; line-height: 0; margin-top: 10px; }
+:root[data-marathon] .gallery-head h1::before {
+  content: var(--fx-name) " \25B2  DEPLOYMENT";
+  display: inline-block;
+  padding: 5px 56px 5px 9px;
+  background: var(--barcode-k) right 7px center / 40px 60% no-repeat, var(--acid);
+  font: 900 11px/1 var(--display);
+  font-stretch: 125%;
+  letter-spacing: 0;
+  color: #000;
+  clip-path: var(--cut-s);
+}
+:root[data-marathon] .gallery-head h1::after {
+  content: "SELECT\A YOUR SHELL";
+  display: block;
+  margin-top: 16px;
+  white-space: pre;
+  font: 900 110px/0.84 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.05em;
+  color: var(--ink);
+}
+:root[data-marathon] .gallery-head p { margin-top: 22px; max-width: min(540px, 58%); font-size: 15px; color: var(--dim); padding-left: 14px; border-left: 3px solid var(--acid); }
+/* Beside the headline, the UESC's poster block. */
+:root[data-marathon] .gallery-head::before {
+  content: "SHELLS\A AVAILABLE\A 08";
+  position: absolute;
+  top: 268px;
+  right: 0;
+  width: min(30%, 330px);
+  padding: 14px 18px 44px;
+  white-space: pre;
+  pointer-events: none;
+  font: 900 30px/0.88 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.03em;
+  color: #000;
+  background:
+    var(--cross-k) right 16px top 16px / 30px 30px no-repeat,
+    var(--barcode-k) left 18px bottom 12px / 40px 20px repeat-x,
+    var(--acid);
+  clip-path: polygon(0 0, calc(100% - 22px) 0, 100% 22px, 100% 100%, 22px 100%, 0 calc(100% - 22px));
+}
+:root[data-marathon] .gallery-head::after {
+  content: "CYCLE 01 \25B2  OPEN";
+  position: absolute;
+  top: 256px;
+  right: 150px;
+  z-index: 1;
+  padding: 5px 10px;
+  background: var(--pink);
+  pointer-events: none;
+  font: 900 11px/1 var(--display);
+  font-stretch: 125%;
+  color: #000;
+  transform: rotate(-4deg);
+}
+@media (max-width: 1300px) {
+  :root[data-marathon] .gallery-head::before,
+  :root[data-marathon] .gallery-head::after { display: none; }
+}
+:root[data-marathon] .gallery section > .label { margin-bottom: 14px; font-size: 0; }
+:root[data-marathon] .gallery section > .label::after { content: "AVAILABLE SHELLS \2014  08 \25B2"; font-size: 10px; }
+
+/* The shells: paper slips, numbered, with DEPLOY. */
+:root[data-marathon] .presets { counter-reset: shell; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+:root[data-marathon] .preset {
+  position: relative;
+  counter-increment: shell;
+  align-items: flex-end;
+  padding: 36px 14px 14px 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  transition: background-color 150ms ease;
+}
+:root[data-marathon] .preset::before {
+  content: "SHELL " counter(shell, decimal-leading-zero) "   //   " var(--fx-name) " CLASS: " var(--fx-class);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  padding: 6px 16px 0;
+  background: #2a2a28;
+  white-space: pre;
+  font: 700 9px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--paper);
+}
+:root[data-marathon] .preset::after {
+  content: counter(shell, decimal-leading-zero);
+  position: absolute;
+  top: 30px;
+  right: 16px;
+  pointer-events: none;
+  font: 900 40px/0.8 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1.5px #0a0a0a;
+}
+:root[data-marathon] .preset:hover { background: var(--acid); }
+:root[data-marathon] .preset-text { padding-right: 8px; }
+:root[data-marathon] .preset-name { font: 900 22px/1 var(--display); font-stretch: 125%; letter-spacing: -0.02em; text-transform: uppercase; color: #0a0a0a; }
+:root[data-marathon] .preset-tagline { margin-top: 4px; font-size: 13px; color: var(--dim); }
+:root[data-marathon] .preset-actions { align-self: flex-end; }
+:root[data-marathon] .preset .btn.primary { background: #0a0a0a; border-color: #0a0a0a; color: var(--acid); font-size: 0; padding: 0 18px 0 12px; }
+:root[data-marathon] .preset .btn.primary .icon { display: none; }
+:root[data-marathon] .preset .btn.primary::after { content: "DEPLOY \25B2"; font: 900 11px/1 var(--display); font-stretch: 125%; }
+:root[data-marathon] .preset .btn.primary:hover:not(:disabled) { background: var(--pink); border-color: var(--pink); color: #000; }
+
+/* -- settings: system config ----------------------------------------------- */
+
+:root[data-marathon] .settings > header { position: relative; }
+:root[data-marathon] .settings > header h1 { font-size: 72px; line-height: 0.86; letter-spacing: -0.04em; color: var(--ink); }
+:root[data-marathon] .settings > header h1::before {
+  content: "SYSTEM \25B2  CONFIG";
+  display: table;
+  margin-bottom: 12px;
+  padding: 5px 56px 5px 9px;
+  background: var(--barcode-k) right 7px center / 40px 60% no-repeat, var(--acid);
+  font: 900 11px/1 var(--display);
+  letter-spacing: 0;
+  color: #000;
+  clip-path: var(--cut-s);
+}
+:root[data-marathon] .settings > header h1::after {
+  content: var(--fx-name) " TERMINAL   //   " var(--fx-net) "   //   AUTH: RUNNER   //   ZONE: TAU CETI IV";
+  display: block;
+  margin-top: 12px;
+  white-space: pre;
+  font: 700 10px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--dim);
+}
+:root[data-marathon] .settings > header::after {
+  content: "ACCESS\A GRANTED";
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 12px 64px 12px 14px;
+  background: var(--barcode-k) right 12px center / 40px 50% no-repeat, var(--acid);
+  pointer-events: none;
+  white-space: pre;
+  font: 900 24px/0.9 var(--display);
+  font-stretch: 125%;
+  letter-spacing: -0.02em;
+  color: #000;
+  clip-path: var(--cut-s);
+}
+@media (max-width: 1240px) {
+  :root[data-marathon] .settings > header::after { display: none; }
+}
+:root[data-marathon] .settings-lede { font-size: 15px; color: var(--dim); }
+:root[data-marathon] .settings-tabs-bar { background: transparent; }
+:root[data-marathon] .settings-tabs { border-radius: 0; padding: 0; gap: 0; background: none; box-shadow: inset 0 -2px 0 var(--ink); }
+:root[data-marathon] .settings-tabs [role="tab"] {
+  height: 32px;
+  border-radius: 0;
+  font: 900 12px/1 var(--display);
+  font-stretch: 125%;
+  text-transform: uppercase;
+}
+:root[data-marathon] .settings-tabs [role="tab"][aria-selected="true"] {
+  background: var(--acid);
+  color: #000;
+  box-shadow: none;
+  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+}
+:root[data-marathon] .settings-tabs .dot { border-radius: 0; background: var(--pink); }
+/* Each card a module on a paper slip. */
+:root[data-marathon] .settings { counter-reset: module; }
+:root[data-marathon] .card {
+  position: relative;
+  counter-increment: module;
+  margin-bottom: 12px;
+  padding: 38px 20px 18px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+}
+:root[data-marathon] .card::before {
+  content: "MODULE " counter(module, decimal-leading-zero) "   //   " var(--fx-name) " SYS-" var(--fx-code);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  padding: 6px 20px 0;
+  background: #2a2a28;
+  white-space: pre;
+  font: 700 9px/1 var(--mono);
+  letter-spacing: 0.14em;
+  color: var(--paper);
+}
+:root[data-marathon] .card::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 30px;
+  width: 56px;
+  height: 16px;
+  background: var(--barcode-p) 0 0 / 40px 100% repeat-x;
+}
+:root[data-marathon] .card h2 { font-size: 26px; line-height: 1; letter-spacing: -0.02em; color: #0a0a0a; }
+:root[data-marathon] .server-name { font-family: var(--display); font-stretch: 118%; font-weight: 900; text-transform: uppercase; }
+:root[data-marathon] .theme-thumb { border-radius: 0; }
+:root[data-marathon] .theme-choice input:checked + .theme-thumb { box-shadow: 0 0 0 2px var(--paper), 0 0 0 5px #0a0a0a; }
+:root[data-marathon] .theme-label { font: 700 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+:root[data-marathon] .theme-choice input:checked ~ .theme-label { color: #0a0a0a; text-decoration: underline 3px var(--acid); text-underline-offset: 4px; }
+
+:root[data-marathon] .sheet { border-radius: 0; border: 0; box-shadow: var(--shadow); }
+:root[data-marathon] .sheet-name { font-family: var(--display); font-stretch: 125%; font-weight: 900; text-transform: uppercase; }
+:root[data-marathon] .notice { border-radius: 0; font-family: var(--mono); font-size: 12px; }
+
+/* -- the factions ----------------------------------------------------------- */
+
+/* Each faction keeps the UESC's layout and swaps its ink (--acid, the colour
+   of every block and sticker), its alarm colour, and its words. Callsigns
+   for the agents are in lib/callsigns.js. */
+:root[data-theme="cyberacme"] {
+  --acid: #00f0b0;
+  --fx-name: "CYBERACME";
+  --fx-net: "BACKUP NODE 00:01";
+  --fx-class: "UPLOAD-READY";
+  --fx-code: "CA-77";
+  --fx-motto: "YOU ARE BACKED UP";
+}
+:root[data-theme="nucaloric"] {
+  --acid: #ffb000;
+  --fx-name: "NUCALORIC";
+  --fx-net: "HARVEST GRID 12";
+  --fx-class: "SUSTENANCE";
+  --fx-code: "NC-12";
+  --fx-motto: "HUMANITY WILL EAT";
+}
+:root[data-theme="traxus"] {
+  --acid: #4d8dff;
+  --pink: #ffd400;
+  --fx-name: "TRAXUS";
+  --fx-net: "ASSET LEDGER 9001";
+  --fx-class: "PROPERTY";
+  --fx-code: "TX-9001";
+  --fx-motto: "ALL ASSETS ACCOUNTED FOR";
+}
+:root[data-theme="mida"] {
+  --acid: #ff3b30;
+  --pink: #f4f1e6;
+  --fx-name: "MIDA";
+  --fx-net: "CELL NETWORK 07";
+  --fx-class: "INSURGENT";
+  --fx-code: "M-07";
+  --fx-motto: "FREEDOM BY ANY MEANS";
+}
+:root[data-theme="arachne"] {
+  --acid: #b57bff;
+  --pink: #ff3b30;
+  --fx-name: "ARACHNE";
+  --fx-net: "THE WEB 08";
+  --fx-class: "ACOLYTE";
+  --fx-code: "AR-8";
+  --fx-motto: "ALL THREADS END";
+}
+:root[data-theme="sekiguchi"] {
+  --acid: #ff8fc8;
+  --pink: #00e0ff;
+  --fx-name: "SEKIGUCHI GENETICS";
+  --fx-net: "WEAVEFORM LAB 3";
+  --fx-class: "CULTURED";
+  --fx-code: "SG-3";
+  --fx-motto: "FLESH IS A DRAFT";
+}
+/* The theme is a sticker on everything already; the agent called by its
+   callsign also gets the faction's colour as its own. */
+:root[data-marathon]:not([data-theme="hazard"]) { --agent-green: var(--acid); }
+
+/* Each faction's swatch in Settings > Appearance. */
+.thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) { --t-main: #0a0a0a; --t-line: #4a4a46; --t-accent: #0a0a0a; }
+.thumb[data-look="hazard"] { --t-side: #c8ff00; }
+.thumb[data-look="cyberacme"] { --t-side: #00f0b0; }
+.thumb[data-look="nucaloric"] { --t-side: #ffb000; }
+.thumb[data-look="traxus"] { --t-side: #4d8dff; }
+.thumb[data-look="mida"] { --t-side: #ff3b30; }
+.thumb[data-look="arachne"] { --t-side: #b57bff; }
+.thumb[data-look="sekiguchi"] { --t-side: #ff8fc8; }
+
+/* The Marathon swatches' shapes. */
+.thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) .thumb-dot { border-radius: 0; }
+.thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) .thumb-side .thumb-line { background: #0a0a0a; border-radius: 0; }
+.thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) .thumb-main .thumb-line { border-radius: 0; }
+.thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) .thumb-main .thumb-line:first-child { background: #ebe9e2; width: 60%; }
+.thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) .thumb-box { border-radius: 0; background: #ebe9e2; box-shadow: none; }
+
+@keyframes hz-blink { 50% { opacity: 0.4; } }
+@keyframes hz-seconds { to { --hz-s: 1000; } }
+@keyframes hz-millis { to { --hz-ms: 1000; } }
+@media (prefers-reduced-motion: reduce) {
+  :root[data-marathon] *,
+  :root[data-marathon] *::before,
+  :root[data-marathon] *::after { animation: none !important; }
+}

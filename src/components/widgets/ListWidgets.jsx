@@ -4,23 +4,37 @@ import { WidgetHead } from "./WidgetHead.jsx";
 
 /* The agents, most recently talked-to first, and a way to add one. */
 export function AgentsWidget({ ctx, handle }) {
-  const { agents, chats, view, setView, busyChat, rowMenu, removing, busy, act } = ctx;
+  const { agents, chats, view, setView, busyChat, rowMenu, removing, busy, act, readingsFor } = ctx;
   return (
     <>
       <WidgetHead
         label="Agents"
         handle={handle}
         action={
-          <button
-            type="button"
-            className="btn icon-only"
-            title="Add an agent"
-            aria-label="Add an agent"
-            aria-pressed={view.kind === "gallery"}
-            onClick={() => setView({ kind: "gallery" })}
-          >
-            <Icon name="plus" />
-          </button>
+          <span className="widget-actions">
+            {agents.length ? (
+              <button
+                type="button"
+                className="btn icon-only"
+                title="All agents at a glance"
+                aria-label="All agents at a glance"
+                aria-pressed={view.kind === "rack"}
+                onClick={() => setView({ kind: "rack" })}
+              >
+                <Icon name="grip" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn icon-only"
+              title="Add an agent"
+              aria-label="Add an agent"
+              aria-pressed={view.kind === "gallery"}
+              onClick={() => setView({ kind: "gallery" })}
+            >
+              <Icon name="plus" />
+            </button>
+          </span>
         }
       />
       {agents.length === 0 ? (
@@ -38,6 +52,7 @@ export function AgentsWidget({ ctx, handle }) {
               removing={removing === agent.id}
               busy={busy}
               act={act}
+              readings={readingsFor ? readingsFor(agent) : null}
             />
           ))}
         </ul>

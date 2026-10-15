@@ -1,10 +1,12 @@
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Mascot } from "./Mascot.jsx";
 import { Icon } from "./Icon.jsx";
+import { useCallsign } from "../lib/callsigns.js";
 
 /* Adding agents: the ready-made ones, and a blank one to make your own. "Add"
  * takes a preset as it is; the pencil opens it in the editor first. */
 export function Gallery({ presets, onNew, onAdd, onCustomize, firstRun, mood = "idle" }) {
+  const call = useCallsign();
   return (
     <div className="gallery">
       <header className="gallery-head">
@@ -29,7 +31,7 @@ export function Gallery({ presets, onNew, onAdd, onCustomize, firstRun, mood = "
             <div key={preset.id} className="preset">
               <AgentAvatar look={preset.look} name={preset.name} size={42} />
               <span className="preset-text">
-                <span className="preset-name">{preset.name}</span>
+                <span className="preset-name">{call(preset.name)}</span>
                 <span className="preset-tagline">{preset.tagline}</span>
               </span>
               <span className="preset-actions">

@@ -302,7 +302,7 @@ function AppearanceCard({ theme, onTheme }) {
           <label key={t.id} className="theme-choice">
             <input type="radio" name="theme" value={t.id} checked={theme === t.id} onChange={() => onTheme(t.id)} />
             <span className="theme-thumb" data-look={t.id} aria-hidden="true">
-              <ThumbLook look={t.id === "dark" ? "dark" : "light"} />
+              <ThumbLook look={t.id === "system" ? "light" : t.id} />
               {t.id === "system" ? <ThumbLook look="dark" half /> : null}
             </span>
             <span className="theme-label">{t.label}</span>

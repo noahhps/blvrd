@@ -11,12 +11,13 @@
  * never blank and always the same. */
 
 export const COLOURS = [
-  { id: "red", label: "Red", value: "#e5392b" },
-  { id: "orange", label: "Orange", value: "#ef8a2b" },
-  { id: "yellow", label: "Yellow", value: "#e3b21f" },
-  { id: "green", label: "Green", value: "#33a061" },
-  { id: "blue", label: "Blue", value: "#3a7bdc" },
-  { id: "violet", label: "Violet", value: "#8758d6" },
+  // Through a variable, so a theme can re-ink them (styles/hazard.css).
+  { id: "red", label: "Red", value: "var(--agent-red, #e5392b)" },
+  { id: "orange", label: "Orange", value: "var(--agent-orange, #ef8a2b)" },
+  { id: "yellow", label: "Yellow", value: "var(--agent-yellow, #e3b21f)" },
+  { id: "green", label: "Green", value: "var(--agent-green, #33a061)" },
+  { id: "blue", label: "Blue", value: "var(--agent-blue, #3a7bdc)" },
+  { id: "violet", label: "Violet", value: "var(--agent-violet, #8758d6)" },
   { id: "ink", label: "Ink", value: "var(--ink)" },
 ];
 

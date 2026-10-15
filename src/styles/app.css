@@ -1093,6 +1093,120 @@ button.link {
 }
 .where.hosted { color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
 .where.none { color: var(--warn); }
+/* -- readings (components/Gauges.jsx, lib/agentMetrics.js) -------------------- */
+
+/* An agent's heat, tokens and context left ("sanity"), and the class of its
+   model. Three sizes: a sidebar row (bars and numbers), a chat's header
+   (pills), a rack unit (one labelled line each, with a sparkline). Heat runs
+   blue to amber to red; sanity green, then amber when low, red when nearly
+   gone. */
+:root {
+  --heat-cool: #3a7bdc;
+  --heat-warm: #e0a24a;
+  --heat-hot: #e5392b;
+}
+.gauges { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.gauge { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-size: 12px; }
+.gauge-label { font-weight: 500; }
+.gauge-value { color: var(--ink); font-weight: 600; min-width: 3ch; text-align: right; }
+.gauge-track { position: relative; width: 36px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.gauge-track i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--heat); transition: width 400ms var(--ease-out); }
+.gauge-heat { --heat: var(--heat-cool); }
+.gauge-heat[data-level="warm"] { --heat: var(--heat-warm); }
+.gauge-heat[data-level="hot"] { --heat: var(--heat-hot); }
+.gauge-heat[data-level="hot"] .gauge-value { color: var(--heat-hot); }
+.gauge-spark { width: 44px; height: 16px; overflow: visible; }
+.gauge-spark polyline { fill: none; stroke: var(--agent, var(--accent)); stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.sanity { --sanity: var(--ok); }
+.sanity[data-level="low"] { --sanity: var(--warn); }
+.sanity[data-level="critical"] { --sanity: var(--danger); }
+.sanity-bar { display: inline-flex; gap: 2px; }
+.sanity-bar i { width: 3px; height: 10px; border-radius: 1px; background: var(--line-strong); }
+.sanity-bar i[data-on] { background: var(--sanity); }
+.sanity[data-level="critical"] .sanity-value { color: var(--danger); }
+
+/* In a chat's header: a strip of its own under the name, each reading a
+   pill, so the name and the buttons keep their room. */
+.chat-head:has(.chat-readings) { flex-wrap: wrap; row-gap: 8px; }
+.chat-readings { order: 10; flex-basis: 100%; display: flex; align-items: center; gap: 6px; padding-left: 55px; }
+.app[data-rail="hidden"] .chat-readings { padding-left: 55px; }
+.gauges[data-size="head"] { flex: none; }
+.gauge[data-size="head"] { padding: 3px 9px; border-radius: 999px; background: var(--well); }
+
+/* In a sidebar row: one quiet line under the last message. */
+.gauges[data-size="row"] { gap: 10px; margin-top: 3px; }
+.gauge[data-size="row"] { gap: 4px; font-size: 10.5px; }
+.gauge[data-size="row"] .gauge-label { display: none; }
+.gauge[data-size="row"] .gauge-track { width: 22px; height: 4px; }
+.gauge[data-size="row"].gauge-tokens::before { content: "◆"; font-size: 7px; color: var(--faint); }
+.gauge[data-size="row"] .sanity-bar i { width: 2px; height: 7px; }
+.gauge[data-size="row"] .gauge-value { min-width: 0; font-weight: 500; color: var(--dim); }
+
+/* LLM / System 1: violet for language models, blue for System 1. */
+.kind-badge { flex: none; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; color: var(--dim); }
+.kind-name { flex: none; white-space: nowrap; padding: 1px 6px; border-radius: 5px; font-weight: 700; font-size: 10.5px; letter-spacing: 0.04em; background: var(--well); color: var(--ink); }
+.kind-badge[data-kind="s1"] .kind-name { background: color-mix(in srgb, var(--heat-cool) 16%, var(--surface)); color: var(--heat-cool); }
+.kind-badge[data-kind="llm"] .kind-name { background: color-mix(in srgb, #8758d6 16%, var(--surface)); color: #8758d6; }
+.kind-badge[data-kind="none"] { padding: 1px 6px; border-radius: 5px; background: var(--well); font-size: 10.5px; font-weight: 600; }
+.kind-task { flex: none; font-weight: 600; color: var(--ink); font-size: 11.5px; }
+.kind-model { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 11px; }
+
+/* -- the rack (components/Rack.jsx) --------------------------------------------- */
+
+.rack { overflow-y: auto; padding: 40px 36px 48px; }
+.rack > * { max-width: 1180px; margin-inline: auto; }
+.rack-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 18px 28px; margin-bottom: 26px; }
+.rack-title h1 { font-size: 30px; }
+.rack-lede { margin: 8px 0 0; max-width: 520px; color: var(--dim); }
+.rack-totals { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.rack-totals div { padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--surface); min-width: 84px; }
+.rack-totals dt { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.rack-totals dd { margin: 2px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rack-bay { margin-bottom: 28px; }
+.rack-bay-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; font: inherit; }
+.rack-bay-title { font-family: var(--display); font-weight: 700; font-size: 17px; }
+.rack-bay-note { flex: 1; color: var(--dim); font-size: 13px; }
+.rack-bay-count { color: var(--faint); font-variant-numeric: tabular-nums; }
+.rack-units { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.unit {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 160ms var(--ease-out);
+}
+.unit:hover { border-color: var(--line-strong); }
+.unit:active { transform: scale(0.99); }
+.unit[data-answering] { border-color: var(--agent, var(--accent)); }
+.unit-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.unit-no { color: var(--faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.unit-name { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unit-state { color: var(--faint); font-size: 12px; }
+.unit[data-answering] .unit-state { color: var(--agent, var(--accent)); font-weight: 600; }
+.unit-task { color: var(--dim); font-size: 13px; line-height: 1.4; min-height: 2.8em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* On a unit: one labelled line per reading. */
+.gauges[data-size="card"] { flex-direction: column; align-items: stretch; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.gauge[data-size="card"] { display: grid; grid-template-columns: 52px 1fr 52px; align-items: center; gap: 8px; }
+.gauge[data-size="card"] .gauge-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); font-weight: 600; }
+.gauge[data-size="card"] .gauge-track { width: auto; height: 6px; }
+.gauge[data-size="card"] .gauge-spark { width: 100%; height: 14px; }
+.gauge[data-size="card"].gauge-tokens:not(:has(.gauge-spark))::after { content: ""; }
+.gauge[data-size="card"] .sanity-bar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; }
+.gauge[data-size="card"] .sanity-bar i { width: auto; height: 8px; }
+.rack-spare-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.spare { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: var(--r-card); }
+.spare-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.spare-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.spare-name { font-weight: 600; }
+.spare-model { margin-top: 2px; font-family: var(--mono); font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spare-task { color: var(--dim); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.widget-actions { display: inline-flex; gap: 4px; }
 
 .thread { flex: 1; overflow-y: auto; padding: 28px 24px calc(var(--composer-reserve) + 12px); min-height: 0; }
 .turns { max-width: var(--read-w); margin: 0 auto; display: flex; flex-direction: column; gap: 14px; font-family: var(--prose); }

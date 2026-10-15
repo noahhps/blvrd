@@ -8,6 +8,7 @@ import { startTheme } from "./lib/theme.js";
 import "./styles/app.css";
 import "./styles/orbit.css";
 import "./styles/mascot.css";
+import "./styles/hazard.css";
 
 // The same page is two windows: the app, and the quickview (lib/quick.js).
 const quick = location.hash === "#quick";

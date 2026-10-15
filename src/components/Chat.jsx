@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { colourOf, taglineOf } from "../lib/agents.js";
+import { useCallsign } from "../lib/callsigns.js";
 import { hostOf, isLocalUrl } from "../lib/catalog.js";
 import { getToolsOpen, setToolsOpen } from "../lib/prefs.js";
 import { renderMarkdown } from "../lib/markdown.js";
@@ -11,6 +12,7 @@ import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Approval } from "./Approval.jsx";
 import { Composer } from "./Composer.jsx";
+import { Gauges, KindBadge } from "./Gauges.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
@@ -36,6 +38,7 @@ export function Chat({
   onCustomize,
   onCompact,
   canCompact = false,
+  readings = null,
   approval = null,
   onApprove,
   computer = "off",
@@ -43,6 +46,7 @@ export function Chat({
   queued = [],
   onUnqueue = null,
 }) {
+  const call = useCallsign();
   const thread = useRef(null);
   const area = useRef(null);
   // The computer's screen, in a column beside the conversation.
@@ -94,7 +98,7 @@ export function Chat({
       <header className="chat-head" data-tauri-drag-region>
         <AgentAvatar look={agent.look} name={agent.name} size={45} spinning={busy} follow poke />
         <span className="chat-who">
-          <span className="chat-name">{agent.name}</span>
+          <span className="chat-name" title={agent.name}>{call(agent.name)}</span>
           <span className="chat-tagline">{taglineOf(agent, presets)}</span>
         </span>
         {where ? (
@@ -105,6 +109,12 @@ export function Chat({
         ) : (
           <span className="where none">No model chosen</span>
         )}
+        {readings ? (
+          <span className="chat-readings">
+            <KindBadge kind={readings.kind} task={readings.task} model={null} size="head" />
+            <Gauges r={readings} size="head" />
+          </span>
+        ) : null}
         {messages.length ? (
           <button
             type="button"
@@ -153,7 +163,7 @@ export function Chat({
           {messages.length === 0 && !live ? (
             <div className="greeting">
               <AgentAvatar look={agent.look} name={agent.name} size={96} intro follow poke />
-              <h2>Hi, I’m {agent.name}.</h2>
+              <h2>Hi, I’m {call(agent.name)}.</h2>
               <p>{taglineOf(agent, presets)}</p>
             </div>
           ) : null}
@@ -210,6 +220,7 @@ const tint = (agent) => ({ "--agent": colourOf(agent?.look, agent?.name) });
 /* The answer still arriving, its text and calls in the order they come --
    and, while the agent works on the computer, its steps as they happen. */
 export function LiveTurn({ live, agent, speaker = false, after = null, onWatch = null }) {
+  const call = useCallsign();
   const parts = live.parts?.length ? live.parts : live.text ? [{ type: "text", text: live.text }] : [];
   const lastText = parts.findLastIndex((p) => p.type === "text");
   const out = [];
@@ -223,7 +234,7 @@ export function LiveTurn({ live, agent, speaker = false, after = null, onWatch =
       <div className="turn assistant" key={i} style={tint(agent)}>
         <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} mood={i === lastText && i === parts.length - 1 ? "speaking" : null} />
         <div className="answer">
-          {speaker && !seenText ? <span className="speaker">{agent.name}</span> : null}
+          {speaker && !seenText ? <span className="speaker">{call(agent.name)}</span> : null}
           <div className="md" dangerouslySetInnerHTML={{ __html: renderMarkdown(part.text) }} />
           {i === parts.length - 1 ? after : null}
         </div>
@@ -237,7 +248,7 @@ export function LiveTurn({ live, agent, speaker = false, after = null, onWatch =
       <div className="turn assistant" key="waiting" style={tint(agent)}>
         <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} spinning />
         <div className="answer">
-          {speaker && !seenText ? <span className="speaker">{agent.name}</span> : null}
+          {speaker && !seenText ? <span className="speaker">{call(agent.name)}</span> : null}
           <p className="thinking">{live.status || (parts.length ? "Working…" : "Thinking…")}</p>
           {live.watch?.length ? <LiveComputer steps={live.watch} onWatch={onWatch} /> : null}
           {after}
@@ -251,6 +262,7 @@ export function LiveTurn({ live, agent, speaker = false, after = null, onWatch =
 /* One message. `speaker` labels an agent's turn with its name -- in a group,
    where more than one agent answers in the same thread. */
 export function Turn({ message, agent, speaker = false }) {
+  const call = useCallsign();
   // Only a message sent just now rises in from the composer; opening a chat
   // shows what was already said as it stands.
   const [fresh] = useState(() => message.role === "user" && Date.now() - (message.at || 0) < 1000);
@@ -281,7 +293,7 @@ export function Turn({ message, agent, speaker = false }) {
   if (message.role === "chain") return <ToolChain steps={message.steps} who={speaker ? agent?.name : null} />;
   if (message.role === "tool" && message.unfinished) return <PendingStep name={message.name} who={speaker ? agent?.name : null} />;
   if (message.role === "tool") return <ToolStep message={message} who={speaker ? agent.name : null} />;
-  const label = speaker ? <span className="speaker">{agent.name}</span> : null;
+  const label = speaker ? <span className="speaker">{call(agent.name)}</span> : null;
   if (message.failure) {
     return (
       <div className="turn assistant" style={tint(agent)}>
@@ -319,6 +331,7 @@ export function Turn({ message, agent, speaker = false }) {
    the task's name and the time it ran, and the calls it made on the way,
    folded. A missed or paused task is only its note. */
 function ScheduledTurn({ message, agent, speaker = false }) {
+  const call = useCallsign();
   const s = message.scheduled || {};
   const at = s.at ? new Date(s.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
   const steps = message.steps || [];
@@ -328,7 +341,7 @@ function ScheduledTurn({ message, agent, speaker = false }) {
       <div className="answer">
         <span className="scheduled-mark">
           <Icon name="clock" size={13} />
-          {speaker && agent ? `${agent.name} · ` : ""}
+          {speaker && agent ? `${call(agent.name)} · ` : ""}
           {s.title || "Task"}
           {at ? ` · ${at}` : ""}
         </span>

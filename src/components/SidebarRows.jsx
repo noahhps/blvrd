@@ -1,10 +1,12 @@
 import { memo, useMemo } from "react";
 
 import { taglineOf } from "../lib/agents.js";
+import { useCallsign } from "../lib/callsigns.js";
 import { canCompact as canCompactChat } from "../lib/compact.js";
 import { PRESETS } from "../lib/presets.js";
 import { agentCount, lastLine, shortWhen, speakerName } from "../lib/preview.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
+import { Gauges } from "./Gauges.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
 import { Icon } from "./Icon.jsx";
 import { SwipeRow } from "./SwipeRow.jsx";
@@ -19,7 +21,7 @@ import { SwipeRow } from "./SwipeRow.jsx";
 
 const NO_CHAT = [];
 
-function Row({ kind, id, name, title, menuOpen, removing, busy, canCompact, onDelete, onCompact, act, selected, avatar, when, line }) {
+function Row({ kind, id, name, title, menuOpen, removing, busy, canCompact, onDelete, onCompact, act, selected, avatar, when, line, gauges = null }) {
   return (
     <SwipeRow
       data-menu={menuOpen ? "" : undefined}
@@ -45,6 +47,7 @@ function Row({ kind, id, name, title, menuOpen, removing, busy, canCompact, onDe
             {when ? <span className="contact-when">{when}</span> : null}
           </span>
           <span className="contact-line">{line}</span>
+          {gauges}
         </span>
       </button>
       <button type="button" className="contact-more" aria-label={`More for ${name}`} onClick={(e) => act("menu", e, kind, id)}>
@@ -54,14 +57,15 @@ function Row({ kind, id, name, title, menuOpen, removing, busy, canCompact, onDe
   );
 }
 
-export const AgentRow = memo(function AgentRow({ agent, chat = NO_CHAT, selected, answering, menuOpen, removing, busy, act }) {
+export const AgentRow = memo(function AgentRow({ agent, chat = NO_CHAT, selected, answering, menuOpen, removing, busy, act, readings = null }) {
   const last = chat[chat.length - 1];
   const said = useMemo(() => lastLine(chat), [chat]);
+  const call = useCallsign();
   return (
     <Row
       kind="agent"
       id={agent.id}
-      name={agent.name}
+      name={call(agent.name)}
       title={agent.name}
       selected={selected}
       menuOpen={menuOpen}
@@ -74,6 +78,7 @@ export const AgentRow = memo(function AgentRow({ agent, chat = NO_CHAT, selected
       avatar={<AgentAvatar look={agent.look} name={agent.name} size={34} spinning={answering} />}
       when={shortWhen(last?.at)}
       line={answering ? "answering…" : said ? said.text : taglineOf(agent, PRESETS)}
+      gauges={readings ? <Gauges r={readings} size="row" /> : null}
     />
   );
 });

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { taglineOf } from "./lib/agents.js";
+import { colourOf, taglineOf } from "./lib/agents.js";
+import { readingsOf } from "./lib/agentMetrics.js";
+import { shortWhen } from "./lib/preview.js";
 import { connectorNote, connectorTools, connectorsOf, groupsOf } from "./lib/connectors/index.js";
 import { MAX_HANDOFFS, groupBrief, mentionsIn, respondersFor, viewFor } from "./lib/group.js";
 import { PRESETS } from "./lib/presets.js";
@@ -55,6 +57,7 @@ import { DragChip } from "./components/DragChip.jsx";
 import { Chat } from "./components/Chat.jsx";
 import { Connectors } from "./components/Connectors.jsx";
 import { Gallery } from "./components/Gallery.jsx";
+import { Rack } from "./components/Rack.jsx";
 import { GroupChat } from "./components/GroupChat.jsx";
 import { GroupEditor } from "./components/GroupEditor.jsx";
 import { Icon } from "./components/Icon.jsx";
@@ -126,11 +129,8 @@ function useRail() {
 
 export default function App() {
   const [state, setState] = useState(load);
-  const [view, setView] = useState(() => {
-    const recent = byRecent([...state.agents, ...(state.groups || [])], state.chats)[0];
-    if (!recent) return { kind: "gallery" };
-    return { kind: state.agents.includes(recent) ? "agent" : "group", id: recent.id };
-  });
+  // Home is the rack (components/Rack.jsx), once there are agents to show.
+  const [view, setView] = useState(() => (state.agents.length ? { kind: "rack" } : { kind: "gallery" }));
   const [editor, setEditor] = useState(null); // { agent?, initial? }
   const [groupEditor, setGroupEditor] = useState(null); // { group? }
   // The answer arriving: in which chat (an agent's id or a group's), from
@@ -402,10 +402,10 @@ export default function App() {
 
   /* -- agents ------------------------------------------------------------------ */
 
-  const addAgent = (fields) => {
+  const addAgent = (fields, { stay = false } = {}) => {
     const agent = { id: newId("agent"), createdAt: Date.now(), tools: null, model: null, look: null, instructions: "", ...fields };
     update((s) => ({ agents: [...s.agents, agent] }));
-    setView({ kind: "agent", id: agent.id });
+    if (!stay) setView({ kind: "agent", id: agent.id });
     return agent;
   };
 
@@ -442,7 +442,7 @@ export default function App() {
       return { agents: s.agents.filter((a) => a.id !== agent.id), chats, notes, groups, schedules };
     });
     setEditor(null);
-    if (view.kind === "agent" && view.id === agent.id) setView({ kind: "gallery" });
+    if (view.kind === "agent" && view.id === agent.id) setView({ kind: "rack" });
     notify(`Deleted your conversation with ${agent.name}`, () => {
       memoryBack.then((back) => back());
       update((s) => ({
@@ -647,6 +647,36 @@ export default function App() {
       say(`Couldn't summarize the chat: ${explain(problem, target)}`);
       return null;
     }
+  };
+
+  // A clock for the readings: heat cools as minutes pass with nothing new.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(tick);
+  }, []);
+  // An agent's heat, tokens and context left (lib/agentMetrics.js), in a
+  // chat -- its own, or a group's it answers in.
+  const readingsFor = (agent, chatId = agent?.id) =>
+    readingsOf({
+      messages: state.chats[chatId] || [],
+      model: agent ? modelFor(agent)?.model || null : null,
+      limit: contextLimitFor(agent),
+      live: live?.chatId === chatId ? live : null,
+      now,
+    });
+
+  // The budget the sanity counter counts against (components/Gauges.jsx):
+  // what foldIfLong would fold at, from what is known without asking the
+  // server. Null when nothing folds the chat.
+  const contextLimitFor = (agent) => {
+    const set = compactAtOf(state);
+    const target = agent ? modelFor(agent) : null;
+    const known = target ? getProfile(target.provider, target.model) : null;
+    const room = known?.windowFrom ? usableWindow(target.provider, known) : null;
+    const fit = room ? Math.floor(room * 0.75) : null;
+    if (set === null) return fit;
+    return fit ? Math.min(set, fit) : set;
   };
 
   // Before a turn: a chat past the limit set in Settings keeps about a
@@ -1186,6 +1216,7 @@ export default function App() {
     agentsById,
     busyChat,
     live,
+    readingsFor,
     busy: Boolean(live),
     rowMenu,
     removing,
@@ -1333,6 +1364,7 @@ export default function App() {
             onUnqueue={unqueue}
             onCompact={() => compactNow(selected.id, selected)}
             canCompact={canCompact(selected.id)}
+            readings={readingsFor(selected)}
             computer={whereOf(state.computers, selected.id)}
             onComputer={(where) => {
               const id = selected.id;
@@ -1362,7 +1394,23 @@ export default function App() {
             }}
             onCompact={() => compactNow(selectedGroup.id, membersOf(selectedGroup)[0])}
             canCompact={canCompact(selectedGroup.id) && membersOf(selectedGroup).length > 0}
+            readings={readingsFor(membersOf(selectedGroup)[0], selectedGroup.id)}
             onEdit={() => setGroupEditor({ group: selectedGroup })}
+          />
+        ) : view.kind === "rack" && agents.length ? (
+          <Rack
+            units={agents.map((agent) => ({
+              agent,
+              model: modelFor(agent)?.model || null,
+              colour: colourOf(agent.look, agent.name),
+              tagline: taglineOf(agent, PRESETS),
+              when: shortWhen(state.chats[agent.id]?.at(-1)?.at),
+              readings: readingsFor(agent),
+            }))}
+            specialists={PRESETS.filter((p) => p.specialist && !agents.some((a) => a.name.trim().toLowerCase() === p.name.toLowerCase()))}
+            onOpen={(id) => setView({ kind: "agent", id })}
+            onAdd={(preset) => addAgent(fromPreset(preset), { stay: true })}
+            onGallery={() => setView({ kind: "gallery" })}
           />
         ) : (
           <Gallery

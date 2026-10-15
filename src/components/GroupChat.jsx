@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { EVERYONE, mentionsEveryone, mentionsIn } from "../lib/group.js";
 import { agentCount } from "../lib/preview.js";
+import { useCallsign } from "../lib/callsigns.js";
 import { launchFrom, useLaunch } from "../lib/launch.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
@@ -9,6 +10,7 @@ import { Approval } from "./Approval.jsx";
 import { timeline } from "../lib/timeline.js";
 import { LiveTurn, Turn } from "./Chat.jsx";
 import { Composer } from "./Composer.jsx";
+import { Gauges } from "./Gauges.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
 import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
 import { Icon } from "./Icon.jsx";
@@ -19,7 +21,8 @@ const NO_MEMBERS = "This group has no agents left. Add some with Edit group.";
 /* A group's chat: the reader and several agents in one thread, each answer
  * labelled with who gave it. Under the composer, who answers the next
  * message -- everyone, or the members picked (or @-mentioned in the text). */
-export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onCompact, canCompact = false, approval = null, onApprove, queued = [], onUnqueue = null, computer = "off", onComputer = null }) {
+export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onCompact, canCompact = false, readings = null, approval = null, onApprove, queued = [], onUnqueue = null, computer = "off", onComputer = null }) {
+  const call = useCallsign();
   // The group's computer's screen, in a column beside the conversation.
   const view = useScreen(group.id);
   const thread = useRef(null);
@@ -75,9 +78,14 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
           <span className="chat-name">{group.name}</span>
           <span className="chat-tagline">
             {agentCount(members.length)}
-            {members.length ? ` · ${members.map((m) => m.name).join(", ")}` : ""}
+            {members.length ? ` · ${members.map((m) => call(m.name)).join(", ")}` : ""}
           </span>
         </span>
+        {readings ? (
+          <span className="chat-readings">
+            <Gauges r={readings} size="head" />
+          </span>
+        ) : null}
         {messages.length ? (
           <button
             type="button"
@@ -191,7 +199,7 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
                       onClick={() => !atNamed && toggle(m.id)}
                     >
                       <AgentAvatar look={m.look} name={m.name} size={14} />
-                      {m.name}
+                      {call(m.name)}
                     </button>
                   );
                 })}
