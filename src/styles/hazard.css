@@ -1373,7 +1373,7 @@
 .thumb[data-look="traxus"] { --t-side: #ff7a1a; }
 .thumb[data-look="mida"] { --t-side: #ff3b30; }
 .thumb[data-look="arachne"] { --t-side: #b57bff; }
-.thumb[data-look="sekiguchi"] { --t-side: #19c7b4; --t-main: #ffffff; --t-line: #b5ece4; }
+.thumb[data-look="sekiguchi"] { --t-side: #0b0b0b; --t-main: #97f5c3; --t-line: #cbc3f8; }
 
 /* The Marathon swatches' shapes. */
 .thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) .thumb-dot { border-radius: 0; }

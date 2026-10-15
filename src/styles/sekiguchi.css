@@ -1,0 +1,309 @@
+/* Sekiguchi Genetics: the bio-engineering faction gets a look of its own on
+ * top of the shared Marathon one (styles/hazard.css). Where the others are
+ * loud -- wide black capitals, stickers, barcodes -- Sekiguchi is clinical:
+ *   mint (#97F5C3) for the glass, black for the instruments, lavender and
+ *   periwinkle for tags; thin, light serif lettering set big; Japanese set
+ *   beside the English; tiny monospaced labels; frosted white panels; the
+ *   body's systems read out in green on black ("NERVOUS SYSTEM .... OKAY");
+ *   and a blocky pixel mark.
+ * Everything here is scoped to html[data-theme="sekiguchi"]. */
+
+@font-face {
+  font-family: "Newsreader";
+  src: url("/fonts/newsreader-var.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+/* Only the handful of Japanese the look prints (a subset, ~12 KB). */
+@font-face {
+  font-family: "Sekiguchi JP";
+  src: url("/fonts/noto-sans-jp-sekiguchi.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+}
+
+:root[data-theme="sekiguchi"] {
+  --mint: #97f5c3;
+  --mint-dim: rgba(151, 245, 195, 0.62);
+  --lav: #cbc3f8;
+  --peri: #7b74c7;
+  --black: #0b0b0b;
+  --serif: "Newsreader", "Times New Roman", serif;
+  --jp: "Sekiguchi JP", "Hiragino Sans", "Noto Sans JP", sans-serif;
+
+  --ground: var(--mint);
+  --surface: #ffffff;
+  --well: rgba(11, 11, 11, 0.06);
+  --line: rgba(11, 11, 11, 0.16);
+  --line-strong: var(--black);
+  --ink: var(--black);
+  --dim: rgba(11, 11, 11, 0.62);
+  --faint: rgba(11, 11, 11, 0.45);
+  --acid: var(--lav); /* blocks: tags, the composer's head, readings */
+  --acid-ink: var(--black);
+  --pink: var(--peri);
+  --paper: rgba(255, 255, 255, 0.78); /* frosted panels */
+  --strip: var(--black);
+  --strip-ink: var(--mint);
+  --label: var(--black);
+  --focus: var(--black);
+  --cut: none;
+  --cut-s: none;
+  --dots: none;
+  --heat-cool: var(--peri);
+  --heat-warm: #e0a24a;
+  --heat-hot: #ff4d6d;
+  --agent-green: var(--peri);
+  --shadow: 0 0 0 1px var(--black), 0 24px 60px -24px rgba(0, 0, 0, 0.3);
+  /* The pixel mark: blocks and a diagonal, in the spirit of the house mark. */
+  --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8'%3E%3Cpath fill='%2397f5c3' d='M0 3h2v2H0zM4 0h2v2H4zM2 4l2-2 1.4 1.4L4 5h2v1H2zM8 0h4v2H8zM6 2h2v2H6zM8 4.6l2.8-2.8L12.2 3.2 9.4 6zM12 5h2v3h-2zM2 6h4v2H2z'/%3E%3C/svg%3E");
+  --mark-k: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8'%3E%3Cpath fill='%230b0b0b' d='M0 3h2v2H0zM4 0h2v2H4zM2 4l2-2 1.4 1.4L4 5h2v1H2zM8 0h4v2H8zM6 2h2v2H6zM8 4.6l2.8-2.8L12.2 3.2 9.4 6zM12 5h2v3h-2zM2 6h4v2H2z'/%3E%3C/svg%3E");
+  color-scheme: light;
+}
+
+/* Thin, light, big, in the reader's own case: everything that names. */
+:root[data-theme="sekiguchi"] :is(h1, h2:not(.label), .wordmark, .chat-name, .unit-name, .preset-name, .contact-name, .rack-bay-title, .rack-totals dd, .card h2, .spare-name, .music-title) {
+  font-family: var(--serif);
+  font-weight: 300;
+  font-stretch: normal;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+/* No stickers, cuts or barcodes: tags sit flat and square. */
+:root[data-theme="sekiguchi"] :is(.unit, .preset, .card, .composer-box, .turn.assistant .answer > .md, .settings-tabs [role="tab"], .btn.primary, .round) { clip-path: none; }
+
+/* -- the sidebar: black, read out in mint ------------------------------------ */
+
+:root[data-theme="sekiguchi"] .side {
+  --ink: var(--mint);
+  --ink-soft: var(--mint);
+  --dim: var(--mint-dim);
+  --faint: rgba(151, 245, 195, 0.42);
+  --line: rgba(151, 245, 195, 0.22);
+  --line-strong: var(--mint);
+  --well: rgba(151, 245, 195, 0.08);
+  --label: var(--mint);
+  --focus: var(--mint);
+  --accent: var(--mint);
+  --on-accent: var(--black);
+  background: var(--black);
+  color: var(--mint);
+}
+:root[data-theme="sekiguchi"] .side::after { color: rgba(151, 245, 195, 0.4); }
+:root[data-theme="sekiguchi"] .side .btn { border-color: var(--mint-dim); }
+:root[data-theme="sekiguchi"] .brand { border-bottom: 1px solid var(--mint-dim); padding-bottom: 14px; }
+:root[data-theme="sekiguchi"] .brand::before { top: 6px; width: 56px; height: 32px; background: var(--mark) center / contain no-repeat; }
+:root[data-theme="sekiguchi"] .wordmark { font-size: 46px; line-height: 1; color: var(--mint); }
+:root[data-theme="sekiguchi"] .brand::after { content: "\30BB\30AD\30B0\30C1  \30B8\30A7\30CD\30C6\30A3\30AF\30B9"; font-family: var(--mono), var(--jp); color: var(--mint-dim); }
+:root[data-theme="sekiguchi"] .widget-head { border-bottom: 1px solid rgba(151, 245, 195, 0.3); }
+:root[data-theme="sekiguchi"] .month-day { color: var(--mint-dim); }
+:root[data-theme="sekiguchi"] .month-day[data-today] { background: var(--mint); color: var(--black); }
+:root[data-theme="sekiguchi"] .contact:hover { background: rgba(151, 245, 195, 0.08); }
+:root[data-theme="sekiguchi"] .contact[aria-current="true"] { --ink: var(--black); --dim: rgba(11, 11, 11, 0.62); background: var(--mint); }
+:root[data-theme="sekiguchi"] .contact[aria-current="true"]::before { background: var(--lav); color: var(--black); }
+:root[data-theme="sekiguchi"] .contact::after { font-family: var(--serif); font-weight: 300; font-stretch: normal; font-size: 30px; letter-spacing: -0.02em; }
+:root[data-theme="sekiguchi"] .contact-name { font-size: 18px; line-height: 1.05; }
+:root[data-theme="sekiguchi"] .gauge[data-size="row"] .gauge-track,
+:root[data-theme="sekiguchi"] .gauge[data-size="row"] .sanity-bar i { background: rgba(151, 245, 195, 0.18); }
+:root[data-theme="sekiguchi"] .contact[aria-current="true"] .gauge[data-size="row"] .gauge-track,
+:root[data-theme="sekiguchi"] .contact[aria-current="true"] .gauge[data-size="row"] .sanity-bar i:not([data-on]) { background: rgba(11, 11, 11, 0.16); }
+:root[data-theme="sekiguchi"] .side-settings { font: 600 11px/1 var(--mono); letter-spacing: 0.12em; }
+:root[data-theme="sekiguchi"] .side-settings:hover,
+:root[data-theme="sekiguchi"] .side-settings[aria-current="true"] { background: var(--mint); color: var(--black); }
+:root[data-theme="sekiguchi"] .side-settings .dot { background: var(--lav); }
+:root[data-theme="sekiguchi"] .round.music-button { color: var(--mint); box-shadow: inset 0 0 0 1px var(--mint-dim); }
+:root[data-theme="sekiguchi"] .round.music-button:is([aria-label="Pause"], [aria-label="Play"]) { background: var(--mint); color: var(--black); }
+:root[data-theme="sekiguchi"] .music-art { background: rgba(151, 245, 195, 0.12); }
+:root[data-theme="sekiguchi"] .music-progress { background: rgba(151, 245, 195, 0.18); }
+:root[data-theme="sekiguchi"] :is(.music-progress-fill, .music-knob) { background: var(--mint); }
+
+/* -- the glass ------------------------------------------------------------ */
+
+:root[data-theme="sekiguchi"] .main::before { content: none; }
+:root[data-theme="sekiguchi"] .main::after { background: var(--black); color: var(--mint); }
+:root[data-theme="sekiguchi"] .label { font-family: var(--mono); color: var(--label); }
+
+/* Tags: lavender, flat, tiny monospaced capitals. (Listed one by one: a
+   pseudo-element can't sit inside :is().) */
+:root[data-theme="sekiguchi"] .rack-title h1::before,
+:root[data-theme="sekiguchi"] .gallery-head h1::before,
+:root[data-theme="sekiguchi"] .settings > header h1::before,
+:root[data-theme="sekiguchi"] .greeting::before,
+:root[data-theme="sekiguchi"] .chat-head::before {
+  padding: 4px 8px;
+  background: var(--lav);
+  clip-path: none;
+  font: 600 10px/1.2 var(--mono);
+  font-family: var(--mono), var(--jp);
+  font-stretch: normal;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--black);
+  transform: none;
+}
+
+/* -- the chat ------------------------------------------------------------- */
+
+:root[data-theme="sekiguchi"] .chat-head::before { content: "S\30B7\30EA\30FC\30BA   SERIES C BIOMATA"; bottom: 16px; }
+:root[data-theme="sekiguchi"] .chat-head::after { height: 1px; background: var(--black); opacity: 1; }
+:root[data-theme="sekiguchi"] .chat-name { font-size: 44px; line-height: 1; letter-spacing: -0.02em; }
+:root[data-theme="sekiguchi"] .chat-name::before { content: "SPECIMEN /"; font-family: var(--mono); color: var(--dim); }
+:root[data-theme="sekiguchi"] .chat-who::after { color: var(--black); }
+:root[data-theme="sekiguchi"] .where { color: var(--black); }
+:root[data-theme="sekiguchi"] .where.none { background: var(--peri); color: #fff; }
+/* The body's systems, read out along the top, in mint on black. */
+:root[data-theme="sekiguchi"] .chat-row::before {
+  content: "NERVOUS SYSTEM .. OKAY    SKELETAL .. OKAY    VASCULAR .. OKAY    WEAVEFORM LAYER .. LOADED    IMPLANT SKIN .. OKAY    ENDOCRINE .. OKAY";
+  height: 22px;
+  padding: 6px 16px 0;
+  text-align: left;
+  text-align-last: left;
+  white-space: pre;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--mint);
+  border-bottom: 0;
+}
+:root[data-theme="sekiguchi"] .chat-row::after { content: none; }
+:root[data-theme="sekiguchi"] .chat-body { background: none; }
+:root[data-theme="sekiguchi"] .chat-body::before {
+  content: "BIOMETRICS\A\A NERVOUS SYSTEM\A ..........OKAY\A SKELETAL SYSTEM\A ..........OKAY\A VASCULAR SYSTEM\A ..........OKAY\A\A WEAVEFORM LAYER\A Loading config\A Firm ..... loaded\A\A Running in safe mode\A Running integrity... 98%\A Host passed, 0 failed\A Waking up...";
+  border-top: 1px solid var(--black);
+  color: var(--black);
+}
+/* セキグチ ジェネティクス, set down the right edge. */
+:root[data-theme="sekiguchi"] .chat-body::after {
+  content: "\30BB\30AD\30B0\30C1  \30B8\30A7\30CD\30C6\30A3\30AF\30B9";
+  writing-mode: vertical-rl;
+  font: 300 34px/1.2 var(--jp);
+  letter-spacing: 0.12em;
+  color: var(--black);
+  -webkit-text-stroke: 0;
+}
+
+/* Your contract: a light serif line, its number in the margin. */
+:root[data-theme="sekiguchi"] .turn.user { background: linear-gradient(var(--black), var(--black)) 0 0 / 100% 1px no-repeat; }
+:root[data-theme="sekiguchi"] .turn.user::before { font-family: var(--serif); font-weight: 300; font-stretch: normal; font-size: 40px; letter-spacing: -0.02em; color: var(--black); }
+:root[data-theme="sekiguchi"] .turn.user .bubble { font: 300 24px/1.2 var(--serif); text-transform: none; color: var(--black); }
+:root[data-theme="sekiguchi"] .turn.user .bubble::before { content: "REQUEST FILED //"; color: var(--dim); }
+:root[data-theme="sekiguchi"] .turn.user .bubble::after { content: "\25B2  ROUTED TO SPECIMEN   \2022   WEAVEFORM LAB 3"; }
+
+/* The answer: a frosted panel, a black head reading out in mint. */
+:root[data-theme="sekiguchi"] .turn.assistant .answer > .md {
+  border: 1px solid var(--black);
+  background: var(--paper);
+  backdrop-filter: blur(8px);
+}
+:root[data-theme="sekiguchi"] .turn.assistant .answer > .md::before {
+  content: "LAB REPORT " counter(order, hz-pad3) "   //   RE: REQUEST " counter(order, hz-pad3) "   //   STATUS: CULTURED";
+  background: var(--black);
+  color: var(--mint);
+}
+:root[data-theme="sekiguchi"] .turn.assistant .answer > .md::after { width: 26px; height: 15px; top: 5px; background: var(--mark) center / contain no-repeat; }
+:root[data-theme="sekiguchi"] .md strong { background: linear-gradient(transparent 62%, var(--lav) 62%); }
+:root[data-theme="sekiguchi"] .turn.assistant .answer > .md th { background: var(--black); color: var(--mint); }
+:root[data-theme="sekiguchi"] .turn.assistant .answer > .md :is(code, pre) { background: rgba(151, 245, 195, 0.35); }
+:root[data-theme="sekiguchi"] .md ul > li::before { clip-path: none; width: 6px; height: 6px; background: var(--peri); }
+
+/* The composer: a frosted form, a lavender head. */
+:root[data-theme="sekiguchi"] .composer-box { border: 1px solid var(--black); background: rgba(255, 255, 255, 0.86); box-shadow: 0 -18px 40px -10px var(--mint); }
+:root[data-theme="sekiguchi"] .composer-box:focus-within { box-shadow: 0 0 0 1px var(--black), 0 -18px 40px -10px var(--mint); }
+:root[data-theme="sekiguchi"] .composer-box::before { content: "NEW REQUEST " counter(order, hz-pad3) "   //   " var(--fx-name) "   //   " var(--fx-net); }
+:root[data-theme="sekiguchi"] .composer-box::after { content: none; }
+:root[data-theme="sekiguchi"] .composer textarea,
+:root[data-theme="sekiguchi"] .composer textarea:focus { font: 300 22px/1.3 var(--serif); text-transform: none; }
+:root[data-theme="sekiguchi"] .composer-field:has(textarea:placeholder-shown)::after { content: "Describe the request"; font: 300 22px/1.3 var(--serif); color: rgba(11, 11, 11, 0.35); }
+:root[data-theme="sekiguchi"] .composer-field:has(textarea:placeholder-shown:focus)::after { content: "Describe the request_"; }
+:root[data-theme="sekiguchi"] .composer-field::before { content: "\2192"; top: 4px; font-size: 16px; }
+:root[data-theme="sekiguchi"] .round:not(.music-button) { background: var(--black); color: var(--mint); box-shadow: none; }
+:root[data-theme="sekiguchi"] .round:not(.music-button)::after { content: "SUBMIT \2192"; font: 600 11px/1 var(--mono); letter-spacing: 0.12em; }
+:root[data-theme="sekiguchi"] .round:not(.music-button):disabled { background: transparent; color: rgba(11, 11, 11, 0.4); box-shadow: inset 0 0 0 1px rgba(11, 11, 11, 0.3); }
+:root[data-theme="sekiguchi"] .round:not(.music-button):disabled::after { content: "\5F85\6A5F  STANDBY"; font-family: var(--mono), var(--jp); }
+:root[data-theme="sekiguchi"] .round.stop:not(.music-button) { background: var(--peri); color: #fff; }
+:root[data-theme="sekiguchi"] .round.stop:not(.music-button)::after { content: "HALT \25A0"; }
+:root[data-theme="sekiguchi"] .composer-tray { border-color: var(--black); background: rgba(255, 255, 255, 0.6); }
+:root[data-theme="sekiguchi"] :is(.tray-label, .tray-note) { color: var(--black); }
+
+/* An empty chat: the specimen, waking. */
+:root[data-theme="sekiguchi"] .greeting::before { content: "S\30B7\30EA\30FC\30BA   SPECIMEN \2014  \5F85\6A5F STANDBY"; }
+:root[data-theme="sekiguchi"] .greeting h2 { font-size: 96px; line-height: 0.95; letter-spacing: -0.03em; }
+:root[data-theme="sekiguchi"] .greeting p::before { content: "Cultured. Awaiting a request."; font: 300 26px/1.2 var(--serif); text-transform: none; color: var(--black); }
+
+/* -- the rack: culture racks ----------------------------------------------- */
+
+:root[data-theme="sekiguchi"] .rack { background: none; }
+:root[data-theme="sekiguchi"] .rack-title h1::before { content: "\30BB\30AD\30B0\30C1 \30B8\30A7\30CD\30C6\30A3\30AF\30B9   \2014   SPECIMEN ROSTER   V. 1.0"; }
+:root[data-theme="sekiguchi"] .rack-title h1::after { content: "Culture Rack"; font: 300 104px/0.9 var(--serif); letter-spacing: -0.035em; }
+:root[data-theme="sekiguchi"] .rack-lede { border-left: 1px solid var(--black); }
+:root[data-theme="sekiguchi"] .rack-totals div { background: var(--paper); box-shadow: inset 0 0 0 1px var(--black); }
+:root[data-theme="sekiguchi"] .rack-totals div:first-child { background: var(--black); }
+:root[data-theme="sekiguchi"] .rack-totals div:first-child :is(dt, dd) { color: var(--mint); }
+:root[data-theme="sekiguchi"] .rack-totals dd { font-size: 22px; }
+:root[data-theme="sekiguchi"] .rack-bay-head { border-bottom: 1px solid var(--black); background: none; }
+:root[data-theme="sekiguchi"] .rack-bay-title { padding: 0; background: none; font-size: 34px; color: var(--black); }
+:root[data-theme="sekiguchi"] .rack-bay[data-kind] .rack-bay-title { background: none; }
+:root[data-theme="sekiguchi"] .rack-bay[data-kind="none"] .rack-bay-title { color: var(--peri); }
+:root[data-theme="sekiguchi"] .rack-bay-count { font-family: var(--serif); font-weight: 300; font-stretch: normal; font-size: 34px; }
+:root[data-theme="sekiguchi"] .unit { background: var(--paper); box-shadow: inset 0 0 0 1px var(--black); }
+:root[data-theme="sekiguchi"] .unit:hover { background: #fff; }
+:root[data-theme="sekiguchi"] .unit[data-answering]::before { background: var(--lav); }
+:root[data-theme="sekiguchi"] .unit[data-heat="hot"] { box-shadow: inset 0 0 0 1px var(--black), inset 0 -4px 0 var(--heat-hot); }
+:root[data-theme="sekiguchi"] .unit-name { font-size: 28px; line-height: 1; }
+:root[data-theme="sekiguchi"] .gauges[data-size="card"] { border-top: 1px solid var(--black); }
+:root[data-theme="sekiguchi"] .gauge[data-size="card"] .gauge-value { font-family: var(--serif); font-weight: 400; font-stretch: normal; font-size: 18px; }
+:root[data-theme="sekiguchi"] .gauge[data-size="card"].sanity[data-level="critical"] { --sanity: var(--heat-hot); }
+:root[data-theme="sekiguchi"] .gauge[data-size="head"] { color: var(--black); }
+:root[data-theme="sekiguchi"] .gauge[data-size="head"] .gauge-value { font-family: var(--serif); font-weight: 400; font-stretch: normal; font-size: 15px; }
+:root[data-theme="sekiguchi"] .gauge[data-size="head"].sanity[data-level="critical"] { background: var(--peri); color: #fff; }
+:root[data-theme="sekiguchi"] .kind-name { font: 600 10px/1 var(--mono); letter-spacing: 0.1em; padding: 4px 7px; }
+:root[data-theme="sekiguchi"] .kind-badge[data-kind="s1"] .kind-name { background: var(--lav); }
+:root[data-theme="sekiguchi"] :is(.kind-badge[data-kind="llm"] .kind-name, .unit .kind-badge[data-kind="llm"] .kind-name) { background: var(--black); color: var(--mint); }
+:root[data-theme="sekiguchi"] .kind-badge[data-kind="none"] { background: var(--peri); color: #fff; }
+:root[data-theme="sekiguchi"] .spare { outline: 1px dashed var(--black); background: rgba(255, 255, 255, 0.4); }
+:root[data-theme="sekiguchi"] .spare-model { color: var(--peri); }
+
+/* -- the gallery: ImplantSkin, now available ---------------------------------- */
+
+:root[data-theme="sekiguchi"] .gallery { background: none; }
+:root[data-theme="sekiguchi"] .gallery-head h1::before { content: "IMPLANT SKIN   KERUBEROSU COLLECTION   V. 1.0"; }
+:root[data-theme="sekiguchi"] .gallery-head h1::after { content: "ImplantSkin\2122\A Now Available"; font: 300 104px/0.95 var(--serif); letter-spacing: -0.035em; }
+:root[data-theme="sekiguchi"] .gallery-head p { border-left: 1px solid var(--black); color: var(--dim); }
+/* The same line in Japanese, set beside it. */
+:root[data-theme="sekiguchi"] .gallery-head::before {
+  content: "\4ECA\A\5229\7528\53EF\80FD\A\30A4\30F3\30D7\30E9\30F3\30C8\A\30B9\30AD\30F3";
+  top: 40px;
+  right: 0;
+  width: auto;
+  padding: 0;
+  background: none;
+  font: 300 64px/1.12 var(--jp);
+  letter-spacing: 0.02em;
+  color: var(--black);
+}
+:root[data-theme="sekiguchi"] .gallery-head::after { content: "S\30B7\30EA\30FC\30BA   SERIES C BIOMATA"; top: 0; right: 0; padding: 4px 8px; background: var(--black); font: 600 10px/1.2 var(--mono); font-family: var(--mono), var(--jp); letter-spacing: 0.1em; color: var(--mint); transform: none; }
+:root[data-theme="sekiguchi"] .gallery section > .label::after { content: "AVAILABLE IMPLANTS \2014  CULTURED TO ORDER"; }
+:root[data-theme="sekiguchi"] .preset { background: var(--paper); box-shadow: inset 0 0 0 1px var(--black); }
+:root[data-theme="sekiguchi"] .preset:hover { background: #fff; }
+:root[data-theme="sekiguchi"] .preset::before { content: "IMPLANT " counter(shell, decimal-leading-zero) "   //   SERIES C"; }
+:root[data-theme="sekiguchi"] .preset::after { font-family: var(--serif); font-weight: 300; font-stretch: normal; font-size: 44px; color: rgba(11, 11, 11, 0.2); -webkit-text-stroke: 0; }
+:root[data-theme="sekiguchi"] .preset-name { font-size: 28px; line-height: 1; }
+:root[data-theme="sekiguchi"] .preset .btn.primary { background: var(--black); border-color: var(--black); color: var(--mint); }
+:root[data-theme="sekiguchi"] .preset .btn.primary::after { content: "ORDER \2192"; font: 600 11px/1 var(--mono); letter-spacing: 0.12em; }
+:root[data-theme="sekiguchi"] .preset .btn.primary:hover:not(:disabled) { background: var(--peri); border-color: var(--peri); color: #fff; }
+:root[data-theme="sekiguchi"] .btn.primary { background: var(--black); border-color: var(--black); color: var(--mint); }
+
+/* -- settings ----------------------------------------------------------------- */
+
+:root[data-theme="sekiguchi"] .settings { background: none; }
+:root[data-theme="sekiguchi"] .settings > header h1 { font-size: 88px; letter-spacing: -0.035em; }
+:root[data-theme="sekiguchi"] .settings > header h1::before { content: "\7814\7A76\6240   LABORATORY CONFIG"; }
+:root[data-theme="sekiguchi"] .settings > header::after { content: "\627F\8A8D\A ACCESS GRANTED"; background: var(--black); padding: 12px 16px; font: 600 12px/1.6 var(--mono); font-family: var(--mono), var(--jp); letter-spacing: 0.12em; color: var(--mint); }
+:root[data-theme="sekiguchi"] .settings-tabs { box-shadow: inset 0 -1px 0 var(--black); }
+:root[data-theme="sekiguchi"] .settings-tabs [role="tab"] { font: 600 11px/1 var(--mono); letter-spacing: 0.12em; }
+:root[data-theme="sekiguchi"] .settings-tabs [role="tab"][aria-selected="true"] { background: var(--black); color: var(--mint); }
+:root[data-theme="sekiguchi"] .card { background: var(--paper); box-shadow: inset 0 0 0 1px var(--black); }
+:root[data-theme="sekiguchi"] .card::before { content: "MODULE " counter(module, decimal-leading-zero) "   //   WEAVEFORM LAB 3"; }
+:root[data-theme="sekiguchi"] .card::after { width: 26px; height: 15px; top: 4px; background: var(--mark) center / contain no-repeat; }
+:root[data-theme="sekiguchi"] .card h2 { font-size: 34px; }
+:root[data-theme="sekiguchi"] .theme-choice input:checked ~ .theme-label { text-decoration-color: var(--peri); }
