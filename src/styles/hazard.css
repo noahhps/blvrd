@@ -34,6 +34,8 @@
 
 :root[data-marathon] {
   --acid: #c8ff00;
+  /* The ink as text on the ground: the same on black, darker on the light looks. */
+  --acid-ink: var(--acid);
   --pink: #ff2a6d;
   /* The faction's own words, for the micro-text and stickers. */
   --fx-name: "UESC";
@@ -57,8 +59,8 @@
   --on-ink: #0a0a0a;
   --accent: var(--acid);
   --on-accent: #000000;
-  --label: var(--acid);
-  --focus: var(--acid);
+  --label: var(--acid-ink);
+  --focus: var(--acid-ink);
   --ok: var(--acid);
   --warn: #ffb000;
   --danger: var(--pink);
@@ -344,6 +346,27 @@
 :root[data-marathon] .side-settings kbd { font-family: var(--mono); font-size: 10px; color: inherit; }
 :root[data-marathon] .side .btn { border-color: #0a0a0a; }
 
+/* -- now playing: on the sidebar's ink, black on it ----------------------- */
+
+:root[data-marathon] .widget-music { padding: 4px 0 6px; border-radius: 0; }
+:root[data-marathon] .music-art { width: 38px; height: 38px; border-radius: 0; background: #0a0a0a; box-shadow: none; clip-path: var(--cut-s); }
+:root[data-marathon] .music-title { font: 900 13px/1.1 var(--display); font-stretch: 118%; text-transform: uppercase; color: var(--ink); }
+:root[data-marathon] .music-artist { font: 600 9.5px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
+:root[data-marathon] .music-controls { gap: 3px; }
+:root[data-marathon] .round.music-button { width: 26px; height: 26px; border-radius: 0; background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px #0a0a0a; }
+:root[data-marathon] .round.music-button[aria-label="Pause"],
+:root[data-marathon] .round.music-button[aria-label="Play"] { background: #0a0a0a; color: var(--acid); }
+@media (hover: hover) and (pointer: fine) {
+  :root[data-marathon] .round.music-button:hover { background: #0a0a0a; color: var(--acid); }
+}
+:root[data-marathon] .music-progress { height: 5px; border-radius: 0; background: rgba(10, 10, 10, 0.18); }
+:root[data-marathon] .music-progress-fill { border-radius: 0; background: #0a0a0a; }
+:root[data-marathon] .music-knob { border-radius: 0; background: #0a0a0a; box-shadow: none; }
+/* Over a cover, the banner keeps its own light text. */
+:root[data-marathon] .widget-music[data-banner] { padding: 6px 8px 8px; }
+:root[data-marathon] .widget-music[data-banner] :is(.music-title, .music-artist) { color: #fff; }
+:root[data-marathon] .widget-music[data-banner] .round.music-button { color: #fff; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.6); }
+
 /* -- the main glass ------------------------------------------------------- */
 
 /* Behind everything, the zone's name in giant outlined capitals; in the
@@ -360,7 +383,7 @@
   font-stretch: 125%;
   letter-spacing: -0.05em;
   color: transparent;
-  -webkit-text-stroke: 1.5px rgba(239, 238, 233, 0.07);
+  -webkit-text-stroke: 1.5px var(--ghost, rgba(239, 238, 233, 0.07));
 }
 :root[data-marathon] .main::after {
   content: "SESSION UPTIME\A" counter(hz-s, hz-pad3) "." counter(hz-ms, hz-pad3) " SEC";
@@ -419,7 +442,7 @@
   margin-bottom: 4px;
   font: 700 9px/1 var(--mono);
   letter-spacing: 0.2em;
-  color: var(--acid);
+  color: var(--acid-ink);
 }
 :root[data-marathon] .chat-tagline { margin-top: 4px; font: 600 10.5px/1.4 var(--mono); letter-spacing: 0.04em; color: var(--dim); text-transform: uppercase; }
 :root[data-marathon] .chat-tagline::before { content: "ROLE // "; color: var(--ink); }
@@ -429,7 +452,7 @@
   white-space: pre;
   font: 700 9.5px/1.2 var(--mono);
   letter-spacing: 0.1em;
-  color: var(--acid);
+  color: var(--acid-ink);
 }
 /* The extraction sticker, slapped on above the rule. */
 :root[data-marathon] .chat-head::before {
@@ -610,7 +633,7 @@
   left: 0;
   right: 0;
   height: 22px;
-  background: var(--barcode-p) right 22px center / 40px 12px no-repeat, #2a2a28;
+  background: var(--barcode-p) right 22px center / 40px 12px no-repeat, var(--strip, #2a2a28);
 }
 :root[data-marathon] .unit[data-answering]::before { background: var(--barcode-k) right 22px center / 40px 12px no-repeat, var(--agent, var(--acid)); }
 :root[data-marathon] .unit[data-heat="hot"] { box-shadow: inset 0 -4px 0 var(--heat-hot); }
@@ -622,12 +645,12 @@
   left: 14px;
   font: 800 9px/22px var(--mono);
   letter-spacing: 0.16em;
-  color: var(--paper);
+  color: var(--strip-ink, var(--paper));
 }
 :root[data-marathon] .unit-no::before { content: "UNIT "; }
 :root[data-marathon] .unit[data-answering] .unit-no { color: #000; }
 :root[data-marathon] .unit-name { font: 900 22px/1 var(--display); font-stretch: 125%; letter-spacing: -0.02em; text-transform: uppercase; color: #0a0a0a; }
-:root[data-marathon] .unit-state { position: absolute; top: 0; right: 70px; font: 800 9px/22px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper); }
+:root[data-marathon] .unit-state { position: absolute; top: 0; right: 70px; font: 800 9px/22px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--strip-ink, var(--paper)); }
 :root[data-marathon] .unit[data-answering] .unit-state { color: #000; animation: hz-blink 1s steps(2, jump-none) infinite; }
 :root[data-marathon] .unit-task { font-size: 13px; color: var(--dim); }
 :root[data-marathon] .gauges[data-size="card"] { gap: 7px; padding-top: 10px; border-top: 2px solid #0a0a0a; }
@@ -647,7 +670,7 @@
 :root[data-marathon] .spare { border: 0; border-radius: 0; background: linear-gradient(#0a0a0a, #0a0a0a) padding-box, var(--hatch-p) border-box; border: 2px dashed transparent; background: transparent; outline: 1.5px dashed var(--line-strong); }
 :root[data-marathon] .spare-name { font: 900 15px/1.1 var(--display); font-stretch: 125%; text-transform: uppercase; color: var(--ink); }
 :root[data-marathon] .spare-task { font: 600 10px/1.4 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
-:root[data-marathon] .spare-model { font: 700 9.5px/1.3 var(--mono); letter-spacing: 0.06em; color: var(--acid); }
+:root[data-marathon] .spare-model { font: 700 9.5px/1.3 var(--mono); letter-spacing: 0.06em; color: var(--acid-ink); }
 
 /* The zone bar along the top of the chat; a crew sticker at bottom left. */
 :root[data-marathon] .chat-row { position: relative; }
@@ -669,7 +692,7 @@
   background:
     linear-gradient(var(--acid), var(--acid)) 31% 100% / 12px 6px no-repeat,
     repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 10px) 14px 100% / calc(100% - 28px) 5px no-repeat,
-    linear-gradient(#0a0a0a, #0a0a0a);
+    linear-gradient(var(--ground), var(--ground));
   border-bottom: 1px solid var(--line-strong);
 }
 :root[data-marathon] .chat-row::after {
@@ -732,7 +755,7 @@
   font-stretch: 125%;
   letter-spacing: -0.03em;
   color: transparent;
-  -webkit-text-stroke: 1.5px rgba(239, 238, 233, 0.3);
+  -webkit-text-stroke: 1.5px var(--ghost-strong, rgba(239, 238, 233, 0.3));
 }
 
 /* -- the log: contracts and exfil reports --------------------------------- */
@@ -757,7 +780,7 @@
   font: 900 34px/0.9 var(--display);
   font-stretch: 125%;
   letter-spacing: -0.04em;
-  color: var(--acid);
+  color: var(--acid-ink);
 }
 :root[data-marathon] .turn.user > * { grid-column: 2; }
 :root[data-marathon] .turn.user .sent-files { justify-content: flex-start; }
@@ -777,7 +800,7 @@
   margin-bottom: 4px;
   font: 700 9px/1 var(--mono);
   letter-spacing: 0.2em;
-  color: var(--acid);
+  color: var(--acid-ink);
 }
 :root[data-marathon] .turn.user .bubble::after {
   content: "\25B2  ROUTED TO RUNNER   \2022   PRIORITY: HIGH   \2022   EXFIL WINDOW 00:04:12";
@@ -851,7 +874,7 @@
 :root[data-marathon] .md td { border-color: var(--line); font-size: 13px; }
 :root[data-marathon] .turn.assistant .answer > .md th {
   background: #0a0a0a;
-  color: var(--paper);
+  color: #fff;
   font: 700 9.5px/1.4 var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -906,7 +929,7 @@
   font: 900 22px/1 var(--display);
   font-stretch: 125%;
   letter-spacing: -0.01em;
-  color: var(--acid);
+  color: var(--acid-ink);
 }
 
 /* -- the composer: drafting the next contract ------------------------------ */
@@ -979,7 +1002,7 @@
 }
 :root[data-marathon] .composer-field:has(textarea:placeholder-shown:focus)::after { content: "ENTER CONTRACT TERMS_"; animation: hz-blink 1s steps(2, jump-none) infinite; }
 :root[data-marathon] .composer-row .chip.icon { color: #0a0a0a; }
-:root[data-marathon] .round {
+:root[data-marathon] .round:not(.music-button) {
   width: auto;
   height: 34px;
   padding: 0 16px 0 12px;
@@ -990,19 +1013,19 @@
   box-shadow: inset 0 0 0 1.5px #000;
   clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
 }
-:root[data-marathon] .round > * { display: none; }
-:root[data-marathon] .round::after { content: "DEPLOY \25B2"; font: 900 13px/1 var(--display); font-stretch: 125%; }
-:root[data-marathon] .round:disabled { opacity: 1; background: transparent; color: rgba(10, 10, 10, 0.45); box-shadow: inset 0 0 0 1.5px rgba(10, 10, 10, 0.3); }
-:root[data-marathon] .round:disabled::after { content: "STANDBY"; }
-:root[data-marathon] .round.stop { background: var(--pink); color: #000; animation: hz-blink 0.9s steps(2, jump-none) infinite; }
-:root[data-marathon] .round.stop::after { content: "ABORT \25A0"; }
+:root[data-marathon] .round:not(.music-button) > * { display: none; }
+:root[data-marathon] .round:not(.music-button)::after { content: "DEPLOY \25B2"; font: 900 13px/1 var(--display); font-stretch: 125%; }
+:root[data-marathon] .round:not(.music-button):disabled { opacity: 1; background: transparent; color: rgba(10, 10, 10, 0.45); box-shadow: inset 0 0 0 1.5px rgba(10, 10, 10, 0.3); }
+:root[data-marathon] .round:not(.music-button):disabled::after { content: "STANDBY"; }
+:root[data-marathon] .round:not(.music-button).stop { background: var(--pink); color: #000; animation: hz-blink 0.9s steps(2, jump-none) infinite; }
+:root[data-marathon] .round:not(.music-button).stop::after { content: "ABORT \25A0"; }
 :root[data-marathon] .composer-tray {
   border: 1.5px solid var(--line-strong);
   border-top: 0;
   border-radius: 0;
   background: #0a0a0a;
 }
-:root[data-marathon] :is(.tray-label, .tray-note) { font: 700 9.5px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--acid); }
+:root[data-marathon] :is(.tray-label, .tray-note) { font: 700 9.5px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--acid-ink); }
 :root[data-marathon] .composer-tray select { font-size: 11.5px; }
 
 /* -- gallery: select your shell -------------------------------------------- */
@@ -1100,11 +1123,11 @@
   right: 0;
   height: 22px;
   padding: 6px 16px 0;
-  background: #2a2a28;
+  background: var(--strip, #2a2a28);
   white-space: pre;
   font: 700 9px/1 var(--mono);
   letter-spacing: 0.14em;
-  color: var(--paper);
+  color: var(--strip-ink, var(--paper));
 }
 :root[data-marathon] .preset::after {
   content: counter(shell, decimal-leading-zero);
@@ -1207,11 +1230,11 @@
   right: 0;
   height: 22px;
   padding: 6px 20px 0;
-  background: #2a2a28;
+  background: var(--strip, #2a2a28);
   white-space: pre;
   font: 700 9px/1 var(--mono);
   letter-spacing: 0.14em;
-  color: var(--paper);
+  color: var(--strip-ink, var(--paper));
 }
 :root[data-marathon] .card::after {
   content: "";
@@ -1247,7 +1270,11 @@
   --fx-motto: "YOU ARE BACKED UP";
 }
 :root[data-theme="nucaloric"] {
-  --acid: #ffb000;
+  /* Pink and white: a light look. */
+  --acid: #ff4f9a;
+  --acid-ink: #d61f6f;
+  --pink: #d61f6f;
+  --paper: #ffe4f0;
   --fx-name: "NUCALORIC";
   --fx-net: "HARVEST GRID 12";
   --fx-class: "SUSTENANCE";
@@ -1255,8 +1282,8 @@
   --fx-motto: "HUMANITY WILL EAT";
 }
 :root[data-theme="traxus"] {
-  --acid: #4d8dff;
-  --pink: #ffd400;
+  /* Orange. */
+  --acid: #ff7a1a;
   --fx-name: "TRAXUS";
   --fx-net: "ASSET LEDGER 9001";
   --fx-class: "PROPERTY";
@@ -1282,14 +1309,58 @@
   --fx-motto: "ALL THREADS END";
 }
 :root[data-theme="sekiguchi"] {
-  --acid: #ff8fc8;
-  --pink: #00e0ff;
+  /* Teal and white: a light look. */
+  --acid: #19c7b4;
+  --acid-ink: #0b7d72;
+  --pink: #ff4d6d;
+  --paper: #dcf6f2;
   --fx-name: "SEKIGUCHI GENETICS";
   --fx-net: "WEAVEFORM LAB 3";
   --fx-class: "CULTURED";
   --fx-code: "SG-3";
   --fx-motto: "FLESH IS A DRAFT";
 }
+
+/* The light looks (NuCaloric, Sekiguchi): white glass instead of black, the
+   faction's ink in blocks, its pale tint for the paper slips, black type.
+   Everything drawn in paper on black is redrawn in black on white. */
+:root[data-theme="nucaloric"],
+:root[data-theme="sekiguchi"] {
+  --ground: #ffffff;
+  --surface: #ffffff;
+  --well: #f1f0ee;
+  --line: #e2e0dc;
+  --line-strong: #0a0a0a;
+  --ink: #0a0a0a;
+  --ink-soft: #1d1d1c;
+  --dim: #55544f;
+  --faint: #8a8984;
+  --on-ink: #ffffff;
+  --strip: var(--acid);
+  --strip-ink: #000;
+  --ghost: rgba(10, 10, 10, 0.06);
+  --ghost-strong: rgba(10, 10, 10, 0.18);
+  --barcode-p: var(--barcode-k);
+  --cross-p: var(--cross-k);
+  --hatch-p: var(--hatch-k);
+  --dots: radial-gradient(circle, rgba(10, 10, 10, 0.12) 1px, transparent 1.5px) 0 0 / 14px 14px;
+  --shadow: 0 0 0 2px var(--acid), 0 24px 60px -20px rgba(0, 0, 0, 0.25);
+  color-scheme: light;
+}
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .composer-box { box-shadow: 0 -18px 40px -10px #fff, 0 0 0 1.5px #0a0a0a; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .composer-box:focus-within { box-shadow: 0 0 0 2px var(--acid-ink), 0 -18px 40px -10px #fff; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .composer-tray { background: #fff; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .unit[data-answering] .unit-no { color: #000; }
+/* In the sidebar, the deployed row and today are white blocks, not black. */
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .contact[aria-current="true"] { --ink: #0a0a0a; --dim: #55544f; background: #ffffff; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .contact[aria-current="true"] .gauge[data-size="row"] .gauge-track,
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .contact[aria-current="true"] .gauge[data-size="row"] .sanity-bar i:not([data-on]) { background: rgba(10, 10, 10, 0.14); }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .month-day[data-today] { background: #ffffff; color: #0a0a0a; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .side-settings:hover,
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .side-settings[aria-current="true"] { background: #ffffff; color: #0a0a0a; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .spare { background: #fff; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .preset .btn.primary { background: #0a0a0a; color: #fff; }
+:root:is([data-theme="nucaloric"], [data-theme="sekiguchi"]) .settings-tabs [role="tab"]:not([aria-selected="true"]) { color: var(--dim); }
 /* The theme is a sticker on everything already; the agent called by its
    callsign also gets the faction's colour as its own. */
 :root[data-marathon]:not([data-theme="hazard"]) { --agent-green: var(--acid); }
@@ -1298,11 +1369,11 @@
 .thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) { --t-main: #0a0a0a; --t-line: #4a4a46; --t-accent: #0a0a0a; }
 .thumb[data-look="hazard"] { --t-side: #c8ff00; }
 .thumb[data-look="cyberacme"] { --t-side: #00f0b0; }
-.thumb[data-look="nucaloric"] { --t-side: #ffb000; }
-.thumb[data-look="traxus"] { --t-side: #4d8dff; }
+.thumb[data-look="nucaloric"] { --t-side: #ff4f9a; --t-main: #ffffff; --t-line: #ffc2dc; }
+.thumb[data-look="traxus"] { --t-side: #ff7a1a; }
 .thumb[data-look="mida"] { --t-side: #ff3b30; }
 .thumb[data-look="arachne"] { --t-side: #b57bff; }
-.thumb[data-look="sekiguchi"] { --t-side: #ff8fc8; }
+.thumb[data-look="sekiguchi"] { --t-side: #19c7b4; --t-main: #ffffff; --t-line: #b5ece4; }
 
 /* The Marathon swatches' shapes. */
 .thumb:is([data-look="hazard"], [data-look="cyberacme"], [data-look="nucaloric"], [data-look="traxus"], [data-look="mida"], [data-look="arachne"], [data-look="sekiguchi"]) .thumb-dot { border-radius: 0; }

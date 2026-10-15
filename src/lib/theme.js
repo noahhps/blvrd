@@ -12,18 +12,19 @@ export const THEMES = [
   { id: "system", label: "System" },
   { id: "light", label: "Light" },
   { id: "dark", label: "Dark" },
-  // Marathon's runner terminals (styles/hazard.css), always dark: the UESC's
-  // own, then one per faction, each in its colours and naming the agents its
-  // own way (lib/callsigns.js).
+  // Marathon's runner terminals (styles/hazard.css): the UESC's own, then one
+  // per faction, each in its colours and naming the agents its own way
+  // (lib/callsigns.js). Dark, but for the two whose colours are light.
   { id: "hazard", label: "UESC", marathon: true },
   { id: "cyberacme", label: "CyberAcme", marathon: true },
-  { id: "nucaloric", label: "NuCaloric", marathon: true },
+  { id: "nucaloric", label: "NuCaloric", marathon: true, light: true },
   { id: "traxus", label: "Traxus", marathon: true },
   { id: "mida", label: "MIDA", marathon: true },
   { id: "arachne", label: "Arachne", marathon: true },
-  { id: "sekiguchi", label: "Sekiguchi", marathon: true },
+  { id: "sekiguchi", label: "Sekiguchi", marathon: true, light: true },
 ];
 export const isMarathon = (theme) => THEMES.some((t) => t.id === theme && t.marathon);
+const isLight = (theme) => theme === "light" || THEMES.some((t) => t.id === theme && t.light);
 export const themeOf = (state) => (THEMES.some((t) => t.id === state?.theme) ? state.theme : "system");
 
 export function applyTheme(theme) {
@@ -42,7 +43,7 @@ export function applyTheme(theme) {
   }
   if (!inDesktop()) return;
   import("@tauri-apps/api/window")
-    .then(({ getCurrentWindow }) => getCurrentWindow().setTheme(theme === "system" ? null : theme === "light" ? "light" : "dark"))
+    .then(({ getCurrentWindow }) => getCurrentWindow().setTheme(theme === "system" ? null : isLight(theme) ? "light" : "dark"))
     .catch(() => {});
 }
 
@@ -57,7 +58,7 @@ const onSystem = (change) => {
 };
 export function useDark(theme) {
   const system = useSyncExternalStore(onSystem, systemDark, () => false);
-  return theme === "dark" || isMarathon(theme) || (theme === "system" && system);
+  return theme === "dark" || (isMarathon(theme) && !isLight(theme)) || (theme === "system" && system);
 }
 
 /** At start, before the first paint: the saved choice -- and, in the
