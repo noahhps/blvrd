@@ -30,6 +30,9 @@
   --black: #0b0b0b;
   --serif: "Newsreader", "Times New Roman", serif;
   --jp: "Sekiguchi JP", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  /* What agents write: a plain, quiet sans, so the light serif stays for
+     what names things. */
+  --prose: "Inter", ui-sans-serif, system-ui, sans-serif;
 
   --ground: var(--mint);
   --surface: #ffffff;
@@ -201,13 +204,37 @@
   color: var(--mint);
 }
 :root[data-theme="sekiguchi"] .turn.assistant .answer > .md::after { width: 26px; height: 15px; top: 5px; background: var(--mark) center / contain no-repeat; }
-:root[data-theme="sekiguchi"] .md strong { background: linear-gradient(transparent 62%, var(--lav) 62%); }
 :root[data-theme="sekiguchi"] .turn.assistant .answer > .md th { background: var(--black); color: var(--mint); }
 :root[data-theme="sekiguchi"] .turn.assistant .answer > .md :is(code, pre) { background: rgba(151, 245, 195, 0.35); }
 :root[data-theme="sekiguchi"] .md ul > li::before { clip-path: none; width: 6px; height: 6px; background: var(--peri); }
 
+/* What's inside a report: written like a lab sheet -- a quiet sans,
+   light serif headings in the writer's own case, plain semibold for
+   emphasis, hairline tables with monospaced heads. */
+:root[data-theme="sekiguchi"] .turn.assistant .answer > .md { font: 400 14.5px/1.65 var(--prose); color: var(--black); }
+:root[data-theme="sekiguchi"] .md :is(h1, h2, h3, h4) { margin: 22px 0 8px; font-family: var(--serif); font-weight: 300; font-stretch: normal; letter-spacing: -0.01em; text-transform: none; line-height: 1.15; color: var(--black); }
+:root[data-theme="sekiguchi"] .md h1 { font-size: 32px; }
+:root[data-theme="sekiguchi"] .md h2 { font-size: 28px; }
+:root[data-theme="sekiguchi"] .md h3 { font-size: 23px; }
+:root[data-theme="sekiguchi"] .md h4 { font-size: 19px; }
+:root[data-theme="sekiguchi"] .md > :first-child { margin-top: 0; }
+:root[data-theme="sekiguchi"] .md strong { font-weight: 600; background: none; text-decoration: none; }
+:root[data-theme="sekiguchi"] .md em { font-family: var(--serif); font-size: 1.08em; }
+:root[data-theme="sekiguchi"] .md hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+:root[data-theme="sekiguchi"] .md ol { padding-left: 24px; }
+:root[data-theme="sekiguchi"] .md ol > li::marker { font: 500 12px var(--mono); color: var(--peri); }
+:root[data-theme="sekiguchi"] .md li + li { margin-top: 4px; }
+:root[data-theme="sekiguchi"] .md a { color: var(--black); text-decoration-color: var(--peri); text-underline-offset: 3px; }
+:root[data-theme="sekiguchi"] .md blockquote { border-left: 1px solid var(--black); color: var(--dim); font-family: var(--serif); font-size: 17px; }
+:root[data-theme="sekiguchi"] .md :is(th, td) { border-color: var(--line); padding: 8px 12px; font-size: 13.5px; line-height: 1.5; }
+:root[data-theme="sekiguchi"] .md td:first-child { font: 500 13.5px/1.5 var(--prose); letter-spacing: 0; text-transform: none; color: var(--black); }
+:root[data-theme="sekiguchi"] .md td:first-child strong { font-weight: 600; }
+:root[data-theme="sekiguchi"] .turn.assistant .answer > .md th { padding: 7px 12px; font: 600 9.5px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+:root[data-theme="sekiguchi"] .md code { padding: 1px 5px; font: 500 12.5px var(--mono); color: var(--black); }
+:root[data-theme="sekiguchi"] .md pre { border-left: 1px solid var(--black); }
+
 /* The composer: a frosted form, a lavender head. */
-:root[data-theme="sekiguchi"] .composer-box { border: 1px solid var(--black); background: rgba(255, 255, 255, 0.86); box-shadow: 0 -18px 40px -10px var(--mint); }
+:root[data-theme="sekiguchi"] .composer-box { border: 1px solid var(--black); background: #f2fdf7; box-shadow: 0 -24px 40px -6px var(--mint); }
 :root[data-theme="sekiguchi"] .composer-box:focus-within { box-shadow: 0 0 0 1px var(--black), 0 -18px 40px -10px var(--mint); }
 :root[data-theme="sekiguchi"] .composer-box::before { content: "NEW REQUEST " counter(order, hz-pad3) "   //   " var(--fx-name) "   //   " var(--fx-net); }
 :root[data-theme="sekiguchi"] .composer-box::after { content: none; }
@@ -222,7 +249,10 @@
 :root[data-theme="sekiguchi"] .round:not(.music-button):disabled::after { content: "\5F85\6A5F  STANDBY"; font-family: var(--mono), var(--jp); }
 :root[data-theme="sekiguchi"] .round.stop:not(.music-button) { background: var(--peri); color: #fff; }
 :root[data-theme="sekiguchi"] .round.stop:not(.music-button)::after { content: "HALT \25A0"; }
-:root[data-theme="sekiguchi"] .composer-tray { border-color: var(--black); background: rgba(255, 255, 255, 0.6); }
+:root[data-theme="sekiguchi"] .composer-tray { border-color: var(--black); background: #e4fbef; }
+:root[data-theme="sekiguchi"] .effort { border-radius: 0; background: rgba(11, 11, 11, 0.06); }
+:root[data-theme="sekiguchi"] .effort button { border-radius: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.06em; }
+:root[data-theme="sekiguchi"] .effort button[aria-pressed="true"], :root[data-theme="sekiguchi"] .effort button[aria-checked="true"] { background: var(--black); color: var(--mint); box-shadow: none; }
 :root[data-theme="sekiguchi"] :is(.tray-label, .tray-note) { color: var(--black); }
 
 /* An empty chat: the specimen, waking. */
