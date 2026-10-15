@@ -2871,6 +2871,13 @@ html[data-window="quick"], html[data-window="quick"] body { background: transpar
 .s1-scores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .s1-scores li { display: grid; grid-template-columns: minmax(0, 1fr) 140px 56px; align-items: center; gap: 10px; font-size: 13.5px; }
 .s1-scores li[data-best] .s1-name { font-weight: 600; }
+/* The answer it picked -- the likeliest option, level, or yes/no -- in the
+   look's own colour. */
+.s1-scores li { margin: 0 -8px; padding: 5px 8px; border-radius: 6px; }
+.s1-scores li[data-best] { background: var(--accent); color: var(--on-accent); }
+.s1-scores li[data-best] :is(.s1-num, .s1-name em) { color: inherit; }
+.s1-scores li[data-best] .s1-bar { background: color-mix(in srgb, var(--on-accent) 25%, transparent); }
+.s1-scores li[data-best] .s1-bar i { background: var(--on-accent); }
 .s1-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .s1-name em { font-style: normal; color: var(--faint); margin: 0 4px; }
 .s1-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--dim); }

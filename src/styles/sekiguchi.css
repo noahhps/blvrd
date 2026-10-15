@@ -343,5 +343,4 @@
 :root[data-theme="sekiguchi"] .kind-tag[data-kind="s1"] { background: var(--lav); color: var(--black); }
 :root[data-theme="sekiguchi"] .side .kind-tag { box-shadow: inset 0 0 0 1px var(--mint-dim); background: transparent; color: var(--mint); }
 :root[data-theme="sekiguchi"] .s1-lead strong { font: 300 34px/1 var(--serif); text-transform: none; }
-:root[data-theme="sekiguchi"] .s1-scores li[data-best] .s1-bar i { background: var(--peri); }
 :root[data-theme="sekiguchi"] .s1-body { background: none; }

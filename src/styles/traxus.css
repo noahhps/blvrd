@@ -401,7 +401,6 @@
 :root[data-theme="traxus"] .s1-tasks button[aria-checked="true"] { background: var(--orange); color: var(--black); box-shadow: none; }
 :root[data-theme="traxus"] .s1-bar { background: rgba(242, 242, 238, 0.12); }
 :root[data-theme="traxus"] .s1-bar i { background: var(--white); }
-:root[data-theme="traxus"] .s1-scores li[data-best] .s1-bar i { background: var(--orange); }
 :root[data-theme="traxus"] .s1-lead strong { font: 600 30px/1 var(--grot); letter-spacing: 0.04em; color: var(--white); }
 :root[data-theme="traxus"] .s1-vector { background: rgba(242, 242, 238, 0.07); color: var(--white); }
 :root[data-theme="traxus"] .s1-panel :is(input[type="text"], textarea, select) { background-color: var(--ground); border-color: var(--hair); color: var(--white); font-family: var(--grot); }
