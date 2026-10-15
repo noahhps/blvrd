@@ -68,12 +68,14 @@ export const FACTIONS = {
   // the mint, the woman Vulcan made, the god of boundary stones, the tutor;
   // then order, healing, the rainbow messenger, the god of silence, wealth
   // dug up, the muse of record, Vulcan's thunder-smith, and fame; memory,
-  // justice with her scales, Echo, and hundred-eyed Argus.
+  // justice with her scales, Echo, and hundred-eyed Argus. Traxus ships
+  // freight between worlds, so its spares are the gods of harbours, the
+  // sea, doorways and crossroads.
   traxus: {
     roles: ["MINERVA", "DAEDALUS", "MERCURY", "JANUS", "MONETA", "PANDORA", "TERMINUS", "CHIRON",
       "THEMIS", "ASCLEPIUS", "IRIS", "HARPOCRATES", "PLUTUS", "CLIO", "BRONTES", "FAMA",
       "MNEMOSYNE", "JUSTITIA", "ECHO", "ARGUS"],
-    spares: ["TALOS", "AETNA", "CACUS", "STEROPES"],
+    spares: ["PORTUNUS", "NEPTUNE", "CARDEA", "TRIVIA"],
   },
   // MIDA's is Gantry: a piece of hard industry. The machine shop and the
   // print shop of an insurgency -- down to the label punch, the grinder,

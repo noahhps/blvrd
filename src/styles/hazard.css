@@ -1370,7 +1370,7 @@
 .thumb[data-look="hazard"] { --t-side: #c8ff00; }
 .thumb[data-look="cyberacme"] { --t-side: #00f0b0; }
 .thumb[data-look="nucaloric"] { --t-side: #ff4f9a; --t-main: #ffffff; --t-line: #ffc2dc; }
-.thumb[data-look="traxus"] { --t-side: #ff7a1a; }
+.thumb[data-look="traxus"] { --t-side: #0e0e0e; --t-main: #151515; --t-line: #ff5a1f; }
 .thumb[data-look="mida"] { --t-side: #ff3b30; }
 .thumb[data-look="arachne"] { --t-side: #b57bff; }
 .thumb[data-look="sekiguchi"] { --t-side: #0b0b0b; --t-main: #97f5c3; --t-line: #cbc3f8; }
