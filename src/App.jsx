@@ -68,6 +68,8 @@ import { WidgetSheet } from "./components/WidgetSheet.jsx";
 import { MAX_DATA, newWidgetId, sourceOf } from "./lib/widgets.js";
 import { widgetTools } from "./lib/widgetTools.js";
 import { SPOKEN_NOTE } from "./lib/voice/speakable.js";
+import { cutOffNote } from "./lib/voice/turns.js";
+import { controlFor, leastOf } from "./lib/thinking.js";
 import { voiceOf } from "./lib/voice/engines.js";
 
 /* What goes back to the model: the chat since its last summary (lib/compact.js),
@@ -472,6 +474,12 @@ export default function App() {
       chats: { ...s.chats, [chatId]: [...(s.chats[chatId] || []), { id: newId("m"), at: Date.now(), ...message }] },
     }));
 
+  // The model spoken turns run on, when Settings → Voice names one.
+  const voiceModel = (voice) => {
+    const provider = voice.model?.model && providers.find((p) => p.id === voice.model.provider);
+    return provider?.enabled ? { provider, model: voice.model.model } : null;
+  };
+
   const modelFor = (agent) => {
     const choice = agent?.model?.model ? agent.model : state.defaultModel;
     if (!choice?.model) return null;
@@ -513,8 +521,12 @@ export default function App() {
    * `chatId` with `tag` added (a group tags each message with its agent), and
    * returned. Throws STOPPED when the reader stops it. */
   const STOPPED = "stopped";
-  const answerAs = async ({ agent, chatId, history, controller, thinking = null, context = "", tag = {}, queue = [], spoken = false }) => {
-    const target = modelFor(agent);
+  const answerAs = async ({ agent, chatId, history, controller, thinking = null, context = "", tag = {}, queue = [], spoken = false, cutOff = null }) => {
+    // Spoken (components/Voice.jsx): on the voice model, if one is chosen in
+    // Settings → Voice, and thinking as little as the model allows unless
+    // asked to -- a pause before speaking is dead air.
+    const voice = voiceOf(stateRef.current);
+    const target = (spoken && voiceModel(voice)) || modelFor(agent);
     const fail = (failure) => {
       append(chatId, { role: "assistant", failure, ...tag });
       return [];
@@ -523,6 +535,7 @@ export default function App() {
     if (!target.provider.enabled) return fail(`${target.provider.name} is switched off in Settings.`);
 
     setLive({ chatId, agentId: agent.id, text: "", parts: [], status: "", queue });
+    if (spoken && !voice.think && !thinking) thinking = leastOf(await controlFor(target.provider, target.model));
     const said = [];
     // The user's unsaved notebook edits are saved first: an agent is never
     // behind what's on their screen. Its own memory is read fresh, in case
@@ -550,8 +563,17 @@ export default function App() {
         notebook: notebookOf(agent.id, chatId),
         thinking,
         context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
-        // Talking by voice (components/Voice.jsx): the answer is heard, not read.
-        note: [behindNote(agent.id, chatId, history, agentName), connectorsNews, spoken ? SPOKEN_NOTE : ""].filter(Boolean).join("\n\n"),
+        // Talking by voice (components/Voice.jsx): the answer is heard, not
+        // read -- and if the reader talked over this agent's last one, how
+        // much of it they heard.
+        note: [
+          behindNote(agent.id, chatId, history, agentName),
+          connectorsNews,
+          cutOff && (cutOff.agentId == null || cutOff.agentId === agent.id) ? cutOffNote(cutOff.heard) : "",
+          spoken ? SPOKEN_NOTE : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
         memory,
         available,
         approve: askFirst(chatId, agent),
@@ -605,10 +627,10 @@ export default function App() {
     setQueued((q) => q.slice(1));
     if (next.kind === "group") {
       const group = (stateRef.current.groups || []).find((g) => g.id === next.chatId);
-      if (group) return sendGroup(next.text, next.files, null, next.picked, group, { spoken: next.spoken });
+      if (group) return sendGroup(next.text, next.files, null, next.picked, group, { spoken: next.spoken, cutOff: next.cutOff });
     } else {
       const agent = stateRef.current.agents.find((a) => a.id === next.chatId);
-      if (agent) return sendTo(agent, next.text, next.files, next.thinking, { spoken: next.spoken });
+      if (agent) return sendTo(agent, next.text, next.files, next.thinking, { spoken: next.spoken, cutOff: next.cutOff });
     }
     drainSoon(); // its chat is gone: the one after it
   };
@@ -618,11 +640,12 @@ export default function App() {
   // Busy, or others already waiting: in the queue, behind them.
   const mustQueue = () => Boolean(running.current) || queueNow.current.length > 0;
 
-  // `spoken`: said aloud in a voice conversation rather than typed.
-  const send = (text, files = [], thinking = null, { spoken = false } = {}) => {
+  // `spoken`: said aloud in a voice conversation rather than typed;
+  // `cutOff`: what was heard of the answer the reader talked over.
+  const send = (text, files = [], thinking = null, { spoken = false, cutOff = null } = {}) => {
     if (!selected) return;
-    if (mustQueue()) return enqueue({ chatId: selected.id, kind: "agent", text, files, thinking, spoken });
-    sendTo(selected, text, files, thinking, { spoken });
+    if (mustQueue()) return enqueue({ chatId: selected.id, kind: "agent", text, files, thinking, spoken, cutOff });
+    sendTo(selected, text, files, thinking, { spoken, cutOff });
   };
   /* Compaction (lib/compact.js). `fold` summarizes the older part of a chat
    * with `agent`'s model and puts the summary in; it returns the chat with
@@ -698,7 +721,7 @@ export default function App() {
     }
   };
 
-  const sendTo = async (agent, text, files = [], thinking = null, { spoken = false } = {}) => {
+  const sendTo = async (agent, text, files = [], thinking = null, { spoken = false, cutOff = null } = {}) => {
     if (running.current) return;
     await filesIn.current;
     if (running.current) return;
@@ -709,7 +732,7 @@ export default function App() {
     running.current = { chatId: agent.id, controller };
     try {
       const chat = await foldIfLong({ chatId: agent.id, chat: [...before, user], agent, controller });
-      await answerAs({ agent, chatId: agent.id, history: historyOf(chat), controller, thinking, context: summaryContext(chat), spoken });
+      await answerAs({ agent, chatId: agent.id, history: historyOf(chat), controller, thinking, context: summaryContext(chat), spoken, cutOff });
     } catch (stopped) {
       if (stopped !== STOPPED) throw stopped;
     } finally {
@@ -723,10 +746,10 @@ export default function App() {
    * each shown the chat as it stands -- earlier answers in this round
    * included -- from its own seat (lib/group.js). An answer that @-mentions
    * another member brings that member in next, up to MAX_HANDOFFS times. */
-  const sendGroup = async (text, files = [], _thinking = null, picked = [], target = null, { spoken = false } = {}) => {
+  const sendGroup = async (text, files = [], _thinking = null, picked = [], target = null, { spoken = false, cutOff = null } = {}) => {
     const group = target || selectedGroup;
     if (!group) return;
-    if (!target && mustQueue()) return enqueue({ chatId: group.id, kind: "group", text, files, picked, spoken });
+    if (!target && mustQueue()) return enqueue({ chatId: group.id, kind: "group", text, files, picked, spoken, cutOff });
     if (running.current) return;
     await filesIn.current;
     if (running.current) return;
@@ -760,6 +783,8 @@ export default function App() {
           tag: { agentId: agent.id },
           queue: [...queue],
           spoken,
+          // Told only to the member who was talked over (by its id).
+          cutOff,
         });
         transcript.push(...said);
         // Handing on: members named in this answer, not already waiting, next.

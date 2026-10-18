@@ -13,6 +13,7 @@
 
 import { failure, httpFetch, inDesktop } from "../http.js";
 import { invoke } from "../desktop.js";
+import { isPhantom } from "./turns.js";
 
 export const HEARING = [
   {
@@ -112,6 +113,10 @@ export const VOICE_DEFAULTS = {
   speed: 1,
   pause: "normal",
   interrupt: true,
+  mode: "hands-free", // or "push": it hears you while Space or the talk button is held
+  sounds: true, // small cues: listening, heard you, working, ended (lib/voice/cues.js)
+  think: false, // spoken turns think as little as the model allows, unless this
+  model: null, // { provider, model }: what spoken turns run on; null, the agent's own
   language: "", // "" = this Mac's own
 };
 
@@ -178,13 +183,14 @@ export async function transcribe(engine, wav, { language, signal } = {}) {
 }
 
 /* What a recogniser writes for a recording with no words in it -- Whisper
-   on a cough or a door: "[BLANK_AUDIO]", "(music)" -- is nothing. */
+   on a cough or a door: "[BLANK_AUDIO]", "(music)", "Thanks for watching!"
+   (lib/voice/turns.js isPhantom) -- is nothing. */
 export function cleanHeard(text) {
   const s = String(text || "")
     .replace(/\[[^\]]*\]|\((?:music|silence|noise|applause|laughter|inaudible)[^)]*\)/gi, "")
     .replace(/\s+/g, " ")
     .trim();
-  return /[\p{L}\p{N}]/u.test(s) ? s : "";
+  return /[\p{L}\p{N}]/u.test(s) && !isPhantom(s) ? s : "";
 }
 
 /* -- speaking ----------------------------------------------------------------- */

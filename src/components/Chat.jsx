@@ -14,7 +14,7 @@ import { Composer } from "./Composer.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
-import { VoiceBar, VoiceButton, useVoice } from "./Voice.jsx";
+import { VoiceBar, VoiceButton, VoiceStage, useVoice } from "./Voice.jsx";
 
 /* One agent's ongoing chat. `live` is the answer still arriving: its text so
  * far, shown under the messages already kept.
@@ -84,9 +84,9 @@ export function Chat({
     live,
     approval,
     agentOf: () => agent,
-    onSend: (text) => {
+    onSend: (text, { cutOff }) => {
       stuck.current = true;
-      onSend(text, [], null, { spoken: true });
+      onSend(text, [], null, { spoken: true, cutOff });
     },
     onStop,
   });
@@ -187,6 +187,8 @@ export function Chat({
             <Approval request={approval} onAnswer={onApprove} />
           </div>
         </div>
+
+        <VoiceStage voice={voice} agent={agent} />
 
         <Composer
           agentName={agent.name}

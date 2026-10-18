@@ -19,8 +19,11 @@ const FRAME = 1024; // samples a frame: about 21 ms at 48 kHz
 /** Listens until closed. `onEvent` hears { type: "start" } when the reader
  *  starts talking, { type: "end", wav, ms } for what they said, { type:
  *  "abandon" } for a sound too slight to send, and { type: "lost" } if the
- *  microphone goes away. */
-export async function openMic({ vad, onEvent }) {
+ *  microphone goes away.
+ *
+ *  With `push`, the detector only draws the level: an utterance is what's
+ *  heard while `hold(true)` lasts (push to talk, for a noisy room). */
+export async function openMic({ vad, onEvent, push = false }) {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error("This window has no microphone to use.");
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
@@ -36,11 +39,20 @@ export async function openMic({ vad, onEvent }) {
   let before = [];
   let taking = null;
   let paused = false;
+  const recording = (frames) => ({ ms: frames.length * frameMs, wav: wavOf(resample(join(frames), ctx.sampleRate, SPEECH_RATE), SPEECH_RATE) });
 
   node.onaudioprocess = (e) => {
     if (paused) return;
     const frame = new Float32Array(e.inputBuffer.getChannelData(0));
     const event = vad.push(rmsOf(frame), frameMs);
+    if (push) {
+      if (taking) taking.push(frame);
+      else {
+        before.push(frame);
+        if (before.length > Math.ceil(300 / frameMs)) before.shift();
+      }
+      return;
+    }
     if (taking) taking.push(frame);
     else {
       before.push(frame);
@@ -54,8 +66,7 @@ export async function openMic({ vad, onEvent }) {
     } else if (event === "end" || event === "abandon") {
       const frames = taking || [];
       taking = null;
-      const ms = frames.length * frameMs;
-      onEvent(event === "end" ? { type: "end", ms, wav: wavOf(resample(join(frames), ctx.sampleRate, SPEECH_RATE), SPEECH_RATE) } : { type: "abandon" });
+      onEvent(event === "end" ? { type: "end", ...recording(frames) } : { type: "abandon" });
     }
   };
   source.connect(node);
@@ -76,6 +87,30 @@ export async function openMic({ vad, onEvent }) {
         vad.reset();
         if (was) onEvent({ type: "abandon" });
       }
+    },
+    /** Push to talk: held, everything is heard (from a moment before);
+     *  let go, it's sent -- unless it was too short to be speech. */
+    hold(on) {
+      if (!push || paused || Boolean(taking) === Boolean(on)) return;
+      if (on) {
+        taking = before;
+        before = [];
+        onEvent({ type: "start" });
+        return;
+      }
+      const frames = taking;
+      taking = null;
+      const take = recording(frames);
+      onEvent(take.ms >= 450 ? { type: "end", ...take } : { type: "abandon" });
+    },
+    /** Let go of an utterance under way without sending it: the agent's own
+     *  voice, heard as it started to speak. */
+    drop() {
+      if (push || !taking) return;
+      taking = null;
+      before = [];
+      vad.reset();
+      onEvent({ type: "abandon" });
     },
     get level() {
       return paused ? 0 : vad.level;

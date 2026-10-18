@@ -323,3 +323,69 @@ test("the language listened for is a plain tag", () => {
   assert.equal(languageOf({ language: "en_GB" }), "en-GB");
   assert.equal(languageOf({ language: "en-US@posix" }), "en-US");
 });
+
+/* -- taking turns (lib/voice/turns.js) ------------------------------------------ */
+
+import { commandIn, cutOffNote, isPhantom, phrases } from "../src/lib/voice/turns.js";
+import { leastOf } from "../src/lib/thinking.js";
+
+test("a word alone stops the answer or ends the conversation; in a sentence it's a message", () => {
+  assert.equal(commandIn("Stop."), "stop");
+  assert.equal(commandIn("  wait!  "), "stop");
+  assert.equal(commandIn("Goodbye!"), "end");
+  assert.equal(commandIn("Okay, bye bye."), null);
+  assert.equal(commandIn("Bye-bye"), "end");
+  assert.equal(commandIn("Stop doing that and try the other file"), null);
+  assert.equal(commandIn("Can you wait for the build?"), null);
+});
+
+test("what Whisper invents out of noise isn't sent; what people say is", () => {
+  for (const phantom of ["Thanks for watching!", "Thank you for watching.", "Please subscribe.", "you", "Subtitles by the Amara.org community", "so so so so so", "Thank you. Thank you. Thank you. Thank you."]) {
+    assert.ok(isPhantom(phantom), phantom);
+    assert.equal(cleanHeard(phantom), "", phantom);
+  }
+  for (const real of ["Thank you!", "Thanks, that's all.", "Subscribe me to the newsletter", "You did great", "so what now"]) {
+    assert.ok(!isPhantom(real), real);
+  }
+});
+
+test("talked over, the agent hears how much of its answer was heard", () => {
+  assert.match(cutOffNote("Sure! It's sunny today."), /heard only "Sure! It's sunny today\." and none of the rest/);
+  assert.match(cutOffNote(""), /before you had said anything/);
+  const long = cutOffNote("x".repeat(500));
+  assert.ok(long.length < 420);
+});
+
+test("short sentences go to the voice with the next, but never hold up the first", () => {
+  const pieces = ["Sure!", "Okay.", "It's sunny today, about 21 degrees.", "Yes.", "No."];
+  assert.deepEqual(phrases(pieces, { final: true }), ["Sure!", "Okay. It's sunny today, about 21 degrees.", "Yes. No."]);
+  // Stable as pieces arrive: a prefix gives a beginning of the whole, and a
+  // short last group waits.
+  for (let n = 0; n <= pieces.length; n++) {
+    const now = phrases(pieces.slice(0, n));
+    assert.deepEqual(now, phrases(pieces, { final: true }).slice(0, now.length));
+  }
+  assert.deepEqual(phrases(["Sure!", "Okay."]), ["Sure!"]);
+});
+
+test("a spoken turn thinks as little as the model allows", () => {
+  assert.deepEqual(leastOf({ mode: "switch", default: true }).value, false);
+  assert.deepEqual(leastOf({ mode: "effort", options: ["low", "medium", "high"] }).value, "low");
+  assert.equal(leastOf({ mode: "none" }), null);
+});
+
+test("the speaker says which sentence is being heard as it starts", async () => {
+  const heard = [];
+  const voice = fakeVoice();
+  const speaker = createSpeaker({ ...voice, onPlay: (text, who) => heard.push(`${text}${who ? ` (${who})` : ""}`) });
+  speaker.say("One.", "Ada");
+  speaker.say("Two.");
+  await tick();
+  await tick();
+  assert.deepEqual(heard, ["One. (Ada)"]);
+  voice.finish("One.");
+  await tick();
+  await tick();
+  await tick();
+  assert.deepEqual(heard, ["One. (Ada)", "Two."]);
+});

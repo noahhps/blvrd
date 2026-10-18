@@ -57,3 +57,11 @@ export function thinkingFields(kind, control, value) {
   if (kind === "anthropic") return control.mode === "effort" ? { output_config: { effort: value } } : {};
   return {};
 }
+
+/** The least thinking a control allows -- off, or its lowest effort -- for a
+ *  turn that should answer quickly (a spoken one, components/Voice.jsx). */
+export function leastOf(control) {
+  if (control?.mode === "switch") return { control, value: false };
+  if (control?.mode === "effort") return { control, value: control.options[0] };
+  return null;
+}

@@ -12,7 +12,7 @@ import { Composer } from "./Composer.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
 import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
 import { Icon } from "./Icon.jsx";
-import { VoiceBar, VoiceButton, useVoice } from "./Voice.jsx";
+import { VoiceBar, VoiceButton, VoiceStage, useVoice } from "./Voice.jsx";
 
 const GONE = { id: null, name: "A removed agent", look: { colour: "ink" } };
 const NO_MEMBERS = "This group has no agents left. Add some with Edit group.";
@@ -76,9 +76,9 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
     live,
     approval,
     agentOf: (id) => byId.get(id) || members[0] || GONE,
-    onSend: (text) => {
+    onSend: (text, { cutOff }) => {
       stuck.current = true;
-      onSend(text, [], null, [...new Set([...picked, ...addressedIn(text, members)])], { spoken: true });
+      onSend(text, [], null, [...new Set([...picked, ...addressedIn(text, members)])], { spoken: true, cutOff });
     },
     onStop,
   });
@@ -170,6 +170,8 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
             <Approval request={approval} onAnswer={onApprove} />
           </div>
         </div>
+
+        <VoiceStage voice={voice} agent={speaking || members[0]} />
 
         <Composer
           agentName={group.name}

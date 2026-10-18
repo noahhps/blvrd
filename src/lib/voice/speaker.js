@@ -14,10 +14,12 @@
 /**
  * `synth(text, who)` resolves to a clip; `play(clip)` resolves when it has
  * been heard; `halt(clip)` cuts off one playing. `onBusy(busy)` hears when it
- * starts and finishes having something to say; `onProblem(error)` hears a
- * sentence that couldn't be made or played (it is skipped).
+ * starts and finishes having something to say; `onPlay(text, who)` when a
+ * sentence starts to be heard (a caption, and how much of an answer was
+ * heard before it was talked over); `onProblem(error)` hears a sentence that
+ * couldn't be made or played (it is skipped).
  */
-export function createSpeaker({ synth, play, halt = () => {}, onBusy = () => {}, onProblem = () => {}, ahead = 2 }) {
+export function createSpeaker({ synth, play, halt = () => {}, onBusy = () => {}, onPlay = () => {}, onProblem = () => {}, ahead = 2 }) {
   let queue = []; // [{ text, who, clip: Promise | null }]
   let playing = null; // { clip }
   let round = 0; // goes up with each stop: work for an earlier one is let go
@@ -58,6 +60,7 @@ export function createSpeaker({ synth, play, halt = () => {}, onBusy = () => {},
     prepare();
     if (clip) {
       try {
+        onPlay(item.text, item.who);
         await play(clip);
       } catch (problem) {
         if (mine === round) onProblem(problem);

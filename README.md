@@ -66,10 +66,14 @@ a looping model tries something else.
 
 ## Talking by voice
 
-Press the sound-wave button by Send, in any chat, and talk: when you pause,
-what you said is written down and sent, and the answer is read out a
-sentence at a time as it arrives. Talk over an agent and it stops and
-listens; pause mid-thought and carry on, and it's still one message. Each
+Press the sound-wave button by Send, in any chat, and talk -- hands-free, or
+holding Space for a noisy room: what you said is written down and sent, and
+the answer is read out a sentence at a time as it arrives, shown as it's
+said. Talk over an agent, while it speaks or thinks, and it stops, listens,
+and is told how much you heard; say "stop" to stop it or "goodbye" to end.
+Pause mid-thought and carry on, and it's still one message. The full view
+puts the agent large in the middle, like a call. Spoken turns think as
+little as the model allows, and can run on a faster model of their own. Each
 agent can have a voice of its own (Customize → Voice), which is how a
 group's members are told apart -- and there, "Ada, what do you think?" is
 for Ada.

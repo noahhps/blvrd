@@ -6,6 +6,7 @@ import { openMic, voiceOut } from "../lib/voice/audio.js";
 import { HEARING, SPEAKING, engineOf, languageOf, transcribe, unusable, voicesOf } from "../lib/voice/engines.js";
 import { PAUSES, createVad } from "../lib/voice/vad.js";
 import { Icon } from "./Icon.jsx";
+import { ModelPicker } from "./ModelPicker.jsx";
 
 /* Settings → Voice: what hears you, what speaks for the agents, and how a
  * voice conversation takes turns (docs/voice.md). Each can be tried here. */
@@ -98,22 +99,65 @@ export function VoiceSettings({ voice, providers, onVoice }) {
 
       <section className="card">
         <h2>Taking turns</h2>
-        <p className="hint">How long a pause means you’ve finished. Longer if you stop to think mid-sentence.</p>
-        <div className="effort voice-pause" role="radiogroup" aria-label="Pause before it answers">
-          {Object.keys(PAUSES).map((id) => (
-            <button key={id} type="button" role="radio" aria-checked={voice.pause === id} onClick={() => onVoice({ pause: id })}>
-              {id[0].toUpperCase() + id.slice(1)} · {(PAUSES[id] / 1000).toFixed(1)}s
+        <div className="effort voice-pause" role="radiogroup" aria-label="How it listens">
+          {[
+            ["hands-free", "Hands-free"],
+            ["push", "Push to talk"],
+          ].map(([id, label]) => (
+            <button key={id} type="button" role="radio" aria-checked={voice.mode === id} onClick={() => onVoice({ mode: id })}>
+              {label}
             </button>
           ))}
         </div>
-        <label className="check">
-          <input type="checkbox" checked={voice.interrupt} onChange={(e) => onVoice({ interrupt: e.target.checked })} />
-          Talk over an agent to interrupt it
-        </label>
         <p className="hint">
-          Best with headphones. On speakers, if an agent keeps cutting itself off, turn this off: it then stops listening
-          while it talks.
+          {voice.mode === "push"
+            ? "It hears you only while you hold Space (or the talk button), and sends what you said when you let go. Good for a noisy room."
+            : "It listens all the time and sends what you said when you pause. Say “stop” to stop an answer, or “goodbye” to end."}
         </p>
+        {voice.mode !== "push" ? (
+          <>
+            <p className="hint">How long a pause means you’ve finished. Longer if you stop to think mid-sentence.</p>
+            <div className="effort voice-pause" role="radiogroup" aria-label="Pause before it answers">
+              {Object.keys(PAUSES).map((id) => (
+                <button key={id} type="button" role="radio" aria-checked={voice.pause === id} onClick={() => onVoice({ pause: id })}>
+                  {id[0].toUpperCase() + id.slice(1)} · {(PAUSES[id] / 1000).toFixed(1)}s
+                </button>
+              ))}
+            </div>
+            <label className="check">
+              <input type="checkbox" checked={voice.interrupt} onChange={(e) => onVoice({ interrupt: e.target.checked })} />
+              Talk over an agent to interrupt it
+            </label>
+            <p className="hint">
+              Best with headphones. On speakers, if an agent keeps cutting itself off, turn this off: it then stops listening
+              while it talks.
+            </p>
+          </>
+        ) : null}
+        <label className="check">
+          <input type="checkbox" checked={voice.sounds} onChange={(e) => onVoice({ sounds: e.target.checked })} />
+          Sounds when it starts listening, hears you, works and ends
+        </label>
+      </section>
+
+      <section className="card">
+        <h2>Answering out loud</h2>
+        <p className="hint">
+          Spoken answers want to be quick: a pause before it speaks is dead air. A smaller, faster model can answer
+          spoken messages — with the same agent, abilities and memory — while typed ones keep the agent’s own.
+        </p>
+        <ModelPicker
+          providers={providers}
+          value={voice.model}
+          onChange={(model) => onVoice({ model })}
+          allowDefault
+          defaultLabel="Each agent’s own model"
+        />
+        <label className="check voice-think">
+          <input type="checkbox" checked={voice.think} onChange={(e) => onVoice({ think: e.target.checked })} />
+          Let models think before answering out loud
+        </label>
+        <p className="hint">Off, a model that reasons first does as little of it as it can, so it starts speaking sooner.</p>
       </section>
     </>
   );
