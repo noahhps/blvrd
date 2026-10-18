@@ -404,7 +404,8 @@ function noteOf(voice, interrupt) {
   if (voice.phase === "problem") return "";
   if (voice.problem) return voice.problem;
   if (voice.phase === "speaking" && voice.caption) return voice.caption;
-  if (voice.push && voice.phase === "hearing") return "Let go when you’re done.";
+  // What was said before isn't what's being heard now.
+  if (voice.phase === "hearing") return voice.push ? "Let go when you’re done." : "Pause when you’re done.";
   if (voice.heard) return `“${voice.heard}”`;
   if (voice.push) return "Or hold the talk button. Let go and it’s sent.";
   return interrupt ? "Talk, then pause. Talk over it any time to interrupt." : "Talk, then pause. Your words are sent when you stop.";
@@ -534,7 +535,8 @@ export function VoiceStage({ voice, agent }) {
     return () => removeEventListener("keydown", onKey);
   }, [voice.full, voice.toggleFull]);
   if (!voice.on || !voice.full || !agent) return null;
-  const line = voice.phase === "speaking" ? voice.caption : voice.phase === "hearing" || voice.phase === "writing" || voice.phase === "thinking" ? voice.heard : "";
+  // What it's saying, or -- once it's written down -- what you said.
+  const line = voice.phase === "speaking" ? voice.caption : voice.phase === "thinking" || voice.phase === "working" ? voice.heard : "";
   return (
     <div className="voice-stage" data-phase={voice.phase}>
       <div className="voice-orb" ref={orb}>
