@@ -16,8 +16,9 @@ import { SandboxCard } from "./SandboxCard.jsx";
 import { BrowserCard } from "./BrowserCard.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 import { FontPicker } from "./FontPicker.jsx";
+import { VoiceSettings } from "./VoiceSettings.jsx";
 
-/* Settings, in three tabs (⌘, opens it, App.jsx).
+/* Settings, in four tabs (⌘, opens it, App.jsx).
  *
  * General: how blvrd looks and the faces it's set in, its shortcut, long chats, web search.
  * Models: where the models come from. This computer first: every local
@@ -25,10 +26,12 @@ import { FontPicker } from "./FontPicker.jsx";
  * servers -- those that serve open-weight models, then the closed APIs --
  * each off until it has a key, and each saying where your messages would go.
  * Then any other OpenAI-compatible server by URL.
+ * Voice: what hears you and what speaks, when you talk to an agent.
  * Computer: the browser and the sandbox an agent's computer uses. */
 const TABS = [
   { id: "general", label: "General" },
   { id: "models", label: "Models" },
+  { id: "voice", label: "Voice" },
   { id: "computer", label: "Computer" },
 ];
 let lastTab = null; // the tab Settings was last left on, while the app runs
@@ -57,6 +60,8 @@ export function Settings({
   appIcon = null,
   dark = false,
   onAppIcon = () => {},
+  voice = null,
+  onVoice = () => {},
 }) {
   // Without a default model, nothing runs yet: that comes first.
   const [tab, setTabState] = useState(() => lastTab || (defaultModel?.model ? "general" : "models"));
@@ -240,6 +245,10 @@ export function Settings({
             <AddServer onAdd={onAddCustom} />
           </section>
         </div>
+      ) : tab === "voice" && voice ? (
+        <div className="settings-panel" role="tabpanel" id="settings-voice" aria-labelledby="settings-tab-voice">
+          <VoiceSettings voice={voice} providers={providers} onVoice={onVoice} />
+        </div>
       ) : (
         <div className="settings-panel" role="tabpanel" id="settings-computer" aria-labelledby="settings-tab-computer">
           <p className="settings-lede">What an agent’s computer works with, when you turn one on for a chat.</p>
@@ -256,7 +265,7 @@ export function Settings({
   );
 }
 
-/* The three tabs. Switching is instant: it happens many times, and the page
+/* The tabs. Switching is instant: it happens many times, and the page
  * under it changes completely anyway. Arrow keys move between them. */
 function Tabs({ tab, onTab, attention }) {
   const onKeyDown = (e) => {

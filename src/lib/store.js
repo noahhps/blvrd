@@ -1,6 +1,6 @@
 /* Everything the app keeps, in one object, in this machine's webview storage.
  *
- *   agents     [{ id, name, instructions, tools, look, model, createdAt }]
+ *   agents     [{ id, name, instructions, tools, look, model, voices, createdAt }]
  *              tools: null = every ability, or a list of tool names
  *              model: null = the default model, or { provider, model }
  *   groups     [{ id, name, members: [agentId], createdAt }] -- group chats
@@ -29,6 +29,9 @@
  *   customWidgets { [id]: { name, html, data, by, updatedAt } } -- the reader's
  *                 own widgets (lib/widgets.js); each placed one is a live
  *                 section of the Notebook, "custom:<id>"
+ *   voice         what hears the reader and what speaks for agents in a voice
+ *                 conversation, and how it takes turns (lib/voice/engines.js);
+ *                 agents' own voices are on each, `voices: { [engine]: name }`
  *   toldConnectors { [chatId]: { [agentId]: { [group]: name } } } -- the
  *                 connectors each agent had when it last answered in a chat,
  *                 so it hears about new or gone ones in its next request

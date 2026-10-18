@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { EVERYONE, mentionsEveryone, mentionsIn } from "../lib/group.js";
+import { EVERYONE, addressedIn, mentionsEveryone, mentionsIn } from "../lib/group.js";
 import { agentCount } from "../lib/preview.js";
 import { launchFrom, useLaunch } from "../lib/launch.js";
 import { useReadWidth } from "../lib/useReadWidth.js";
@@ -12,6 +12,7 @@ import { Composer } from "./Composer.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
 import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
 import { Icon } from "./Icon.jsx";
+import { VoiceBar, VoiceButton, useVoice } from "./Voice.jsx";
 
 const GONE = { id: null, name: "A removed agent", look: { colour: "ink" } };
 const NO_MEMBERS = "This group has no agents left. Add some with Edit group.";
@@ -19,7 +20,7 @@ const NO_MEMBERS = "This group has no agents left. Add some with Edit group.";
 /* A group's chat: the reader and several agents in one thread, each answer
  * labelled with who gave it. Under the composer, who answers the next
  * message -- everyone, or the members picked (or @-mentioned in the text). */
-export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onCompact, canCompact = false, approval = null, onApprove, queued = [], onUnqueue = null, computer = "off", onComputer = null }) {
+export function GroupChat({ group, members, messages, live, busy, onSend, onStop, onEdit, onCompact, canCompact = false, approval = null, onApprove, queued = [], onUnqueue = null, computer = "off", onComputer = null, voiceSettings = null, providers = [] }) {
   // The group's computer's screen, in a column beside the conversation.
   const view = useScreen(group.id);
   const thread = useRef(null);
@@ -62,6 +63,28 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
     launchFrom(area.current?.querySelector(".composer textarea"));
     onSend(text, files, thinking, picked);
     setPicked([]); // the pick is for one message
+  };
+
+  // Talking instead of typing (components/Voice.jsx): each member in its own
+  // voice. With no @ to say, a message that opens by naming members ("Ada,
+  // what do you think?") is for them, as the picked are.
+  const voice = useVoice({
+    chatId: group.id,
+    settings: voiceSettings,
+    providers,
+    messages,
+    live,
+    approval,
+    agentOf: (id) => byId.get(id) || members[0] || GONE,
+    onSend: (text) => {
+      stuck.current = true;
+      onSend(text, [], null, [...new Set([...picked, ...addressedIn(text, members)])], { spoken: true });
+    },
+    onStop,
+  });
+  const stop = () => {
+    voice.hush();
+    onStop();
   };
 
   const speaking = live ? agentOf(live.agentId) : null;
@@ -160,8 +183,13 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
           autoFocus={messages.length === 0}
           mentions={reachable}
           onSend={send}
-          onStop={onStop}
+          onStop={stop}
           onDraft={setDraft}
+          voice={
+            voiceSettings && members.length
+              ? { button: <VoiceButton voice={voice} />, bar: <VoiceBar voice={voice} agent={speaking || members[0]} interrupt={voiceSettings.interrupt} /> }
+              : null
+          }
           tray={
             <>
               <span className="tray-label">Answers</span>

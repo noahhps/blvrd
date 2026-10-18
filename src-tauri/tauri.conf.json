@@ -69,6 +69,7 @@
       "../computer/": "computer/"
     },
     "macOS": {
+      "entitlements": "Entitlements.plist",
       "dmg": {
         "background": "dmg/background.tiff",
         "windowSize": { "width": 660, "height": 400 },

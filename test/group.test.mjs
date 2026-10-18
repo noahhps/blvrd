@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { EVERYONE, groupBrief, mentionSpans, mentionsEveryone, mentionsIn, respondersFor, viewFor } from "../src/lib/group.js";
+import { EVERYONE, addressedIn, groupBrief, mentionSpans, mentionsEveryone, mentionsIn, respondersFor, viewFor } from "../src/lib/group.js";
 
 const members = [
   { id: "r", name: "Researcher" },
@@ -78,4 +78,18 @@ test("@everyone asks the whole group, whoever else was picked or named", () => {
   assert.deepEqual(mentionSpans("hi @everyone", [EVERYONE]), [{ start: 3, end: 12, id: "everyone" }]);
   // Not a handoff: an agent's @everyone names nobody.
   assert.deepEqual(mentionsIn("@everyone look", members), []);
+});
+
+test("a spoken message is for the members it opens by naming", () => {
+  const members = [{ id: "a", name: "Ada" }, { id: "b", name: "Bo" }, { id: "l", name: "Ann Lee" }, { id: "n", name: "Ann" }];
+  assert.deepEqual(addressedIn("Ada, what do you think?", members), ["a"]);
+  assert.deepEqual(addressedIn("Ada and Bo: ideas?", members), ["a", "b"]);
+  assert.deepEqual(addressedIn("Ada, Bo, and Ann Lee, hello", members), ["a", "b", "l"]);
+  assert.deepEqual(addressedIn("hey bo, hi", members), ["b"]);
+  assert.deepEqual(addressedIn("Ann, yes", members), ["n"]);
+  assert.deepEqual(addressedIn("Ann Lee: hi", members), ["l"]);
+  // Talking about someone isn't talking to them.
+  assert.deepEqual(addressedIn("I asked Ada, she said no", members), []);
+  assert.deepEqual(addressedIn("Ada is great", members), []);
+  assert.deepEqual(addressedIn("Bo", members), []);
 });

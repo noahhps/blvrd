@@ -14,6 +14,7 @@ import { Composer } from "./Composer.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
 import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./ComputerParts.jsx";
+import { VoiceBar, VoiceButton, useVoice } from "./Voice.jsx";
 
 /* One agent's ongoing chat. `live` is the answer still arriving: its text so
  * far, shown under the messages already kept.
@@ -42,6 +43,7 @@ export function Chat({
   onComputer = null,
   queued = [],
   onUnqueue = null,
+  voiceSettings = null,
 }) {
   const thread = useRef(null);
   const area = useRef(null);
@@ -71,6 +73,26 @@ export function Chat({
     stuck.current = true;
     launchFrom(area.current?.querySelector(".composer textarea"));
     onSend(text, files, thinking);
+  };
+
+  // Talking instead of typing (components/Voice.jsx).
+  const voice = useVoice({
+    chatId: agent.id,
+    settings: voiceSettings,
+    providers,
+    messages,
+    live,
+    approval,
+    agentOf: () => agent,
+    onSend: (text) => {
+      stuck.current = true;
+      onSend(text, [], null, { spoken: true });
+    },
+    onStop,
+  });
+  const stop = () => {
+    voice.hush();
+    onStop();
   };
 
   const where = provider
@@ -178,7 +200,12 @@ export function Chat({
           focusKey={agent.id}
           autoFocus={messages.length === 0}
           onSend={send}
-          onStop={onStop}
+          onStop={stop}
+          voice={
+            voiceSettings
+              ? { button: <VoiceButton voice={voice} />, bar: <VoiceBar voice={voice} agent={agent} interrupt={voiceSettings.interrupt} /> }
+              : null
+          }
           tray={
             <>
               <span className="tray-label">Model</span>
@@ -272,7 +299,17 @@ export function Turn({ message, agent, speaker = false }) {
             )}
           </div>
         ) : null}
-        {message.content ? <div className="bubble">{message.content}</div> : null}
+        {message.content ? (
+          <div className="bubble">
+            {/* Said aloud rather than typed (components/Voice.jsx). */}
+            {message.spoken ? (
+              <span className="spoken-mark" title="Said aloud">
+                <Icon name="mic" size={12} />
+              </span>
+            ) : null}
+            {message.content}
+          </div>
+        ) : null}
       </div>
     );
   }

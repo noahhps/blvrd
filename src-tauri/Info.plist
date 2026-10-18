@@ -11,5 +11,11 @@
        Without it macOS blocks those addresses silently; localhost is exempt. -->
   <key>NSLocalNetworkUsageDescription</key>
   <string>blvrd talks to model servers you add that run on other computers on your network.</string>
+  <!-- Asked the first time you talk to an agent instead of typing (the
+       voice button in a chat). Without them macOS refuses both outright. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>blvrd listens while you're talking to an agent by voice, and only then.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>blvrd writes down what you say to an agent with your Mac's own speech recognition, on this Mac.</string>
 </dict>
 </plist>

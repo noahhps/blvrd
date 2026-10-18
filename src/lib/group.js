@@ -34,6 +34,30 @@ export function mentionsIn(text, members) {
   return found.sort((a, b) => a.at - b.at).map((f) => f.id);
 }
 
+/** The members a spoken message opens by naming -- "Ada, what do you
+ *  think?", "Ada and Bo: ideas?" -- since there's no @ to say aloud. Names at
+ *  the start, joined by commas or "and", ended by a comma or colon; ids in
+ *  the order said. "Ada" anywhere else is only talking about her. */
+export function addressedIn(text, members) {
+  const named = members.filter((m) => String(m.name || "").trim()).sort((a, b) => b.name.length - a.name.length);
+  const opening = (rest) => named.find((m) => new RegExp(`^${escape(m.name.trim())}(?![\\w])`, "i").test(rest));
+  const found = [];
+  let rest = String(text || "").replace(/^\s*(hey|hi|ok|okay|so)\b[\s,]*/i, "");
+  for (let m = opening(rest); m; m = opening(rest)) {
+    if (!found.includes(m.id)) found.push(m.id);
+    rest = rest.slice(m.name.trim().length);
+    // Another name to come: read on.
+    const joint = /^\s*(,\s*and\b|,|and\b|&)\s*/i.exec(rest);
+    if (joint && opening(rest.slice(joint[0].length))) {
+      rest = rest.slice(joint[0].length);
+      continue;
+    }
+    // The names end with a comma or colon, and then what's said to them.
+    return /^\s*[:,]\s*\S/.test(rest) ? found : [];
+  }
+  return [];
+}
+
 /** Every @Name in `text`, where it is: [{ start, end, id }], in order. Where
  *  two names could match at once ("@Ann" and "@Ann Lee"), the longer wins. */
 export function mentionSpans(text, members) {

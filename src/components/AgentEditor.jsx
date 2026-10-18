@@ -8,6 +8,8 @@ import { AgentMemory } from "./AgentMemory.jsx";
 import { BrandLogo } from "./BrandLogo.jsx";
 import { Icon } from "./Icon.jsx";
 import { ModelPicker } from "./ModelPicker.jsx";
+import { VoicePicker } from "./VoiceSettings.jsx";
+import { engineOf } from "../lib/voice/engines.js";
 
 function draftFrom(agent) {
   return {
@@ -20,6 +22,9 @@ function draftFrom(agent) {
     shape: agent?.look?.shape || null,
     image: agent?.look?.image || null,
     model: agent?.model || null,
+    // Its voice in a voice conversation, for each way of speaking it's had one
+    // chosen for (lib/voice/engines.js voiceFor).
+    voices: agent?.voices || {},
   };
 }
 
@@ -29,7 +34,7 @@ function draftFrom(agent) {
  * being changed -- `agent` is the stored agent, or null for a new one;
  * `initial` is what a new one starts from.
  */
-export function AgentEditor({ agent, initial, providers, defaultModel, groups = [], onSave, onDelete, onClose }) {
+export function AgentEditor({ agent, initial, providers, defaultModel, groups = [], voice = null, onSave, onDelete, onClose }) {
   const [draft, setDraft] = useState(() => draftFrom(agent || initial));
   const [error, setError] = useState("");
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
@@ -84,6 +89,7 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
         : [...TOOLS.map((t) => t.name), ...groups.map((g) => `group:${g.id}`)].filter((n) => draft.chosen.has(n)),
       look,
       model: draft.model,
+      voices: draft.voices,
     });
   };
 
@@ -208,6 +214,8 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
             />
           </section>
 
+          {voice ? <VoiceField voice={voice} providers={providers} value={draft.voices} onChange={(voices) => set({ voices })} /> : null}
+
           <section className="field">
             <span className="label">Abilities</span>
             <label className="check">
@@ -268,5 +276,25 @@ export function AgentEditor({ agent, initial, providers, defaultModel, groups = 
         </div>
       </div>
     </div>
+  );
+}
+
+/* The voice it answers in when you talk to it (components/Voice.jsx), on
+ * whichever way of speaking Settings → Voice has chosen. */
+function VoiceField({ voice, providers, value, onChange }) {
+  const engine = engineOf("speak", voice, providers);
+  const fallback = voice.voices?.[engine.id] || (engine.mac ? "the Mac’s own" : engine.voice);
+  return (
+    <section className="field">
+      <span className="label">Voice</span>
+      <VoicePicker
+        engine={engine}
+        value={value[engine.id] || ""}
+        defaultLabel={fallback}
+        label="Voice"
+        onChange={(name) => onChange({ ...value, [engine.id]: name })}
+      />
+      <p className="hint">How it sounds when you talk to it, with {engine.name} (Settings → Voice). Give agents in a group different voices to tell them apart.</p>
+    </section>
   );
 }

@@ -11,10 +11,12 @@ export class DesktopOnly extends Error {
   }
 }
 
-export async function invoke(command, args, what = "This") {
+/* `options`: headers to send with `args` -- for a command handed raw bytes
+ * (a recording, lib/voice/engines.js), which has nowhere else to put them. */
+export async function invoke(command, args, what = "This", options = undefined) {
   if (!inDesktop()) throw new DesktopOnly(what);
   const { invoke: call } = await import("@tauri-apps/api/core");
-  return call(command, args);
+  return call(command, args, options);
 }
 
 export async function listen(event, handler) {

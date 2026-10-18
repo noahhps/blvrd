@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Signed with the hardened runtime, an app gets no microphone without
+       this, whatever the reader allows: talking to an agent by voice. -->
+  <key>com.apple.security.device.audio-input</key>
+  <true/>
+</dict>
+</plist>

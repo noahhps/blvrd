@@ -30,7 +30,9 @@ const STICK_PX = 80; // a thread scrolled this close to its end counts as "at th
 // `queued`: messages written while it was answering, waiting their turn
 // (App.jsx `queue`); sending while `disabled` adds to them. `onDraft`: told
 // what's in the box as it changes (a group's tray lights who's @-named).
-export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop, queued = [], onUnqueue = null, onDraft = null }) {
+// `voice`: talking instead of typing (components/Voice.jsx) -- its button,
+// by send, and its strip over the box while it's on.
+export function Composer({ agentName, disabled, blocked = null, provider, model, tray, focusKey, autoFocus = false, mentions = null, onSend, onStop, queued = [], onUnqueue = null, onDraft = null, voice = null }) {
   const form = useRef(null);
   const [value, setValue] = useState("");
   const [control, setControl] = useState({ mode: "none" });
@@ -146,6 +148,7 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
           <li className="queued-note">Sent in turn, when {disabled ? `${agentName} is done` : "the agent answering elsewhere is done"}.</li>
         </ul>
       ) : null}
+      {voice?.bar}
       <div className="composer-box">
         {files.list}
 
@@ -183,6 +186,8 @@ export function Composer({ agentName, disabled, blocked = null, provider, model,
           <span className="spacer" />
 
           <Thinking control={control} value={thinking} onChange={setThinking} disabled={disabled} />
+
+          {voice?.button}
 
           {disabled ? (
             <>

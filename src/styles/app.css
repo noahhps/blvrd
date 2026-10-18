@@ -837,6 +837,69 @@ textarea { resize: vertical; min-height: 110px; line-height: 1.5; }
 .queued .btn { width: 24px; height: 24px; border: 0; background: none; }
 .queued .queued-note { border: 0; background: none; padding: 0 2px; font-size: 12px; color: var(--faint); }
 
+/* Talking by voice (components/Voice.jsx): the strip over the box while it
+   listens and speaks, and the button by Send that starts it. */
+.voice-toggle[aria-pressed="true"] { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+.voice-toggle[aria-pressed="true"]:hover:not(:disabled) { color: var(--on-accent); background: var(--accent); }
+.voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+  padding: 6px 6px 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  animation: voice-in 220ms var(--ease-out);
+}
+@keyframes voice-in { from { opacity: 0; transform: translateY(4px) scale(0.98); } }
+.voice-says { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.voice-state { font-size: 13px; font-weight: 600; color: var(--ink); }
+.voice-bar[data-phase="problem"] .voice-state { font-weight: 500; color: var(--warn); white-space: normal; }
+.voice-note { font-size: 12.5px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-note.warn { color: var(--warn); }
+.voice-bar .btn.icon-only { width: 30px; height: 30px; }
+.voice-bar .btn[aria-pressed="true"] { color: var(--warn); }
+/* How loud the reader is (--level, 0 to 1, set every frame), as five bars;
+   while the agent speaks they move on their own. */
+.voice-meter { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 4px; --level: 0; }
+.voice-meter i {
+  width: 3px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: calc(0.35 + var(--level) * 0.65);
+  transform: scaleY(calc(0.18 + var(--level) * var(--k, 1)));
+  transition: transform 80ms linear;
+}
+.voice-meter i:nth-child(1), .voice-meter i:nth-child(5) { --k: 0.45; }
+.voice-meter i:nth-child(2), .voice-meter i:nth-child(4) { --k: 0.75; }
+.voice-bar[data-phase="speaking"] .voice-meter i { animation: voice-speak 900ms var(--ease-in-out) infinite alternate; opacity: 0.8; }
+.voice-bar[data-phase="speaking"] .voice-meter i:nth-child(2) { animation-delay: -300ms; }
+.voice-bar[data-phase="speaking"] .voice-meter i:nth-child(3) { animation-delay: -600ms; }
+.voice-bar[data-phase="speaking"] .voice-meter i:nth-child(4) { animation-delay: -150ms; }
+.voice-bar[data-phase="speaking"] .voice-meter i:nth-child(5) { animation-delay: -450ms; }
+@keyframes voice-speak { from { transform: scaleY(0.2); } to { transform: scaleY(0.8); } }
+.voice-bar:is([data-phase="muted"], [data-phase="problem"], [data-phase="starting"]) .voice-meter { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .voice-bar { animation: none; }
+  .voice-bar[data-phase="speaking"] .voice-meter i { animation: none; transform: scaleY(0.5); }
+  .voice-meter i { transition: none; }
+}
+/* A message said aloud rather than typed. */
+.spoken-mark { display: inline-flex; vertical-align: -1px; margin-right: 6px; color: var(--faint); }
+
+/* Settings → Voice. */
+.voice-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-top: 12px; }
+.voice-field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--dim); }
+.voice-field select, .voice-field input { min-width: 180px; }
+.voice-server { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; margin-top: 8px; max-width: 640px; }
+.voice-try { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.voice-heard { font-family: var(--prose); font-size: 14px; color: var(--ink); }
+.voice-pause { margin: 10px 0 12px; }
+.inline-icon { display: inline-flex; vertical-align: -2px; }
+
 /* The computer at work, live (Chat.jsx LiveComputer). */
 .live-computer { margin-top: 8px; }
 .live-computer ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }

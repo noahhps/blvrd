@@ -67,6 +67,8 @@ import { Widgets } from "./components/widgets/index.jsx";
 import { WidgetSheet } from "./components/WidgetSheet.jsx";
 import { MAX_DATA, newWidgetId, sourceOf } from "./lib/widgets.js";
 import { widgetTools } from "./lib/widgetTools.js";
+import { SPOKEN_NOTE } from "./lib/voice/speakable.js";
+import { voiceOf } from "./lib/voice/engines.js";
 
 /* What goes back to the model: the chat since its last summary (lib/compact.js),
  * minus turns that failed -- an error is for the reader, not part of the
@@ -511,7 +513,7 @@ export default function App() {
    * `chatId` with `tag` added (a group tags each message with its agent), and
    * returned. Throws STOPPED when the reader stops it. */
   const STOPPED = "stopped";
-  const answerAs = async ({ agent, chatId, history, controller, thinking = null, context = "", tag = {}, queue = [] }) => {
+  const answerAs = async ({ agent, chatId, history, controller, thinking = null, context = "", tag = {}, queue = [], spoken = false }) => {
     const target = modelFor(agent);
     const fail = (failure) => {
       append(chatId, { role: "assistant", failure, ...tag });
@@ -548,7 +550,8 @@ export default function App() {
         notebook: notebookOf(agent.id, chatId),
         thinking,
         context: [context, notebookBrief()].filter(Boolean).join("\n\n"),
-        note: [behindNote(agent.id, chatId, history, agentName), connectorsNews].filter(Boolean).join("\n\n"),
+        // Talking by voice (components/Voice.jsx): the answer is heard, not read.
+        note: [behindNote(agent.id, chatId, history, agentName), connectorsNews, spoken ? SPOKEN_NOTE : ""].filter(Boolean).join("\n\n"),
         memory,
         available,
         approve: askFirst(chatId, agent),
@@ -602,10 +605,10 @@ export default function App() {
     setQueued((q) => q.slice(1));
     if (next.kind === "group") {
       const group = (stateRef.current.groups || []).find((g) => g.id === next.chatId);
-      if (group) return sendGroup(next.text, next.files, null, next.picked, group);
+      if (group) return sendGroup(next.text, next.files, null, next.picked, group, { spoken: next.spoken });
     } else {
       const agent = stateRef.current.agents.find((a) => a.id === next.chatId);
-      if (agent) return sendTo(agent, next.text, next.files, next.thinking);
+      if (agent) return sendTo(agent, next.text, next.files, next.thinking, { spoken: next.spoken });
     }
     drainSoon(); // its chat is gone: the one after it
   };
@@ -615,10 +618,11 @@ export default function App() {
   // Busy, or others already waiting: in the queue, behind them.
   const mustQueue = () => Boolean(running.current) || queueNow.current.length > 0;
 
-  const send = (text, files = [], thinking = null) => {
+  // `spoken`: said aloud in a voice conversation rather than typed.
+  const send = (text, files = [], thinking = null, { spoken = false } = {}) => {
     if (!selected) return;
-    if (mustQueue()) return enqueue({ chatId: selected.id, kind: "agent", text, files, thinking });
-    sendTo(selected, text, files, thinking);
+    if (mustQueue()) return enqueue({ chatId: selected.id, kind: "agent", text, files, thinking, spoken });
+    sendTo(selected, text, files, thinking, { spoken });
   };
   /* Compaction (lib/compact.js). `fold` summarizes the older part of a chat
    * with `agent`'s model and puts the summary in; it returns the chat with
@@ -694,18 +698,18 @@ export default function App() {
     }
   };
 
-  const sendTo = async (agent, text, files = [], thinking = null) => {
+  const sendTo = async (agent, text, files = [], thinking = null, { spoken = false } = {}) => {
     if (running.current) return;
     await filesIn.current;
     if (running.current) return;
-    const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}) };
+    const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}), ...(spoken ? { spoken } : {}) };
     const before = stateRef.current.chats[agent.id] || [];
     append(agent.id, user);
     const controller = new AbortController();
     running.current = { chatId: agent.id, controller };
     try {
       const chat = await foldIfLong({ chatId: agent.id, chat: [...before, user], agent, controller });
-      await answerAs({ agent, chatId: agent.id, history: historyOf(chat), controller, thinking, context: summaryContext(chat) });
+      await answerAs({ agent, chatId: agent.id, history: historyOf(chat), controller, thinking, context: summaryContext(chat), spoken });
     } catch (stopped) {
       if (stopped !== STOPPED) throw stopped;
     } finally {
@@ -719,16 +723,16 @@ export default function App() {
    * each shown the chat as it stands -- earlier answers in this round
    * included -- from its own seat (lib/group.js). An answer that @-mentions
    * another member brings that member in next, up to MAX_HANDOFFS times. */
-  const sendGroup = async (text, files = [], _thinking = null, picked = [], target = null) => {
+  const sendGroup = async (text, files = [], _thinking = null, picked = [], target = null, { spoken = false } = {}) => {
     const group = target || selectedGroup;
     if (!group) return;
-    if (!target && mustQueue()) return enqueue({ chatId: group.id, kind: "group", text, files, picked });
+    if (!target && mustQueue()) return enqueue({ chatId: group.id, kind: "group", text, files, picked, spoken });
     if (running.current) return;
     await filesIn.current;
     if (running.current) return;
     const members = membersOf(group);
     if (!members.length) return;
-    const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}) };
+    const user = { id: newId("m"), at: Date.now(), role: "user", content: text, ...(files.length ? { files } : {}), ...(spoken ? { spoken } : {}) };
     const before = stateRef.current.chats[group.id] || [];
     append(group.id, user);
 
@@ -755,6 +759,7 @@ export default function App() {
           context: [groupBrief(agent, members, group, (m) => taglineOf(m, PRESETS)), summary].filter(Boolean).join("\n\n"),
           tag: { agentId: agent.id },
           queue: [...queue],
+          spoken,
         });
         transcript.push(...said);
         // Handing on: members named in this answer, not already waiting, next.
@@ -1304,6 +1309,8 @@ export default function App() {
             appIcon={appIcon}
             dark={dark}
             onAppIcon={(patch) => update((s) => ({ appIcon: { ...appIconOf(s), ...patch } }))}
+            voice={voiceOf(state)}
+            onVoice={(patch) => update((s) => ({ voice: { ...voiceOf(s), ...patch } }))}
             browser={state.browser || null}
             onBrowser={(browser) => {
               update(() => ({ browser }));
@@ -1329,6 +1336,7 @@ export default function App() {
             }}
             onSend={send}
             onStop={stop}
+            voiceSettings={voiceOf(state)}
             queued={queue.filter((x) => x.chatId === selected.id)}
             onUnqueue={unqueue}
             onCompact={() => compactNow(selected.id, selected)}
@@ -1350,8 +1358,10 @@ export default function App() {
             approval={approval?.chatId === selectedGroup.id ? approval : null}
             onApprove={answerApproval}
             busy={Boolean(live)}
-            onSend={sendGroup}
+            onSend={(text, files, thinking, picked, options) => sendGroup(text, files, thinking, picked, null, options)}
             onStop={stop}
+            voiceSettings={voiceOf(state)}
+            providers={providers}
             queued={queue.filter((x) => x.chatId === selectedGroup.id)}
             onUnqueue={unqueue}
             computer={whereOf(state.computers, selectedGroup.id)}
@@ -1410,6 +1420,7 @@ export default function App() {
           providers={providers}
           defaultModel={state.defaultModel}
           groups={groupsOf(available)}
+          voice={voiceOf(state)}
           onSave={saveAgent}
           onDelete={(agent) => removeRow(agent.id)}
           onClose={() => setEditor(null)}

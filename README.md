@@ -64,6 +64,25 @@ turn may take up to 40 rounds of tool calls (a computer task up to 150
 steps); a call repeated more than three times in one turn is turned back so
 a looping model tries something else.
 
+## Talking by voice
+
+Press the sound-wave button by Send, in any chat, and talk: when you pause,
+what you said is written down and sent, and the answer is read out a
+sentence at a time as it arrives. Talk over an agent and it stops and
+listens; pause mid-thought and carry on, and it's still one message. Each
+agent can have a voice of its own (Customize → Voice), which is how a
+group's members are told apart -- and there, "Ada, what do you think?" is
+for Ada.
+
+By default it all happens on this Mac, with nothing to install: Apple's
+speech recognition on the device, and the Mac's own voices (the Premium and
+Enhanced ones are far more natural; add them in System Settings →
+Accessibility → Spoken Content). Under **Settings → Voice** either can be a
+server instead: whisper.cpp or Speaches to hear, Kokoro or Speaches to speak,
+on this computer -- or Groq, OpenAI or Mistral with the key you already gave
+them. A hosted one is sent your voice, or the agents' words, and says so. See
+`docs/voice.md`.
+
 ## What an agent can do
 
 | Ability | |
@@ -208,6 +227,8 @@ src/lib/computer/      the computer from the app: computer_task, the worker,
                        budgets, the tools and their approvals
 computer/              the computer itself: shell, files, browser (MCP, stdio)
 src/lib/tools.js       the built-in abilities
+src/lib/voice/         talking by voice: when you start and stop, what's said
+                       aloud of an answer, the speech engines, the speaker
 src/lib/when.js        "every weekday at 8" -> a rule, and when it next comes round
 src/lib/schedule.js    tasks: the tools, a run, retries, what the chat is told
 src/lib/connectors/    Google, Apple, Home Assistant, MCP -- tools from your accounts
@@ -220,7 +241,8 @@ src/lib/agentMemory.js each agent's MEMORY.md
 src/lib/store.js       everything kept, in the app's own storage
 src/components/        the screens; AgentAvatar is the four-dot ring
 src-tauri/             the desktop shell: HTTP (no CORS, streams), links, sign-in
-                       listener, Apple scripts, local MCP servers, MEMORY.md files
+                       listener, Apple scripts, local MCP servers, MEMORY.md files,
+                       the Mac's voices and on-device speech recognition
 ```
 
 Requests go through Tauri's HTTP plugin, not the webview's `fetch`, so local
@@ -231,6 +253,9 @@ servers that send no CORS headers (llama.cpp, LM Studio, vLLM) still answer.
 Agents, chats, the Notebook, agents' memory files and API keys stay on this
 computer, in the app's storage and data folder.
 Keys are stored in plain text there.
+Recordings of your voice are never kept: each goes to the recogniser and is
+gone -- on this Mac unless you choose a speech server -- and only the words
+stay, in the chat.
 
 ## Tests
 
@@ -239,4 +264,6 @@ npm test
 ```
 
 Covers stream parsing, tool-call repair, the calculator, Markdown escaping,
-the three wire formats, and whole agent turns against a fake Ollama.
+the three wire formats, whole agent turns against a fake Ollama, and a voice
+conversation's turn-taking, what's said of an answer as it streams, and the
+speech servers' requests.

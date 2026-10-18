@@ -13,7 +13,9 @@
 //   * keep time for scheduled tasks while the window is hidden, and stay in
 //     the menu bar for them when it is closed (`schedule_set`);
 //   * say where an agent's computer is and what starts it (`computer_*`),
-//     and run the sandbox VM it can live in (`machine_*`).
+//     and run the sandbox VM it can live in (`machine_*`);
+//   * speak with the Mac's voices and hear the reader with its on-device
+//     speech recognition, for a voice conversation (`voice_*`).
 //
 // It also carries the global-shortcut plugin, which the main window uses to
 // open the quickview (the "quick" window) from any app.
@@ -28,6 +30,7 @@ mod icon;
 mod oauth;
 mod widgets;
 mod schedule;
+mod voice;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -70,6 +73,9 @@ pub fn run() {
             machine::machine_status,
             machine::machine_stop,
             machine::machine_reset,
+            voice::voice_voices,
+            voice::voice_say,
+            voice::voice_hear,
         ])
         .build(tauri::generate_context!())
         .expect("error while building blvrd")
