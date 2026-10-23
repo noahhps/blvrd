@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { colourOf, shapeOf } from "../lib/agents.js";
+import { useLook } from "../lib/callsigns.js";
+import { DotMascot } from "./DotMascot.jsx";
 import { Mascot } from "./Mascot.jsx";
 
 /* An agent, drawn: its character (components/Mascot.jsx) -- a shape that
@@ -17,7 +19,13 @@ import { Mascot } from "./Mascot.jsx";
  * `poke`: clicking it gets a reaction (components/Mascot.jsx).
  *
  * A picture doesn't move (a face going round reads as a fault); a few small
- * dots in the agent's colour orbit it while it works. */
+ * dots in the agent's colour orbit it while it works.
+ *
+ * In the UESC and Sekiguchi looks the character is printed in dots instead,
+ * the way their terminals print a shell (components/DotMascot.jsx). */
+
+// Marathon looks that print characters, and how (the others show none).
+const DOTS = { hazard: "uesc", sekiguchi: "sekiguchi" };
 
 const SETTLE_MS = 700; // the character's hop (mascot.css)
 
@@ -42,6 +50,7 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
   const colour = colourOf(look, name);
   const working = spinning || Boolean(mood);
   const settling = useSettle(working, intro);
+  const theme = useLook();
 
   if (image) {
     return (
@@ -65,6 +74,21 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
     );
   }
 
+  const moodNow = mood || (spinning ? "thinking" : settling ? "done" : "still");
+  if (DOTS[theme]) {
+    return (
+      <DotMascot
+        className={className ? `agent-mascot ${className}` : "agent-mascot"}
+        look={DOTS[theme]}
+        shape={shapeOf(look, name)}
+        colour={colour}
+        size={size}
+        alive={alive}
+        mood={moodNow}
+      />
+    );
+  }
+
   return (
     <Mascot
       className={className ? `agent-mascot ${className}` : "agent-mascot"}
@@ -74,7 +98,7 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
       alive={alive}
       follow={follow}
       poke={poke ? `Poke ${name || "your agent"}` : null}
-      mood={mood || (spinning ? "thinking" : settling ? "done" : "still")}
+      mood={moodNow}
     />
   );
 }

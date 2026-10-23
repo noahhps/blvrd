@@ -43,8 +43,9 @@ const EO = "cubic-bezier(0.23, 1, 0.32, 1)";
 const EIO = "cubic-bezier(0.77, 0, 0.175, 1)";
 
 // Shapes, drawn in a 100-unit square. `eyes` are the two eye centres;
-// `wink` draws the right one as a wink at rest, as Cue's mark does.
-const SHAPES = {
+// `wink` draws the right one as a wink at rest, as Cue's mark does. (The
+// Marathon looks print the same drawings in dots: components/DotMascot.jsx.)
+export const SHAPES = {
   // blvrd: an archway on two flat feet, eyes on its crown. Stroked in its
   // own colour with round joins, which softens the corners and nothing else.
   arc: {

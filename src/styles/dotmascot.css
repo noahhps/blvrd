@@ -1,0 +1,77 @@
+/* An agent's character printed in dots (components/DotMascot.jsx), in the
+ * UESC and Sekiguchi looks. The inks:
+ *
+ *   uesc       black ink on a screen of the agent's colour, like a runner
+ *              terminal's shell readout; on the acid sidebar, no screen --
+ *              the ink straight on the acid
+ *   sekiguchi  pixels in the ink of wherever it sits (black on the mint,
+ *              mint on the black sidebar), no screen
+ *
+ * and the moods, in whole cells (steps), as a dot matrix moves:
+ *
+ *   still, idle  a blink now and then (only `alive` ones)
+ *   thinking     the pupils step along a line; a scan bar runs down
+ *   speaking     the shell steps up a cell and back
+ *   asking       eyes wide
+ *   done         a wink
+ *   error        a shake, a cell each way */
+
+.dot-mascot { flex: none; display: block; overflow: hidden; --dm-ink: #0a0a0a; --dm-screen: var(--c); }
+.dot-mascot * { transform-box: fill-box; }
+.dot-mascot .dm-screen { fill: var(--dm-screen); }
+.dot-mascot :is(.dm-ink, .dm-noise, .dm-pupil) { fill: var(--dm-ink); }
+.dot-mascot :is(.dm-holes, .dm-white) { fill: var(--dm-screen); }
+.dot-mascot .dm-noise { opacity: 0.8; }
+.dot-mascot .dm-eye { transform-origin: 50% 50%; }
+.dot-mascot .dm-scan { fill: var(--dm-ink); opacity: 0; }
+/* An agent in the plain ink: an off-white screen, ruled off from paper. */
+.dot-mascot[data-look="uesc"][data-ink]:not(.side *) { --dm-screen: #efeee9; outline: 1.5px solid #0a0a0a; outline-offset: -1.5px; }
+
+/* No screen: the dots straight on what's behind, in its ink -- the
+ * eyes and the knocked-out dots left open. Sekiguchi's everywhere; the
+ * UESC's on its acid sidebar, like the terminal's own readout (and acid on
+ * the open row, which is black). */
+:is(.dot-mascot[data-look="sekiguchi"], :root[data-theme="hazard"] .side .dot-mascot) { --dm-ink: var(--ink); --dm-screen: transparent; }
+:is(.dot-mascot[data-look="sekiguchi"], :root[data-theme="hazard"] .side .dot-mascot) .dm-white { fill: none; }
+.dot-mascot[data-look="sekiguchi"] .dm-noise { display: none; }
+
+/* A wink at rest, for the shapes that wear one (Mascot.jsx). */
+.dot-mascot[data-wink]:not([data-mood="asking"]) .dm-eye-r { transform: scaleY(0.34); }
+.dot-mascot[data-wink]:not([data-mood="asking"]) .dm-eye-r .dm-pupil { display: none; }
+
+.dot-mascot[data-alive]:is([data-mood="still"], [data-mood="idle"]) .dm-eye { animation: dm-blink 6.5s steps(1) var(--dm-delay) infinite; }
+.dot-mascot[data-mood="thinking"] .dm-pupil { animation: dm-read 1.6s steps(1) infinite; }
+.dot-mascot[data-mood="thinking"] .dm-scan { opacity: 0.22; animation: dm-scan 1.4s steps(var(--dm-n)) infinite; }
+.dot-mascot[data-look="sekiguchi"][data-mood="thinking"] .dm-scan { opacity: 0.35; }
+.dot-mascot[data-mood="speaking"] .dm-shell { animation: dm-bob 0.5s steps(1) infinite; }
+.dot-mascot[data-mood="asking"] .dm-eye { transform: scale(1.3); }
+.dot-mascot[data-mood="done"]:not([data-wink]) .dm-eye-r { animation: dm-wink 650ms steps(1); }
+.dot-mascot[data-mood="error"] .dm-shell { animation: dm-shake 420ms steps(1); }
+
+@keyframes dm-blink { 0%, 95% { transform: scaleY(1); } 96%, 98% { transform: scaleY(0.2); } }
+@keyframes dm-wink { 0%, 25% { transform: scaleY(1); } 30%, 85% { transform: scaleY(0.2); } }
+@keyframes dm-read {
+  0% { transform: translateX(-1px); }
+  25% { transform: translateX(0); }
+  50% { transform: translateX(1px); }
+  80% { transform: translate(-1px, 1px); }
+}
+@keyframes dm-scan { from { transform: translateY(0); } to { transform: translateY(calc(var(--dm-n) * 1px)); } }
+@keyframes dm-bob { 0% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+@keyframes dm-shake { 0% { transform: translateX(-1px); } 25% { transform: translateX(1px); } 50% { transform: translateX(-1px); } 75% { transform: translateX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dot-mascot * { animation: none !important; }
+}
+
+/* Where it sits. The shells in the gallery: the readout top left, the name
+ * beside it, DEPLOY on a line of its own -- room for the tagline. */
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset { flex-wrap: wrap; align-items: flex-start; row-gap: 10px; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset > .dot-mascot { width: 56px; height: 56px; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset-text { flex: 1 1 0; padding-right: 72px; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset-actions { flex: 1 0 100%; justify-content: flex-end; }
+
+/* The runners in the sidebar: the readout stands where the row's number
+ * was (styles/hazard.css), so the callsign keeps its room. */
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .contact:has(.dot-mascot)::after { content: none; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .contact > .dot-mascot { width: 40px; height: 40px; margin-right: 2px; }

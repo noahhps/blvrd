@@ -140,8 +140,13 @@ function onTheme(change) {
   return () => watch.disconnect();
 }
 
+/** The look in force right now: "system", "dark", "hazard", "sekiguchi"... */
+export function useLook() {
+  return useSyncExternalStore(onTheme, themeNow, () => "system");
+}
+
 /** A function from an agent's name to the name to show for it right now. */
 export function useCallsign() {
-  const theme = useSyncExternalStore(onTheme, themeNow, () => "system");
+  const theme = useLook();
   return (name) => callsignOf(name, theme);
 }
