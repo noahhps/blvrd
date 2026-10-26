@@ -10,6 +10,7 @@ import "./styles/orbit.css";
 import "./styles/mascot.css";
 import "./styles/emblem.css";
 import "./styles/hazard.css";
+import "./styles/terminal.css";
 import "./styles/sekiguchi.css";
 import "./styles/traxus.css";
 import "./styles/nucaloric.css";

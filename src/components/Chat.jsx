@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { colourOf, taglineOf } from "../lib/agents.js";
-import { useCallsign } from "../lib/callsigns.js";
+import { useCallsign, useLook } from "../lib/callsigns.js";
 import { hostOf, isLocalUrl } from "../lib/catalog.js";
 import { getToolsOpen, setToolsOpen } from "../lib/prefs.js";
 import { renderMarkdown } from "../lib/markdown.js";
@@ -21,7 +21,12 @@ import { ComputerChoice, ScreenButton, ScreenPanel, useScreen } from "./Computer
  * far, shown under the messages already kept.
  *
  * The column -- the turns and the composer under them -- is one width, set by
- * dragging either of its edges (lib/useReadWidth.js). */
+ * dragging either of its edges (lib/useReadWidth.js).
+ *
+ * In the UESC look the chat is a terminal session with the agent, the way
+ * the Marathon's AIs talk (styles/terminal.css): it opens on a logon page --
+ * the agent's emblem and one line, its callsign and when the session began
+ * -- which stays at the head of the transcript as it grows. */
 export function Chat({
   agent,
   presets,
@@ -47,6 +52,7 @@ export function Chat({
   onUnqueue = null,
 }) {
   const call = useCallsign();
+  const terminal = useLook() === "hazard";
   const thread = useRef(null);
   const area = useRef(null);
   // The computer's screen, in a column beside the conversation.
@@ -94,7 +100,7 @@ export function Chat({
   const defaultLabel = defaultModel?.model ? `Default (${defaultModel.model})` : "Default model";
 
   return (
-    <div className="chat">
+    <div className="chat" style={{ "--callsign": JSON.stringify(call(agent.name)), "--logon": JSON.stringify(logonOf(messages)) }}>
       <header className="chat-head" data-tauri-drag-region>
         <AgentAvatar look={agent.look} name={agent.name} size={45} spinning={busy} follow poke />
         <span className="chat-who">
@@ -160,9 +166,9 @@ export function Chat({
         ))}
 
         <div className="thread" ref={thread} onScroll={onScroll}>
-          {messages.length === 0 && !live ? (
+          {(messages.length === 0 && !live) || terminal ? (
             <div className="greeting">
-              <AgentAvatar look={agent.look} name={agent.name} size={96} intro follow poke />
+              <AgentAvatar look={agent.look} name={agent.name} size={terminal ? 232 : 96} intro follow poke />
               <h2>Hi, I’m {call(agent.name)}.</h2>
               <p>{taglineOf(agent, presets)}</p>
             </div>
@@ -217,6 +223,14 @@ export function Chat({
    in grey: the colour its character is drawn in. */
 const tint = (agent) => ({ "--agent": colourOf(agent?.look, agent?.name) });
 
+/* When the session began, as a terminal stamps its logon: the first thing
+   said, or now. */
+export function logonOf(messages) {
+  const at = new Date(messages.find((m) => m.at)?.at || Date.now());
+  const two = (n) => String(n).padStart(2, "0");
+  return `${two(at.getDate())}.${two(at.getMonth() + 1)}.${at.getFullYear()} ${two(at.getHours())}:${two(at.getMinutes())}`;
+}
+
 /* The answer still arriving, its text and calls in the order they come --
    and, while the agent works on the computer, its steps as they happen. */
 export function LiveTurn({ live, agent, speaker = false, after = null, onWatch = null }) {
@@ -231,7 +245,7 @@ export function LiveTurn({ live, agent, speaker = false, after = null, onWatch =
       return;
     }
     out.push(
-      <div className="turn assistant" key={i} style={tint(agent)}>
+      <div className="turn assistant" key={i} style={tint(agent)} data-live={i === parts.length - 1 ? "" : undefined}>
         <AgentAvatar look={agent.look} name={agent.name} size={39} alive={false} mood={i === lastText && i === parts.length - 1 ? "speaking" : null} />
         <div className="answer">
           {speaker && !seenText ? <span className="speaker">{call(agent.name)}</span> : null}

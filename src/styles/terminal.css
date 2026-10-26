@@ -1,0 +1,250 @@
+/* The UESC look's conversation: a terminal session with the agent, the way
+ * the Marathon's AIs have always talked -- from the original trilogy's
+ * terminals, which the new game's own terminals and Codex are built after:
+ *
+ *   logon   the AI's emblem, and one line under it: its callsign and when
+ *           the session began (components/Chat.jsx keeps it at the head of
+ *           the transcript)
+ *   pages   the AI's words in plain monospace, in its own colour -- as
+ *           Durandal's were green and Tycho's red -- on black glass; while
+ *           they arrive, a block cursor after them
+ *   input   the runner's lines as commands at a prompt, in white
+ *   frame   a header bar along the top (the network, the AI, the logon)
+ *           that stays while the transcript scrolls; the command line at
+ *           the bottom, TRANSMIT to send
+ *
+ * On top of styles/hazard.css, for html[data-theme="hazard"] only: the
+ * factions keep their own ways of talking. */
+
+:root[data-theme="hazard"] .chat {
+  --term: #0a0a0a;
+  --term-rule: #2c2c2a;
+  --term-dim: #8f8e88;
+  --term-you: #efeee9;
+  counter-reset: page;
+}
+/* The agent's colour for its words, lifted a little so the darker ones
+   (blue, violet) still read on black. */
+:root[data-theme="hazard"] .chat .turn.assistant,
+:root[data-theme="hazard"] .chat .step { --says: color-mix(in srgb, var(--agent, var(--acid)) 84%, #fff); }
+
+/* -- the frame ---------------------------------------------------------------- */
+
+:root[data-theme="hazard"] .chat .thread::before {
+  content: "TERMINAL \25B8  " var(--callsign) "     //     " var(--fx-name) " " var(--fx-net) "     //     LOGON " var(--logon);
+  position: sticky;
+  z-index: 2;
+  /* Flush under the zone bar (hazard.css): sticky measures from inside the
+     thread's top padding, which leaves room for that bar. */
+  top: -12px;
+  display: block;
+  box-sizing: border-box;
+  max-width: var(--read-w);
+  margin: 0 auto;
+  padding: 8px 18px 7px;
+  overflow: hidden;
+  background: var(--acid);
+  white-space: pre;
+  text-overflow: ellipsis;
+  font: 800 9.5px/1 var(--mono);
+  letter-spacing: 0.16em;
+  color: #000;
+}
+:root[data-theme="hazard"] .chat :is(.greeting, .turns) {
+  max-width: var(--read-w);
+  margin: 0 auto;
+  /* The glass: faint scanlines. */
+  background: repeating-linear-gradient(0deg, rgba(239, 238, 233, 0.03) 0 1px, transparent 1px 3px), var(--term);
+  border-inline: 1.5px solid var(--line-strong);
+}
+:root[data-theme="hazard"] .chat .turns {
+  gap: 0;
+  padding: 4px 26px 30px;
+  border-bottom: 1.5px solid var(--line-strong);
+  font-family: var(--mono);
+}
+:root[data-theme="hazard"] .chat .turns:empty { display: none; }
+
+/* -- logon ---------------------------------------------------------------- */
+
+:root[data-theme="hazard"] .chat .greeting {
+  padding: 34px 26px 26px;
+  text-align: center;
+  border-bottom: 1px dashed var(--term-rule);
+}
+:root[data-theme="hazard"] .chat .greeting::before { content: none; }
+:root[data-theme="hazard"] .chat .greeting > .emblem { margin: 0 auto; }
+:root[data-theme="hazard"] .chat .greeting h2 {
+  margin-top: 18px;
+  font-size: 0;
+  line-height: 1;
+}
+:root[data-theme="hazard"] .chat .greeting h2::before {
+  content: var(--callsign) "  //  LOGON  " var(--logon);
+  font: 800 15px/1.2 var(--display);
+  font-stretch: 118%;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+:root[data-theme="hazard"] .chat .greeting p {
+  max-width: 52ch;
+  margin: 10px auto 0;
+  font: 500 11.5px/1.55 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--term-dim);
+}
+:root[data-theme="hazard"] .chat .greeting p::before { content: none; }
+
+/* -- the runner's lines: commands at a prompt -------------------------------- */
+
+:root[data-theme="hazard"] .chat .turn.user {
+  display: block;
+  padding: 18px 0 2px;
+  background: none;
+}
+:root[data-theme="hazard"] .chat .turn.user::before { content: none; }
+:root[data-theme="hazard"] .chat .turn.user .bubble {
+  position: relative;
+  max-width: none;
+  padding: 0 0 0 76px;
+  border-radius: 0;
+  background: none;
+  white-space: pre-wrap;
+  font: 500 13.5px/1.6 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--term-you);
+}
+:root[data-theme="hazard"] .chat .turn.user .bubble::before {
+  content: "RUNNER \25B8";
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  margin: 0;
+  font: 800 10px/1.6 var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--acid);
+}
+:root[data-theme="hazard"] .chat .turn.user .bubble::after { content: none; }
+:root[data-theme="hazard"] .chat .turn.user .sent-files { padding-left: 76px; justify-content: flex-start; }
+:root[data-theme="hazard"] .chat .sent-file { border-radius: 0; background: none; box-shadow: inset 0 0 0 1px var(--term-rule); font: 600 11px/1.4 var(--mono); color: var(--term-you); }
+:root[data-theme="hazard"] .chat .sent-image { border-radius: 0; outline: 1px solid var(--term-rule); }
+
+/* -- the agent's pages ----------------------------------------------------- */
+
+:root[data-theme="hazard"] .chat .turn.assistant {
+  counter-increment: page;
+  position: relative;
+  display: block;
+  padding: 16px 0 6px 76px;
+}
+/* Its emblem is on the logon page; each page carries the page's number in
+   the margin, where the prompt is on the runner's lines. */
+:root[data-theme="hazard"] .chat .turn.assistant > .emblem { display: none; }
+:root[data-theme="hazard"] .chat .turn.assistant::before {
+  content: "P." counter(page, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 19px;
+  font: 800 10px/1.6 var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--says);
+  opacity: 0.6;
+}
+:root[data-theme="hazard"] .chat .turn.assistant .answer { padding: 0; }
+:root[data-theme="hazard"] .chat .turn.assistant .answer > .md {
+  padding: 0;
+  border: 0;
+  background: none;
+  clip-path: none;
+  box-shadow: none;
+  font: 400 13.5px/1.65 var(--mono);
+  color: var(--says);
+}
+:root[data-theme="hazard"] .chat .turn.assistant .answer > .md::before,
+:root[data-theme="hazard"] .chat .turn.assistant .answer > .md::after { content: none; }
+:root[data-theme="hazard"] .chat .speaker {
+  margin-bottom: 4px;
+  font: 800 10px/1.4 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--says);
+}
+/* Emphasis as a terminal has it: inverted. */
+:root[data-theme="hazard"] .chat .md strong { padding: 0 3px; background: var(--says); color: #000; font-weight: 700; }
+:root[data-theme="hazard"] .chat .md em { font-style: normal; text-decoration: underline; text-underline-offset: 3px; }
+:root[data-theme="hazard"] .chat .md a { color: inherit; text-decoration-color: currentColor; }
+:root[data-theme="hazard"] .chat .md :is(h2, h3, h4) { font: 800 12px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--says); }
+:root[data-theme="hazard"] .chat .md :is(h2, h3, h4)::before { content: "\25B8\25B8  "; }
+:root[data-theme="hazard"] .chat .md ul > li::before { content: "\25B8"; width: auto; height: auto; top: 0; left: -16px; background: none; clip-path: none; color: var(--says); }
+:root[data-theme="hazard"] .chat .md ol { padding-left: 26px; }
+:root[data-theme="hazard"] .chat .md code { padding: 0 3px; border-radius: 0; background: color-mix(in srgb, var(--says) 16%, transparent); font: inherit; color: inherit; }
+:root[data-theme="hazard"] .chat .md pre { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--says) 40%, transparent); border-radius: 0; background: none; }
+:root[data-theme="hazard"] .chat .md pre code { background: none; }
+:root[data-theme="hazard"] .chat .md blockquote { border-left: 2px solid var(--says); color: inherit; opacity: 0.8; }
+:root[data-theme="hazard"] .chat .md hr { border-top: 1px dashed color-mix(in srgb, var(--says) 45%, transparent); }
+:root[data-theme="hazard"] .chat .md :is(th, td) { border-color: color-mix(in srgb, var(--says) 30%, transparent); font: 400 12.5px/1.45 var(--mono); color: inherit; }
+:root[data-theme="hazard"] .chat .turn.assistant .answer > .md th { background: color-mix(in srgb, var(--says) 16%, transparent); color: inherit; font: 800 10px/1.4 var(--mono); }
+:root[data-theme="hazard"] .chat .md td:first-child { font: inherit; text-transform: none; }
+
+/* While its words arrive: a block cursor after the last of them. */
+:root[data-theme="hazard"] .chat .turn[data-live] .md > :last-child::after {
+  content: "\2588";
+  margin-left: 2px;
+  color: var(--says);
+  animation: hz-blink 0.8s steps(2, jump-none) infinite;
+}
+:root[data-theme="hazard"] .chat .thinking {
+  font: 700 11px/1.6 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--says);
+}
+:root[data-theme="hazard"] .chat .thinking::before { content: "RECEIVING \25B8  "; }
+:root[data-theme="hazard"] .chat .thinking::after { content: " \2588"; animation: hz-blink 0.8s steps(2, jump-none) infinite; }
+
+/* What it does along the way, and what went wrong, as terminal lines. */
+:root[data-theme="hazard"] .chat .step { margin-left: 76px; padding-top: 10px; }
+:root[data-theme="hazard"] .chat :is(.step summary, .step-pill) { box-shadow: none; padding-left: 0; color: var(--term-dim); }
+:root[data-theme="hazard"] .chat :is(.step summary, .step-pill)::before { content: "> "; color: var(--says); }
+:root[data-theme="hazard"] .chat .error-box { margin-top: 2px; clip-path: none; }
+
+/* -- the command line ------------------------------------------------------- */
+
+:root[data-theme="hazard"] .chat .composer-box {
+  padding: 34px 14px 10px 16px;
+  background: var(--term);
+  box-shadow: 0 0 0 1.5px var(--line-strong), 0 -18px 40px -10px #0a0a0a;
+  clip-path: none;
+}
+:root[data-theme="hazard"] .chat .composer-box:focus-within { box-shadow: 0 0 0 1.5px var(--acid), 0 -18px 40px -10px #0a0a0a; }
+:root[data-theme="hazard"] .chat .composer-box::before { content: "TRANSMIT TO " var(--callsign) "   //   " var(--fx-name) " " var(--fx-net) "   //   CHANNEL OPEN"; }
+:root[data-theme="hazard"] .chat .composer-field { padding-left: 76px; }
+:root[data-theme="hazard"] .chat .composer-field::before {
+  content: "RUNNER \25B8";
+  top: 0.25em;
+  font: 800 10px/1.6 var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--acid);
+}
+:root[data-theme="hazard"] .chat .composer textarea,
+:root[data-theme="hazard"] .chat .composer textarea:focus {
+  font: 500 13.5px/1.6 var(--mono);
+  text-transform: none;
+  color: var(--term-you);
+  caret-color: var(--acid);
+}
+:root[data-theme="hazard"] .chat .composer-field:has(textarea:placeholder-shown)::after {
+  content: "_";
+  left: 76px;
+  font: 500 13.5px/1.6 var(--mono);
+  color: var(--acid);
+  animation: hz-blink 1s steps(2, jump-none) infinite;
+}
+:root[data-theme="hazard"] .chat .composer-field:has(textarea:placeholder-shown:focus)::after { content: ""; animation: none; }
+:root[data-theme="hazard"] .chat .composer-row .chip.icon { color: var(--term-you); }
+:root[data-theme="hazard"] .chat .round:not(.music-button)::after { content: "TRANSMIT \25B2"; }
+:root[data-theme="hazard"] .chat .round:not(.music-button):disabled { color: var(--term-dim); box-shadow: inset 0 0 0 1.5px var(--term-rule); }
+:root[data-theme="hazard"] .chat .round:not(.music-button):disabled::after { content: "STANDBY"; }
+:root[data-theme="hazard"] .chat .round:not(.music-button).stop::after { content: "ABORT \25A0"; }

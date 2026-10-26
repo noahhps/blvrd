@@ -8,7 +8,7 @@ import { useReadWidth } from "../lib/useReadWidth.js";
 import { AgentAvatar } from "./AgentAvatar.jsx";
 import { Approval } from "./Approval.jsx";
 import { timeline } from "../lib/timeline.js";
-import { LiveTurn, Turn } from "./Chat.jsx";
+import { LiveTurn, Turn, logonOf } from "./Chat.jsx";
 import { Composer } from "./Composer.jsx";
 import { Gauges } from "./Gauges.jsx";
 import { GroupAvatar } from "./GroupAvatar.jsx";
@@ -71,7 +71,7 @@ export function GroupChat({ group, members, messages, live, busy, onSend, onStop
   const next = live?.queue?.map((id) => agentOf(id).name) || [];
 
   return (
-    <div className="chat">
+    <div className="chat" style={{ "--callsign": JSON.stringify(group.name), "--logon": JSON.stringify(logonOf(messages)) }}>
       <header className="chat-head" data-tauri-drag-region>
         <GroupAvatar members={members} size={34} answeringId={live?.agentId} />
         <span className="chat-who">
