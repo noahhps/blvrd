@@ -8,7 +8,7 @@ import { startTheme } from "./lib/theme.js";
 import "./styles/app.css";
 import "./styles/orbit.css";
 import "./styles/mascot.css";
-import "./styles/dotmascot.css";
+import "./styles/emblem.css";
 import "./styles/hazard.css";
 import "./styles/sekiguchi.css";
 import "./styles/traxus.css";

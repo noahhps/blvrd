@@ -1,0 +1,70 @@
+/* An agent's emblem printed in dots (components/Emblem.jsx), in the UESC
+ * and Sekiguchi looks. The inks:
+ *
+ *   uesc       black ink on a screen of the agent's colour, like the
+ *              Marathon's Durandal on acid; on the acid sidebar, no screen --
+ *              the ink straight on the acid (acid on the open row's black)
+ *   sekiguchi  pixels in the ink of wherever it sits (black on the mint,
+ *              mint on the black sidebar), no screen
+ *
+ * The halo says what the agent is doing, in whole steps as a dot matrix
+ * moves:
+ *
+ *   still, idle  at rest; one diamond catches the light now and then
+ *                (only `alive` ones)
+ *   thinking     the ring turns, a diamond's width at a time, and a scan
+ *                bar runs down the screen
+ *   speaking     the diamonds light in turn, round the ring
+ *   asking       all of them, together
+ *   done         one flash
+ *   error        a shake, a cell each way */
+
+.emblem { flex: none; display: block; overflow: hidden; --em-ink: #0a0a0a; --em-screen: var(--c); }
+.emblem * { transform-box: view-box; }
+.emblem .em-screen { fill: var(--em-screen); }
+.emblem :is(.em-ink, .em-noise, .em-diamond polygon, .em-bezel) { fill: var(--em-ink); }
+.emblem :is(.em-holes, .em-core) { fill: var(--em-screen); }
+.emblem .em-noise { opacity: 0.85; }
+.emblem .em-dial path { fill: none; stroke: var(--em-screen); stroke-width: 0.5; }
+.emblem .em-dial rect { fill: none; stroke: var(--em-screen); stroke-width: 0.45; }
+.emblem .em-scan { fill: var(--em-ink); opacity: 0; }
+/* An agent in the plain ink: an off-white screen, ruled off from paper. */
+.emblem[data-look="uesc"][data-ink]:not(.side *) { --em-screen: #efeee9; outline: 1.5px solid #0a0a0a; outline-offset: -1.5px; }
+
+/* No screen: the dots straight on what's behind, in its ink. Sekiguchi's
+ * everywhere; the UESC's on its acid sidebar, like the terminal's own
+ * readout. Knocked-out dots take the ground's colour. */
+:is(.emblem[data-look="sekiguchi"], :root[data-theme="hazard"] .side .emblem) { --em-ink: var(--ink); --em-screen: transparent; }
+:root[data-theme="hazard"] .side .emblem :is(.em-holes, .em-core) { fill: var(--side); }
+:root[data-theme="hazard"] .side .contact[aria-current="true"] .emblem :is(.em-holes, .em-core) { fill: #0a0a0a; }
+.emblem[data-look="sekiguchi"] :is(.em-noise, .em-core) { display: none; }
+
+.emblem[data-alive]:is([data-mood="still"], [data-mood="idle"]) .em-diamond:nth-child(3) { animation: em-glint 7s steps(1) var(--em-delay) infinite; }
+.emblem[data-mood="thinking"] .em-halo { animation: em-turn 2.8s steps(28) infinite; }
+.emblem[data-mood="thinking"] .em-scan { opacity: 0.18; animation: em-scan 1.4s steps(var(--em-n)) infinite; }
+.emblem[data-mood="speaking"] .em-diamond { animation: em-light 0.98s steps(1) infinite; animation-delay: calc(var(--k) * 0.14s); }
+.emblem[data-mood="asking"] .em-diamond { animation: em-light 1.2s steps(1) infinite; }
+.emblem[data-mood="done"] .em-halo { animation: em-glint 650ms steps(1) -600ms; }
+.emblem[data-mood="error"] .em-figure { animation: em-shake 420ms steps(1); }
+
+@keyframes em-glint { 0%, 94% { opacity: 1; } 95%, 97% { opacity: 0.15; } }
+@keyframes em-light { 0%, 30% { opacity: 0.2; } 31%, 100% { opacity: 1; } }
+@keyframes em-turn { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes em-scan { from { transform: translateY(0); } to { transform: translateY(calc(var(--em-n) * 1px)); } }
+@keyframes em-shake { 0% { transform: translateX(-1px); } 25% { transform: translateX(1px); } 50% { transform: translateX(-1px); } 75% { transform: translateX(0); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .emblem * { animation: none !important; }
+}
+
+/* Where it sits. The shells in the gallery: the emblem top left, the name
+ * beside it, DEPLOY on a line of its own -- room for the tagline. */
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset { flex-wrap: wrap; align-items: flex-start; row-gap: 10px; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset > .emblem { width: 64px; height: 64px; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset-text { flex: 1 1 0; padding-right: 72px; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .preset-actions { flex: 1 0 100%; justify-content: flex-end; }
+
+/* The runners in the sidebar: the emblem stands where the row's number
+ * was (styles/hazard.css), so the callsign keeps its room. */
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .contact:has(.emblem)::after { content: none; }
+:root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .contact > .emblem { width: 42px; height: 42px; margin-right: 2px; }

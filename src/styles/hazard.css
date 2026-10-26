@@ -4,8 +4,9 @@
  *   are crews. What you send is a contract; what comes back is an exfil
  *   report, printed on a slip. The composer drafts the next contract and
  *   DEPLOYs it.
- *   No mascots: runners wear shells, not faces -- but for the UESC's and
- *   Sekiguchi's, which print each shell in dots (styles/dotmascot.css).
+ *   No mascots: runners wear shells, not faces -- the UESC's and
+ *   Sekiguchi's show each agent as an emblem of its callsign instead, a
+ *   halo over it, printed in dots (styles/emblem.css).
  * Black glass, acid green and off-white paper in flat blocks, hot pink for
  * alarms. Extra-wide heavy capitals for anything that names a thing, tiny
  * monospaced micro-text for everything that doesn't. Sharp corners, cut
@@ -126,7 +127,7 @@
 }
 
 /* No mascots. (The agent editor keeps its pickers, which are drawn in them.
-   The UESC and Sekiguchi looks draw theirs in dots, which this leaves be.) */
+   The UESC and Sekiguchi looks show emblems in dots, which this leaves be.) */
 :root[data-marathon] svg.mascot:not(.wear *, .avatar-edit *),
 :root[data-marathon] .group-avatar,
 :root[data-marathon] .turn.assistant > .orbit,
@@ -279,8 +280,8 @@
 :root[data-marathon] .month-day[data-today] { background: #0a0a0a; color: var(--acid); box-shadow: none; font-weight: 800; }
 :root[data-marathon] .month-day[data-out] { opacity: 0.3; }
 
-/* Runners: a big number where the mascot was (where the look prints it in
-   dots, those instead: styles/dotmascot.css), the name in wide capitals,
+/* Runners: a big number where the mascot was (where the look shows an
+   emblem, that instead: styles/emblem.css), the name in wide capitals,
    a shell-integrity meter. The deployed one is inverted, black on acid. */
 :root[data-marathon] .contacts { counter-reset: runner; }
 :root[data-marathon] .contact {

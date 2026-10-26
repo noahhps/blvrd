@@ -1,87 +1,57 @@
-/* Dot matrix: an agent's character as a runner terminal prints it, in the
- * UESC and Sekiguchi looks (styles/dotmascot.css). The same shape the
- * character is drawn in (components/Mascot.jsx), sampled onto a square grid
- * of cells and set in dots, the way the terminals print a shell:
+/* Dot matrix: an agent's emblem (lib/emblems) as a runner terminal prints
+ * it, in the UESC and Sekiguchi looks (components/Emblem.jsx). The emblem
+ * is drawn on a canvas, sampled onto a square grid of cells, and set in
+ * dots the way the Marathon prints Durandal -- a statue in a model viewer:
  *
- *   uesc       halftone: the mass solid, its mid-tones broken by a lattice
- *              of knocked-out dots, a scatter of stray dots and a scan
- *              streak or two around it -- black ink on the screen's colour
+ *   uesc       halftone: the mass solid black, its mid-tones broken by a
+ *              lattice of knocked-out dots, its light parts a scatter of
+ *              dots; stray dots round the edges and a scan streak or two
+ *              across the screen
  *   sekiguchi  a specimen scan: separate square pixels, the outline solid,
- *              the body filled in a fine checker, light parts left open
+ *              the body in a checker, the light parts left open
  *
- * Each part of a character has a tone, from 0 (open: paper, paint, the
- * envelope's fold) to 1 (solid: the dark parts, handles, the pencil's lead);
- * the body sits between, so it reads as the mass with texture in it. The
- * eyes are left out of the grid -- the component draws them over it, so
- * they can blink and look.
+ * An emblem is plain data: paths in a 100-unit square, front last, each
+ * with a tone from 0 (open: the screen shows through) to 1 (solid ink):
+ *
+ *   { parts: [{ d, tone, stroke? }], halo: { x, y, r } }
+ *
+ * `stroke` draws the path as a line that wide (round ends) instead of
+ * filling it. The halo -- the ring of diamonds over the emblem's mind, as
+ * over Durandal's rider -- is drawn on top by the component, so it can turn.
  *
  * rasterise() needs a canvas (the browser); halftone() is plain arithmetic
  * on the grid it returns. */
 
-const TONES = {
-  "m-body": 0.72,
-  "m-dark": 1,
-  "m-paper": 0,
-  "m-fold": 0,
-  "m-handle": 1,
-  "m-handle-thin": 1,
-  "m-wood": 0.4,
-  "m-lead": 1,
-  "m-metal": 0.25,
-  "m-eraser": 1,
-  "m-paint1": 0,
-  "m-paint2": 0,
-  "m-paint3": 0,
-};
-// Parts drawn as lines (styles/mascot.css), and how wide; `fill` too for
-// the ones that are a shape with a soft stroke round it.
-const STROKES = {
-  "m-round": { width: 7, fill: true },
-  "m-fold": { width: 3.4 },
-  "m-handle": { width: 11 },
-  "m-handle-thin": { width: 5 },
-};
+const RES = 256; // the sampling canvas, for the emblem's 100-unit square
+const sampled = new WeakMap(); // emblem -> darkness per canvas pixel
 
-const RES = 200; // the sampling canvas, for the character's 100-unit square
-const sampled = new Map(); // shape id -> darkness per canvas pixel
-
-/** How many cells across a character `size` px wide is printed in: a cell
- *  every 2px, every 2.5px from 72px up, never fewer than 12. */
+/** How many cells across an emblem `size` px wide is printed in: a cell
+ *  every 1.5px (3 device pixels on a Retina screen), 20 to 64 of them. */
 export function cellsFor(size) {
-  return Math.max(12, Math.min(40, Math.round(size / (size >= 72 ? 2.5 : 2))));
+  return Math.max(20, Math.min(64, Math.round(size / 1.5)));
 }
 
-/** The character's darkness (0-1) in each of n x n cells, its eyes left
- *  open; null where there is no canvas to draw on. `art` is the shape's
- *  drawing (Mascot.jsx), `eyes` its eye centres. */
-export function rasterise(id, art, eyes, n) {
-  const dark = sample(id, art);
+/** The emblem's darkness (0-1) in each of n x n cells; null where there is
+ *  no canvas to draw on. */
+export function rasterise(emblem, n) {
+  const dark = sample(emblem);
   if (!dark) return null;
   const cells = new Float32Array(n * n);
   const step = RES / n;
   for (let j = 0; j < n; j++) {
     for (let i = 0; i < n; i++) {
-      const x0 = Math.round(i * step), x1 = Math.round((i + 1) * step);
-      const y0 = Math.round(j * step), y1 = Math.round((j + 1) * step);
+      const x0 = Math.floor(i * step), x1 = Math.max(x0 + 1, Math.floor((i + 1) * step));
+      const y0 = Math.floor(j * step), y1 = Math.max(y0 + 1, Math.floor((j + 1) * step));
       let sum = 0;
       for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) sum += dark[y * RES + x];
       cells[j * n + i] = sum / ((x1 - x0) * (y1 - y0));
     }
   }
-  // Under the eyes' whites, nothing: they are drawn on top.
-  const unit = 100 / n;
-  for (const [ex, ey] of eyes) {
-    for (let j = 0; j < n; j++) {
-      for (let i = 0; i < n; i++) {
-        if (Math.abs((i + 0.5) * unit - ex) <= 6.4 && Math.abs((j + 0.5) * unit - ey) <= 7.4) cells[j * n + i] = 0;
-      }
-    }
-  }
   return cells;
 }
 
-function sample(id, art) {
-  if (sampled.has(id)) return sampled.get(id);
+function sample(emblem) {
+  if (sampled.has(emblem)) return sampled.get(emblem);
   if (typeof document === "undefined" || typeof Path2D !== "function") return null;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = RES;
@@ -90,66 +60,41 @@ function sample(id, art) {
   ctx.scale(RES / 100, RES / 100);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  paint(ctx, art);
+  // Each part, in order, in a grey that is its tone: a later part covers
+  // an earlier one, as on screen.
+  for (const part of emblem.parts || []) {
+    let path;
+    try {
+      path = new Path2D(part.d);
+    } catch {
+      continue;
+    }
+    const v = Math.round(255 * (1 - Math.min(1, Math.max(0, part.tone ?? 1))));
+    ctx.fillStyle = ctx.strokeStyle = `rgb(${v},${v},${v})`;
+    if (part.stroke) {
+      ctx.lineWidth = part.stroke;
+      ctx.stroke(path);
+    } else ctx.fill(path);
+  }
   const { data } = ctx.getImageData(0, 0, RES, RES);
   const dark = new Float32Array(RES * RES);
   for (let k = 0; k < dark.length; k++) dark[k] = (data[k * 4 + 3] / 255) * (1 - data[k * 4] / 255);
-  sampled.set(id, dark);
+  sampled.set(emblem, dark);
   return dark;
-}
-
-/* Each part, in order, in a grey that is its tone: a later part covers an
- * earlier one, as it does on screen. */
-function paint(ctx, node) {
-  if (Array.isArray(node)) {
-    for (const child of node) paint(ctx, child);
-    return;
-  }
-  if (!node || typeof node !== "object") return;
-  const { type, props = {} } = node;
-  if (typeof type !== "string") {
-    paint(ctx, props.children); // a fragment
-    return;
-  }
-  const classes = String(props.className || "").split(/\s+/);
-  const tone = TONES[classes.find((c) => c in TONES)] ?? 1;
-  const stroke = STROKES[classes.find((c) => c in STROKES)];
-  const path = outline(type, props);
-  if (!path) return;
-  const v = Math.round(255 * (1 - tone));
-  ctx.fillStyle = ctx.strokeStyle = `rgb(${v},${v},${v})`;
-  if (!stroke || stroke.fill) ctx.fill(path);
-  if (stroke) {
-    ctx.lineWidth = stroke.width;
-    ctx.stroke(path);
-  }
-}
-
-function outline(type, p) {
-  const n = (v) => Number(v) || 0;
-  if (type === "path") return new Path2D(p.d);
-  const path = new Path2D();
-  if (type === "rect") {
-    if (p.rx && path.roundRect) path.roundRect(n(p.x), n(p.y), n(p.width), n(p.height), n(p.rx));
-    else path.rect(n(p.x), n(p.y), n(p.width), n(p.height));
-  } else if (type === "circle") path.arc(n(p.cx), n(p.cy), n(p.r), 0, Math.PI * 2);
-  else if (type === "ellipse") path.ellipse(n(p.cx), n(p.cy), n(p.rx), n(p.ry), 0, 0, Math.PI * 2);
-  else return null;
-  return path;
 }
 
 /* Five levels, from the cell's darkness. */
 const levelOf = (t) => (t >= 0.86 ? 4 : t >= 0.55 ? 3 : t >= 0.3 ? 2 : t >= 0.1 ? 1 : 0);
 
-// The same stray dots for the same character every time.
-function hash(i, j, seed) {
+// The same stray dots for the same emblem every time.
+export function hash(i, j, seed) {
   let h = Math.imul(i + 1, 374761393) ^ Math.imul(j + 1, 668265263) ^ Math.imul(seed + 1, 2246822519);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) % 1000;
 }
 
-const square = (x, y, s) => `M${+x.toFixed(2)} ${+y.toFixed(2)}h${s}v${s}h-${s}z`;
-const dot = (i, j, s) => square(i + (1 - s) / 2, j + (1 - s) / 2, s);
+const fix = (v) => +v.toFixed(2);
+const dot = (i, j, s) => `M${fix(i + (1 - s) / 2)} ${fix(j + (1 - s) / 2)}h${s}v${s}h-${s}z`;
 
 /** The grid in dots, as SVG path data in cell units (a viewBox n wide):
  *  `ink`, the dots and solid runs; `holes`, the dots knocked out of the
@@ -163,15 +108,17 @@ function uesc(level, n, seed) {
   const ink = [];
   const holes = [];
   const noise = [];
-  // Scan streaks: a row or two across the lower half, dashed out to the edges.
-  const streaks = new Set([Math.floor(n * (0.5 + (hash(1, 2, seed) % 200) / 1000)), Math.floor(n * (0.68 + (hash(3, 4, seed) % 120) / 1000))]);
+  // Scan streaks: a few rows across the middle, dashed out to the edges,
+  // as on the Marathon's own screens.
+  const streaks = new Set();
+  for (let k = 0; k < 3; k++) streaks.add(Math.floor(n * (0.42 + (hash(k, 7, seed) % 300) / 1000)));
   for (let j = 0; j < n; j++) {
     let run = -1;
     for (let i = 0; i <= n; i++) {
       const l = i < n ? level(i, j) : 0;
       if (l >= 3) {
         if (run < 0) run = i;
-        if (l === 3 && i % 2 === 1 && j % 2 === 1) holes.push(dot(i, j, 0.5));
+        if (l === 3 && i % 2 === 1 && j % 2 === 1) holes.push(dot(i, j, 0.45));
         continue;
       }
       if (run >= 0) {
@@ -184,8 +131,8 @@ function uesc(level, n, seed) {
       else if (l === 0) {
         const near = [-2, -1, 1, 2].some((d) => level(i + d, j) >= 2 || level(i, j + d) >= 2);
         const roll = hash(i, j, seed);
-        if (near && roll < 160) noise.push(dot(i, j, 0.4));
-        else if (streaks.has(j) && i % 2 === 0 && roll < 420) noise.push(dot(i, j, 0.4));
+        if (near && roll < 110) noise.push(dot(i, j, 0.4));
+        else if (streaks.has(j) && roll < 260 && (i < n * 0.22 || i > n * 0.78 || roll < 60)) noise.push(dot(i, j, roll % 3 ? 0.4 : 0.7));
       }
     }
   }
@@ -199,10 +146,33 @@ function specimen(level, n) {
       const l = level(i, j);
       if (!l) continue;
       const edge = l >= 3 && (level(i - 1, j) < 2 || level(i + 1, j) < 2 || level(i, j - 1) < 2 || level(i, j + 1) < 2);
-      const on =
-        l === 4 || edge ? true : l === 3 ? (i + j) % 2 === 0 : l === 2 ? i % 2 === 0 && j % 2 === 0 : false;
+      const on = l === 4 || edge ? true : l === 3 ? (i + j) % 2 === 0 : l === 2 ? i % 2 === 0 && j % 2 === 0 : false;
       if (on) ink.push(dot(i, j, 0.78));
     }
   }
   return { ink: ink.join(""), holes: "", noise: "" };
+}
+
+/** The halo's diamonds: `count` of them round (x, y) at radius r, in the
+ *  emblem's 100-unit square, each turned along the ring; as polygon points,
+ *  in cell units. */
+export function haloDiamonds({ x, y, r }, n, count = 7, size = null) {
+  const u = n / 100;
+  // Its half-diagonal: at least a cell and a half, so a small one still
+  // reads as a diamond.
+  const s = Math.max(1.5, ((size ?? r * 0.42) * u) / 2);
+  const out = [];
+  for (let k = 0; k < count; k++) {
+    const a = -Math.PI / 2 + (k * 2 * Math.PI) / count;
+    const cx = (x + r * Math.cos(a)) * u;
+    const cy = (y + r * Math.sin(a)) * u;
+    // A square turned 45 degrees from the ring's tangent.
+    const t = a + Math.PI / 4;
+    const pts = [0, 1, 2, 3].map((q) => {
+      const b = t + (q * Math.PI) / 2;
+      return `${fix(cx + s * Math.cos(b))},${fix(cy + s * Math.sin(b))}`;
+    });
+    out.push({ points: pts.join(" "), cx: fix(cx), cy: fix(cy), s: fix(s) });
+  }
+  return out;
 }
