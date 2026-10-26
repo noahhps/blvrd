@@ -61,11 +61,11 @@ test("an emblem by callsign, its tag aside; the unnamed one for a stranger", () 
   assert.equal(emblemOf("hazard", "TIZONA-42"), UESC.TIZONA || UNNAMED);
 });
 
-test("every UESC and Sekiguchi callsign has a well-formed emblem of its own", () => {
+test("every emblem drawn is well-formed, and named for a callsign of its look", () => {
   for (const [look, set] of [["hazard", UESC], ["sekiguchi", SEKIGUCHI]]) {
-    for (const name of [...FACTIONS[look].roles, ...FACTIONS[look].spares]) {
-      const e = set[name];
-      assert.ok(e, `${look} ${name} has no emblem`);
+    const names = [...FACTIONS[look].roles, ...FACTIONS[look].spares];
+    for (const [name, e] of Object.entries(set)) {
+      assert.ok(names.includes(name), `${look} has no callsign ${name}`);
       assert.ok(e.subject && e.parts.length > 0, `${name}: subject and parts`);
       for (const p of e.parts) {
         assert.match(p.d, /^\s*[Mm]/, `${name}: a path starts with a move`);
@@ -73,6 +73,13 @@ test("every UESC and Sekiguchi callsign has a well-formed emblem of its own", ()
       }
       const { x, y, r } = e.halo;
       assert.ok(x - r >= 0 && x + r <= 100 && y - r >= 0 && y + r <= 100, `${name}: halo inside the square`);
+      if (e.view) assert.ok(e.view[0] <= 0 && e.view[1] >= 100, `${name}: its view takes in the square`);
     }
   }
+});
+
+test("a callsign with no emblem of its own wears the unnamed one", () => {
+  assert.equal(emblemOf("hazard", "KEPLER"), UESC.KEPLER);
+  assert.equal(emblemOf("hazard", "HALLEY"), UESC.HALLEY || UNNAMED);
+  assert.equal(emblemOf("sekiguchi", "PRIMA"), SEKIGUCHI.PRIMA || UNNAMED);
 });

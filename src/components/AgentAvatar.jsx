@@ -4,6 +4,7 @@ import { colourOf, shapeOf } from "../lib/agents.js";
 import { callsignOf, useLook } from "../lib/callsigns.js";
 import { emblemOf } from "../lib/emblems/index.js";
 import { Emblem } from "./Emblem.jsx";
+import { EmblemViewer } from "./EmblemViewer.jsx";
 import { Mascot } from "./Mascot.jsx";
 
 /* An agent, drawn: its character (components/Mascot.jsx) -- a shape that
@@ -26,7 +27,8 @@ import { Mascot } from "./Mascot.jsx";
  * shows its AIs instead: an emblem of what its callsign names, a halo of
  * diamonds over it, printed in dots (components/Emblem.jsx). A copy with no
  * name -- the editor's pickers, choosing the character the other looks
- * draw -- stays a character. */
+ * draw -- stays a character. There `poke` opens the emblem on the whole
+ * screen instead (components/EmblemViewer.jsx). */
 
 // Marathon looks that show emblems, and how they print them (the others
 // show none).
@@ -56,6 +58,7 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
   const working = spinning || Boolean(mood);
   const settling = useSettle(working, intro);
   const theme = useLook();
+  const [viewing, setViewing] = useState(false);
 
   if (image) {
     return (
@@ -82,17 +85,22 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
   const moodNow = mood || (spinning ? "thinking" : settling ? "done" : "still");
   const callsign = DOTS[theme] && name ? callsignOf(name, theme) : null;
   if (callsign) {
+    const emblem = emblemOf(theme, callsign);
     return (
-      <Emblem
-        className={className ? `agent-mascot ${className}` : "agent-mascot"}
-        look={DOTS[theme]}
-        emblem={emblemOf(theme, callsign)}
-        name={callsign}
-        colour={colour}
-        size={size}
-        alive={alive}
-        mood={moodNow}
-      />
+      <>
+        <Emblem
+          className={className ? `agent-mascot ${className}` : "agent-mascot"}
+          look={DOTS[theme]}
+          emblem={emblem}
+          name={callsign}
+          colour={colour}
+          size={size}
+          alive={alive}
+          mood={moodNow}
+          onOpen={poke ? () => setViewing(true) : null}
+        />
+        {viewing ? <EmblemViewer emblem={emblem} callsign={callsign} look={DOTS[theme]} colour={colour} mood={moodNow} onClose={() => setViewing(false)} /> : null}
+      </>
     );
   }
 

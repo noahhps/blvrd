@@ -13,9 +13,11 @@ import { cellsFor, halftone, haloDiamonds, hash, rasterise } from "../lib/dotmat
  * diamond catching the light now and then; turning, a step at a time, while
  * it works; lit in turn while its words arrive; all at once when it asks
  * something of you. Large ones (72px and up) sit in the viewer's frame: the
- * screen's curve, and the turntable's R- R+ dial. */
+ * screen's curve, and the turntable's R- R+ dial. `onOpen` makes it a
+ * button (the chat's own copies), to see it on the whole screen
+ * (components/EmblemViewer.jsx). */
 
-export function Emblem({ emblem, name = "", colour = "var(--ink)", size = 28, mood = "still", alive = true, look = "uesc", label = null, className = "" }) {
+export function Emblem({ emblem, name = "", colour = "var(--ink)", size = 28, mood = "still", alive = true, look = "uesc", label = null, onOpen = null, className = "" }) {
   const n = cellsFor(size);
   const seed = useMemo(() => [...name].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 9973, 7), [name]);
   const dots = useMemo(() => {
@@ -40,9 +42,21 @@ export function Emblem({ emblem, name = "", colour = "var(--ink)", size = 28, mo
       viewBox={`0 0 ${n} ${n}`}
       shapeRendering="crispEdges"
       style={{ "--c": colour, "--em-delay": delay, "--em-n": n }}
-      role={label ? "img" : undefined}
-      aria-label={label || undefined}
-      aria-hidden={label ? undefined : "true"}
+      role={onOpen ? "button" : label ? "img" : undefined}
+      tabIndex={onOpen ? 0 : undefined}
+      aria-label={onOpen ? `See ${name} on the whole screen` : label || undefined}
+      aria-hidden={onOpen || label ? undefined : "true"}
+      onClick={onOpen || undefined}
+      onKeyDown={
+        onOpen
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen();
+              }
+            }
+          : undefined
+      }
     >
       <rect className="em-screen" width={n} height={n} />
       {dots ? (

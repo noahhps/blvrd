@@ -68,3 +68,51 @@
  * was (styles/hazard.css), so the callsign keeps its room. */
 :root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .contact:has(.emblem)::after { content: none; }
 :root:is([data-theme="hazard"], [data-theme="sekiguchi"]) .contact > .emblem { width: 42px; height: 42px; margin-right: 2px; }
+
+/* The emblem on the whole screen (components/EmblemViewer.jsx): the
+ * agent's colour edge to edge, black glass curving in top and bottom, the
+ * dial and the labels in the screen's colour on the black. Sekiguchi's is
+ * a specimen sheet: mint, flat black bars. */
+.emblem-viewer {
+  --ev-screen: var(--c);
+  --ev-ink: #0a0a0a;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #0a0a0a;
+  outline: none;
+  animation: ev-on 220ms steps(4);
+}
+.emblem-viewer[data-ink] { --ev-screen: #efeee9; }
+.emblem-viewer[data-look="sekiguchi"] { --ev-screen: #97f5c3; --ev-ink: #0b0b0b; }
+.ev-screen { position: absolute; inset: 0; overflow: hidden; }
+.ev-print, .ev-over { position: absolute; inset: 0; display: block; }
+.ev-over * { transform-box: view-box; }
+.ev-over .em-diamond polygon, .ev-over .em-diamond rect, .ev-bezel { fill: var(--ev-ink); }
+.ev-over .em-diamond .em-core { fill: var(--ev-screen); }
+.ev-dial path { fill: none; stroke: var(--ev-screen); stroke-width: 1.5; }
+.ev-dial rect { fill: none; stroke: var(--ev-screen); stroke-width: 1.5; }
+.ev-label, .ev-close, .ev-turns button {
+  font: 600 11px/1 "JetBrains Mono", ui-monospace, Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ev-screen);
+}
+.ev-label { position: absolute; top: 10px; left: 16px; margin: 0; }
+.ev-label span { opacity: 0.7; }
+.ev-close { position: absolute; top: 6px; right: 12px; padding: 4px 6px; border: 0; background: none; cursor: pointer; }
+.ev-turns { position: absolute; display: flex; justify-content: space-between; }
+.ev-turns button { width: 36px; padding: 4px 0; border: 0; background: none; cursor: pointer; }
+.ev-turns button:disabled { opacity: 0.35; cursor: default; }
+.ev-close:focus-visible, .ev-turns button:focus-visible { outline: 1.5px solid var(--ev-screen); outline-offset: 2px; }
+.emblem-viewer[data-mood="thinking"] .em-halo { animation: em-turn 2.8s steps(28) infinite; }
+.emblem-viewer[data-mood="speaking"] .em-diamond { animation: em-light 0.98s steps(1) infinite; animation-delay: calc(var(--k) * 0.14s); }
+.emblem-viewer[data-mood="asking"] .em-diamond { animation: em-light 1.2s steps(1) infinite; }
+@keyframes ev-on { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .emblem-viewer, .emblem-viewer * { animation: none !important; }
+}
+
+/* An emblem that opens on the whole screen. */
+.emblem[role="button"] { cursor: zoom-in; }
+.emblem[role="button"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

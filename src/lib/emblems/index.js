@@ -2,8 +2,9 @@
  * not a face but an emblem of what its callsign names (lib/callsigns.js),
  * crowned by the ring of diamonds the Marathon puts over Durandal's rider.
  * One set per look, keyed by callsign: the UESC's blades and astronomers
- * (emblems/uesc.js), Sekiguchi's Fates and Norns (emblems/sekiguchi.js).
- * lib/dotmatrix.js says what an emblem is made of and prints it. */
+ * (emblems/uesc.js), Sekiguchi's Fates and Norns (emblems/sekiguchi.js);
+ * a callsign with none of its own wears the unnamed one. lib/dotmatrix.js
+ * says what an emblem is made of and prints it. */
 
 import { SEKIGUCHI } from "./sekiguchi.js";
 import { UESC } from "./uesc.js";
