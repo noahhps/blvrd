@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import { colourOf, shapeOf } from "../lib/agents.js";
-import { useLook } from "../lib/callsigns.js";
-import { DotMascot } from "./DotMascot.jsx";
+import { callsignOf, useLook } from "../lib/callsigns.js";
+import { emblemOf } from "../lib/emblems/index.js";
+import { Emblem } from "./Emblem.jsx";
+import { EmblemViewer } from "./EmblemViewer.jsx";
 import { Mascot } from "./Mascot.jsx";
 
 /* An agent, drawn: its character (components/Mascot.jsx) -- a shape that
@@ -21,10 +23,15 @@ import { Mascot } from "./Mascot.jsx";
  * A picture doesn't move (a face going round reads as a fault); a few small
  * dots in the agent's colour orbit it while it works.
  *
- * In the UESC and Sekiguchi looks the character is printed in dots instead,
- * the way their terminals print a shell (components/DotMascot.jsx). */
+ * In the UESC and Sekiguchi looks an agent is shown the way the Marathon
+ * shows its AIs instead: an emblem of what its callsign names, a halo of
+ * diamonds over it, printed in dots (components/Emblem.jsx). A copy with no
+ * name -- the editor's pickers, choosing the character the other looks
+ * draw -- stays a character. There `poke` opens the emblem on the whole
+ * screen instead (components/EmblemViewer.jsx). */
 
-// Marathon looks that print characters, and how (the others show none).
+// Marathon looks that show emblems, and how they print them (the others
+// show none).
 const DOTS = { hazard: "uesc", sekiguchi: "sekiguchi" };
 
 const SETTLE_MS = 700; // the character's hop (mascot.css)
@@ -51,6 +58,7 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
   const working = spinning || Boolean(mood);
   const settling = useSettle(working, intro);
   const theme = useLook();
+  const [viewing, setViewing] = useState(false);
 
   if (image) {
     return (
@@ -75,17 +83,24 @@ export function AgentAvatar({ look, name = "", size = 40, spinning = false, intr
   }
 
   const moodNow = mood || (spinning ? "thinking" : settling ? "done" : "still");
-  if (DOTS[theme]) {
+  const callsign = DOTS[theme] && name ? callsignOf(name, theme) : null;
+  if (callsign) {
+    const emblem = emblemOf(theme, callsign);
     return (
-      <DotMascot
-        className={className ? `agent-mascot ${className}` : "agent-mascot"}
-        look={DOTS[theme]}
-        shape={shapeOf(look, name)}
-        colour={colour}
-        size={size}
-        alive={alive}
-        mood={moodNow}
-      />
+      <>
+        <Emblem
+          className={className ? `agent-mascot ${className}` : "agent-mascot"}
+          look={DOTS[theme]}
+          emblem={emblem}
+          name={callsign}
+          colour={colour}
+          size={size}
+          alive={alive}
+          mood={moodNow}
+          onOpen={poke ? () => setViewing(true) : null}
+        />
+        {viewing ? <EmblemViewer emblem={emblem} callsign={callsign} look={DOTS[theme]} colour={colour} mood={moodNow} onClose={() => setViewing(false)} /> : null}
+      </>
     );
   }
 
