@@ -45,12 +45,12 @@ test("sekiguchi: an outline of pixels, the body in a checker, nothing knocked ou
   assert.equal(body.holes + body.noise, "");
 });
 
-test("the halo: seven diamonds round its centre, never under a cell and a half", () => {
+test("the halo: seven diamonds round its centre, never under a cell", () => {
   const ring = haloDiamonds({ x: 50, y: 30, r: 14 }, 28);
   assert.equal(ring.length, 7);
   for (const d of ring) {
     assert.ok(Math.abs(Math.hypot(d.cx - 14, d.cy - 8.4) - 3.92) < 0.02);
-    assert.ok(d.s >= 1.5);
+    assert.ok(d.s >= 1);
   }
 });
 

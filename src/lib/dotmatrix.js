@@ -158,9 +158,11 @@ function specimen(level, n) {
  *  in cell units. */
 export function haloDiamonds({ x, y, r }, n, count = 7, size = null) {
   const u = n / 100;
-  // Its half-diagonal: at least a cell and a half, so a small one still
-  // reads as a diamond.
-  const s = Math.max(1.5, ((size ?? r * 0.42) * u) / 2);
+  // Its half-diagonal: at least a cell, so a small one still reads as a
+  // diamond, and no more than a third of the way to the next, so a small
+  // ring doesn't close up into a blob.
+  const gap = (2 * Math.PI * r * u) / count;
+  const s = Math.max(1, Math.min(gap / 3, ((size ?? r * 0.42) * u) / 2));
   const out = [];
   for (let k = 0; k < count; k++) {
     const a = -Math.PI / 2 + (k * 2 * Math.PI) / count;
